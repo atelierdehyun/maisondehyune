@@ -144,10 +144,10 @@ export default function AdminPanelPremium() {
           const estructura: typeof inputsStock = {};
           dataAllProds.forEach((p) => {
             estructura[p.id] = {};
-            const slots = p.lista_slots
-            ? p.lista_slots.split(',').map((s: string) => s.trim())
-                        slots.forEach((s) => {
-              estructura[p.id][s] = String(p.stock_slots?.[s] ?? 0);
+            const listaSlots = p.lista_slots ? String(p.lista_slots) : '';
+            const slots = listaSlots ? listaSlots.split(',').map((s: any) => s.trim()) : [];
+            slots.forEach((s: any) => {
+              estructura[p.id][s] = String(p.stock_slots?.[s] ?? '0');
             });
 
             const claims = p.claims_integrantes || {};
