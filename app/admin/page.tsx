@@ -145,9 +145,8 @@ export default function AdminPanelPremium() {
           dataAllProds.forEach((p) => {
             estructura[p.id] = {};
             const slots = p.lista_slots
-              ? p.lista_slots.split(',').map((s) => s.trim())
-              : [];
-            slots.forEach((s) => {
+            ? p.lista_slots.split(',').map((s: string) => s.trim())
+                        slots.forEach((s) => {
               estructura[p.id][s] = String(p.stock_slots?.[s] ?? 0);
             });
 
