@@ -1,487 +1,510 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
-const NUMERO_WHATSAPP = '593999530327';
 
-type ReclamoGo = {
+const PRECIOS_ENVIO: Record<string, number> = {
+  'Quito (+$3.50)': 3.5,
+  'Otras Provincias (+$6.50)': 6.5,
+  'Perú Internacional ($0.00)': 0.0,
+  'Retiro en Cumbayá ($0.00)': 0.0,
+};
+
+type ItemEscritorio = {
   idUnico: string;
-  catalogoNombre: string;
-  itemNombre: string;
+  origen: 'GO' | 'SHOP';
+  goTitulo: string;
+  productoNombre: string;
   imagenUrl: string | null;
-  integranteElegido: string;
+  detalleSlot: string;
   cantidad: number;
-  precioUnitario: number;
-  fechaLimiteTexto: string;
-  diasRestantes: number | null;
+  precioTotal: number;
+  dueDate: string | null;
   estadoConfirmacion: string;
   estadoPago: string;
-  fechaPago: string | null;
+  fechaPago: string;
+  estadoEnvio?: string;
 };
 
-type CompraShop = {
-  id: number;
-  producto_nombre?: string;
-  detalles: string | null;
-  total_pagar: number;
-  estado_pago: string;
-  estado_confirmacion?: string;
-  fecha_pago?: string | null;
-  imagen_producto?: string | null;
+type GrupoGoEscritorio = {
+  titulo: string;
+  origen: 'GO' | 'SHOP';
+  items: ItemEscritorio[];
+  totalGrupo: number;
 };
-
 export default function MiEscritorioJoiner() {
-  const [pestanaJoiner, setPestanaInterna] = useState<'gos' | 'compras'>('gos');
-  const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'PENDIENTES' | 'PAGADOS'>('TODOS');
+  const [vista, setVista] = useState<'pedidos' | 'bodega'>('pedidos');
   const [usuarioEmail, setUsuarioEmail] = useState('');
   const [nombreJoiner, setNombreJoiner] = useState('');
-  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
-  const [perfilGuardadoOk, setPerfilGuardadoOk] = useState(false);
+  const [instagramJoiner, setInstagramJoiner] = useState('');
+  const [guardandoNombre, setGuardandoNombre] = useState(false);
+
+  const [grupos, setGrupos] = useState<GrupoGoEscritorio[]>([]);
+  const [solicitudesPrevias, setSolicitudesPrevias] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [misGos, setMisGos] = useState<ReclamoGo[]>([]);
-  const [misCompras, setMisCompras] = useState<CompraShop[]>([]);
-  async function cargarEscritorioCliente() {
+
+  // Estados para solicitar envío estilo Pocamarket
+  const [seleccionadosEnvio, setSeleccionadosEnvio] = useState<Record<string, boolean>>({});
+  const [envioNombre, setEnvioNombre] = useState('');
+  const [envioTelefono, setEnvioTelefono] = useState('');
+  const [envioCiudad, setEnvioCiudad] = useState('');
+  const [envioDireccion, setEnvioDireccion] = useState('');
+  const [envioMetodo, setEnvioMetodo] = useState('Quito (+$3.50)');
+  const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
+  async function cargarMisPedidos() {
+    setLoading(true);
     try {
-      setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.email) {
-        setLoading(false);
-        return;
-      }
-      const emailLogueado = session.user.email.toLowerCase().trim();
-      setUsuarioEmail(emailLogueado);
+      const email = session?.user?.email?.toLowerCase().trim() || '';
+      setUsuarioEmail(email);
 
-      const [{ data: dProds }, { data: dSeg }, { data: dPerfil }, { data: dPedidos }] = await Promise.all([
-        supabase
-          .from('productos')
-          .select('id, nombre_producto, precio, imagen_producto, claims_integrantes, due_date, gos(title)'),
-        supabase
-          .from('seguimiento_claims')
-          .select('*')
-          .eq('user_email', emailLogueado),
-        supabase
-          .from('perfiles_joiners')
-          .select('*')
-          .eq('user_email', emailLogueado)
-          .maybeSingle(),
-        supabase
-          .from('pedidos')
-          .select('*')
-          .eq('user_email', emailLogueado)
-          .order('id', { ascending: false }),
-      ]);
+      if (email) {
+        const [{ data: perfil }, { data: prods }, { data: segs }, { data: peds }, { data: sols }] = await Promise.all([
+          supabase.from('perfiles_joiners').select('*').eq('user_email', email).maybeSingle(),
+          supabase.from('productos').select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title)'),
+          supabase.from('seguimiento_claims').select('*').eq('user_email', email),
+          supabase.from('pedidos').select('*').eq('user_email', email).order('id', { ascending: false }),
+          supabase.from('solicitudes_envio').select('*').eq('user_email', email).order('id', { ascending: false }),
+        ]);
 
-      if (dPerfil?.nombre_completo) {
-        setNombreJoiner(dPerfil.nombre_completo);
-      }
+        if (perfil) {
+          setNombreJoiner(perfil.nombre_completo || '');
+          setEnvioNombre(perfil.nombre_completo || '');
+          setInstagramJoiner(perfil.usuario_red || '');
+        }
+        if (sols) setSolicitudesPrevias(sols);
 
-      const mapaSeg: Record<string, any> = {};
-      if (dSeg) {
-        dSeg.forEach((s: any) => {
-          mapaSeg[s.claim_key] = s;
-        });
-      }
+        const mapaSeg: Record<string, any> = {};
+        if (segs) segs.forEach((s: any) => { mapaSeg[s.claim_key] = s; });
 
-      const listaReclamos: ReclamoGo[] = [];
-      if (dProds) {
-        dProds.forEach((p: any) => {
-          const claims = p.claims_integrantes || {};
-          Object.entries(claims).forEach(([intName, comprador]: [string, any]) => {
-            const matchDirecto =
-              typeof comprador === 'string' &&
-              comprador.toLowerCase().trim() === emailLogueado;
-            const matchObj =
-              typeof comprador === 'object' &&
-              comprador !== null &&
-              Object.keys(comprador).some((k) => k.toLowerCase().trim() === emailLogueado);
+        const mapaGrupos: Record<string, GrupoGoEscritorio> = {};
 
-            if (matchDirecto || matchObj) {
-              const cantidadElegida =
-                typeof comprador === 'object' ? Number(comprador[emailLogueado] || 1) : 1;
-              const key = `${p.id}-${intName}`;
-              const seg = mapaSeg[key];
+        const agregarItem = (tituloGrupo: string, origen: 'GO' | 'SHOP', item: ItemEscritorio) => {
+          if (!mapaGrupos[tituloGrupo]) {
+            mapaGrupos[tituloGrupo] = { titulo: tituloGrupo, origen, items: [], totalGrupo: 0 };
+          }
+          mapaGrupos[tituloGrupo].items.push(item);
+          mapaGrupos[tituloGrupo].totalGrupo += item.precioTotal;
+        };
 
-              let diasRestantes: number | null = null;
-              if (p.due_date) {
-                const diffMs = new Date(p.due_date).getTime() - Date.now();
-                diasRestantes = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        if (prods) {
+          prods.forEach((p: any) => {
+            const claims = p.claims_integrantes || {};
+            const goTitle = p.gos?.title || 'Group Order';
+
+            Object.entries(claims).forEach(([integrante, dataClaim]: [string, any]) => {
+              if (!dataClaim) return;
+              const claimKey = p.id + '-' + integrante;
+              const seg = mapaSeg[claimKey];
+
+              if (typeof dataClaim === 'string' && dataClaim.toLowerCase().trim() === email) {
+                agregarItem(goTitle, 'GO', {
+                  idUnico: claimKey,
+                  origen: 'GO',
+                  goTitulo: goTitle,
+                  productoNombre: p.nombre_producto,
+                  imagenUrl: p.imagen_producto || null,
+                  detalleSlot: integrante,
+                  cantidad: 1,
+                  precioTotal: Number(p.precio || 0),
+                  dueDate: p.due_date || null,
+                  estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
+                  estadoPago: seg?.estado_pago || 'Sin pagar',
+                  fechaPago: seg?.fecha_pago || '',
+                });
+              } else if (typeof dataClaim === 'object') {
+                Object.entries(dataClaim).forEach(([mailC, cant]: [string, any]) => {
+                  if (mailC.toLowerCase().trim() === email && Number(cant) > 0) {
+                    agregarItem(goTitle, 'GO', {
+                      idUnico: claimKey + '-' + mailC,
+                      origen: 'GO',
+                      goTitulo: goTitle,
+                      productoNombre: p.nombre_producto,
+                      imagenUrl: p.imagen_producto || null,
+                      detalleSlot: integrante,
+                      cantidad: Number(cant),
+                      precioTotal: Number(p.precio || 0) * Number(cant),
+                      dueDate: p.due_date || null,
+                      estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
+                      estadoPago: seg?.estado_pago || 'Sin pagar',
+                      fechaPago: seg?.fecha_pago || '',
+                    });
+                  }
+                });
               }
-
-              listaReclamos.push({
-                idUnico: key,
-                catalogoNombre: p.gos?.title || 'Group Order Atelier',
-                itemNombre: p.nombre_producto,
-                imagenUrl: p.imagen_producto || null,
-                integranteElegido: intName,
-                cantidad: cantidadElegida,
-                precioUnitario: Number(p.precio || 0) * cantidadElegida,
-                fechaLimiteTexto: p.due_date ? new Date(p.due_date).toLocaleDateString() : 'Por definir',
-                diasRestantes,
-                estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                estadoPago: seg?.estado_pago || 'Sin pagar',
-                fechaPago: seg?.fecha_pago || null,
-              });
-            }
+            });
           });
-        });
+        }
+
+        if (peds) {
+          peds.forEach((ped: any) => {
+            agregarItem('Tienda / Shop', 'SHOP', {
+              idUnico: 'shop-' + ped.id,
+              origen: 'SHOP',
+              goTitulo: 'Tienda / Shop',
+              productoNombre: ped.producto_nombre || ped.detalles || 'Compra Tienda',
+              imagenUrl: ped.imagen_producto || null,
+              detalleSlot: ped.estado_envio || 'En bodega',
+              cantidad: 1,
+              precioTotal: Number(ped.total_pagar || 0),
+              dueDate: null,
+              estadoConfirmacion: ped.estado_confirmacion || 'Pendiente',
+              estadoPago: ped.estado_pago || 'Sin pagar',
+              fechaPago: ped.fecha_pago || '',
+              estadoEnvio: ped.estado_envio || 'En bodega',
+            });
+          });
+        }
+
+        setGrupos(Object.values(mapaGrupos));
       }
-      setMisGos(listaReclamos);
-      if (dPedidos) setMisCompras(dPedidos);
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    cargarEscritorioCliente();
+    cargarMisPedidos();
   }, []);
-  async function guardarMiNombre(e: React.FormEvent) {
+  async function handleGuardarMiPerfil(e: React.FormEvent) {
     e.preventDefault();
-    if (!nombreJoiner.trim() || !usuarioEmail) return;
-    setGuardandoPerfil(true);
+    if (!usuarioEmail || !nombreJoiner.trim()) return;
+    setGuardandoNombre(true);
     await supabase.from('perfiles_joiners').upsert({
       user_email: usuarioEmail,
       nombre_completo: nombreJoiner.trim(),
+      usuario_red: instagramJoiner.trim(),
     });
-    setGuardandoPerfil(false);
-    setPerfilGuardadoOk(true);
-    setTimeout(() => setPerfilGuardadoOk(false), 3000);
+    setGuardandoNombre(false);
+    alert('¡Datos guardados! ✨');
   }
 
-  const itemsCancelados = misGos.filter((i) => i.estadoConfirmacion === 'Cancelado');
-  const itemsPorVencer = misGos.filter(
-    (i) =>
-      i.estadoConfirmacion !== 'Cancelado' &&
-      i.estadoPago !== 'Pagado' &&
-      i.diasRestantes !== null &&
-      i.diasRestantes <= 3
-  );
-  const itemsSinPagar = misGos.filter(
-    (i) => i.estadoConfirmacion !== 'Cancelado' && i.estadoPago === 'Sin pagar'
+  const todosLosItems = grupos.flatMap((g) => g.items);
+  const itemsPagadosEnBodega = todosLosItems.filter(
+    (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.estadoEnvio !== 'Enviado'
   );
 
-  const gosFiltrados = misGos.filter((item) => {
-    if (filtroEstado === 'PAGADOS') return item.estadoPago === 'Pagado';
-    if (filtroEstado === 'PENDIENTES') return item.estadoPago !== 'Pagado';
-    return true;
-  });
+  const itemsMarcados = itemsPagadosEnBodega.filter((i) => seleccionadosEnvio[i.idUnico]);
+  const costoEnvioElegido = PRECIOS_ENVIO[envioMetodo] ?? 0;
 
-  const gosAgrupados = gosFiltrados.reduce((acc: Record<string, ReclamoGo[]>, item) => {
-    if (!acc[item.catalogoNombre]) acc[item.catalogoNombre] = [];
-    acc[item.catalogoNombre].push(item);
-    return acc;
-  }, {});
+  async function handleSolicitarEnvioAcumulado(e: React.FormEvent) {
+    e.preventDefault();
+    if (itemsMarcados.length === 0) return alert('Marca al menos 1 artículo pagado de tu bodega 📦');
+    if (!envioNombre || !envioTelefono || !envioCiudad || !envioDireccion) {
+      return alert('Completa todos tus datos de dirección y teléfono 🚚');
+    }
 
-  const totalAcumuladoGos = misGos
-    .filter((i) => i.estadoConfirmacion !== 'Cancelado')
-    .reduce((acc, item) => acc + item.precioUnitario, 0);
-  const totalPendienteGos = misGos
-    .filter((i) => i.estadoConfirmacion !== 'Cancelado' && i.estadoPago !== 'Pagado')
-    .reduce((acc, item) => acc + item.precioUnitario, 0);
-  const badgeConfirmacion = (estado: string) => {
-    if (estado === 'Confirmado') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    if (estado === 'Cancelado') return 'bg-rose-100 text-rose-800 border-rose-300';
-    return 'bg-amber-50 text-amber-700 border-amber-200';
-  };
+    setEnviandoSolicitud(true);
+    const listaTexto = itemsMarcados
+      .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' (' + i.detalleSlot + ')')
+      .join('\n');
 
-  const badgePago = (estado: string) => {
-    if (estado === 'Pagado' || estado === 'PAGADO' || estado === 'INSTOCK')
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    if (estado === 'Verificando') return 'bg-sky-50 text-sky-700 border-sky-200';
-    return 'bg-rose-50 text-rose-700 border-rose-200';
-  };
+    const { error } = await supabase.from('solicitudes_envio').insert([{
+      user_email: usuarioEmail,
+      nombre_completo: envioNombre.trim(),
+      instagram: instagramJoiner.replace('@', '').trim(),
+      telefono: envioTelefono.trim(),
+      ciudad: envioCiudad.trim(),
+      direccion: envioDireccion.trim(),
+      metodo_envio: envioMetodo,
+      costo_envio: costoEnvioElegido,
+      articulos_incluidos: listaTexto,
+      estado_despacho: 'Pendiente',
+    }]);
 
+    if (!error) {
+      for (const it of itemsMarcados) {
+        if (it.origen === 'SHOP' && it.idUnico.startsWith('shop-')) {
+          const idPed = Number(it.idUnico.replace('shop-', ''));
+          await supabase.from('pedidos').update({ estado_envio: 'Envío solicitado' }).eq('id', idPed);
+        }
+      }
+
+      const msgWsp =
+        '¡Holis, Lia! Quiero solicitar el envío de mis compras acumuladas en bodega:\n\n' +
+        '• *Nombre:* ' + envioNombre + ' (@' + instagramJoiner.replace('@', '') + ')\n' +
+        '• *Teléfono:* ' + envioTelefono + '\n' +
+        '• *Destino:* ' + envioCiudad + ' — ' + envioDireccion + '\n' +
+        '• *Método:* ' + envioMetodo + '\n\n' +
+        '*Artículos a enviar:*\n' + listaTexto + '\n\n' +
+        '• *Costo de envío:* $' + costoEnvioElegido.toFixed(2) + ' USD\n\n' +
+        'Confirmo que sigo a @atelierdehyun.';
+
+      setSeleccionadosEnvio({});
+      await cargarMisPedidos();
+      window.open('https://wa.me' + encodeURIComponent(msgWsp), '_blank');
+    } else {
+      alert('Error: ' + error.message);
+    }
+    setEnviandoSolicitud(false);
+  }
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">
-        ✧ cargando tu cuenta y alertas...
+        ✧ cargando tu cuenta y bodega... 🎀
       </div>
     );
   }
 
   if (!usuarioEmail) {
     return (
-      <div className="min-h-screen bg-[#FAF8F9] flex flex-col items-center justify-center p-4 text-center gap-3">
-        <p className="text-xs font-bold text-pink-600 bg-white border border-pink-100 px-5 py-3 rounded-2xl shadow-2xs">
-          🎀 Inicia sesión para revisar tus Group Orders y compras
-        </p>
-        <Link href="/gos" className="text-xs font-semibold text-zinc-500 underline">
-          Volver al catálogo ➔
+      <div className="min-h-screen bg-[#FAF8F9] flex flex-col items-center justify-center p-4 gap-4">
+        <p className="text-sm font-bold text-zinc-700">Inicia sesión para ver tus compras y bodega 🎀</p>
+        <Link href="/joiner-login" className="px-6 py-2.5 rounded-full bg-pink-600 text-white text-xs font-bold">
+          Iniciar sesión ➔
         </Link>
       </div>
     );
   }
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const itemsCancelados = todosLosItems.filter((i) => i.estadoConfirmacion === 'Cancelado');
+  const itemsUrgentes = todosLosItems.filter((i) => {
+    if (i.estadoPago === 'Pagado' || i.estadoConfirmacion === 'Cancelado' || !i.dueDate) return false;
+    const limite = new Date(i.dueDate + 'T00:00:00');
+    const diffDias = Math.ceil((limite.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDias <= 3;
+  });
+
+  const inicialAvatar = (nombreJoiner || usuarioEmail).slice(0, 2).toUpperCase();
   return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3">
-        <div className="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-2">
-          <Link href="/gos" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">
-            ← Volver al catálogo
-          </Link>
-          <span className="text-[11px] text-zinc-600 bg-zinc-100 px-3 py-1 rounded-full font-medium">
-            👤 {nombreJoiner ? `${nombreJoiner} (${usuarioEmail})` : usuarioEmail}
-          </span>
+        <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-3">
+          <div className="flex items-center gap-4">
+            <Link href="/gos" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">
+              ← Catálogo GOs
+            </Link>
+            <Link href="/shop" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">
+              🛍️ Tienda
+            </Link>
+          </div>
+
+          <div className="flex gap-1.5 bg-zinc-100 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setVista('pedidos')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all ${vista === 'pedidos' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500'}`}
+            >
+              📋 Mis Pedidos ({todosLosItems.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setVista('bodega')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all ${vista === 'bodega' ? 'bg-pink-600 text-white shadow-2xs' : 'text-zinc-600'}`}
+            >
+              📦 Mi Bodega / Solicitar Envío ({itemsPagadosEnBodega.length})
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ZONA DE ALERTAS AUTOMÁTICAS Y NOTIFICACIONES */}
-      <div className="max-w-5xl mx-auto px-4 pt-5 space-y-2.5">
-        {itemsCancelados.length > 0 && (
-          <div className="bg-rose-50 border border-rose-300 text-rose-900 rounded-2xl p-4 flex items-start gap-3 shadow-2xs">
-            <span className="text-lg">🚨</span>
-            <div className="text-xs space-y-1">
-              <p className="font-extrabold uppercase tracking-wide text-rose-700">
-                Aviso importante: Producto(s) cancelado(s) por falta de pago
-              </p>
-              <p>
-                Los siguientes apartados fueron cancelados:{' '}
-                <strong>{itemsCancelados.map((x) => `${x.itemNombre} (${x.integranteElegido})`).join(', ')}</strong>.
-                Si crees que es un error, contáctanos por WhatsApp.
-              </p>
+      <div className="max-w-6xl mx-auto px-4 pt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-4 bg-white border border-zinc-200/80 rounded-3xl p-5 shadow-2xs space-y-5">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-pink-600 text-white font-black text-base flex items-center justify-center shrink-0">
+              {inicialAvatar}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-extrabold text-zinc-900 truncate">{nombreJoiner || 'Joiner Atelier'}</h2>
+              <p className="text-xs text-zinc-400 truncate">{usuarioEmail}</p>
             </div>
           </div>
-        )}
 
-        {itemsPorVencer.length > 0 && (
-          <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-2xl p-4 flex items-start gap-3 shadow-2xs">
-            <span className="text-lg">⏰</span>
-            <div className="text-xs space-y-1">
-              <p className="font-extrabold uppercase tracking-wide text-amber-800">
-                ¡Tu fecha límite de pago está por vencer o ya venció!
-              </p>
-              <p>
-                Tienes <strong>{itemsPorVencer.length} artículo(s)</strong> sin pagar cerca de su fecha límite.
-                Envía tu comprobante hoy para evitar la cancelación de tu cupo.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {itemsPorVencer.length === 0 && itemsSinPagar.length > 0 && (
-          <div className="bg-pink-50/90 border border-pink-200 text-pink-950 rounded-2xl p-3.5 flex items-center gap-3 text-xs">
-            <span className="text-base">💳</span>
-            <p>
-              Recordatorio: Aún no registras ningún pago para <strong>{itemsSinPagar.length} apartado(s)</strong> (Total pendiente: <strong>${totalPendienteGos.toFixed(2)} USD</strong>).
-            </p>
-          </div>
-        )}
-      </div>
-      <div className="max-w-5xl mx-auto px-4 pt-5 grid grid-cols-1 md:grid-cols-4 gap-6">
-        <aside className="md:col-span-1 space-y-3">
-          {/* Cajita de Nombre del Joiner */}
-          <form onSubmit={guardarMiNombre} className="bg-white border border-zinc-200/80 rounded-2xl p-4 shadow-2xs space-y-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-              Mis Datos de Joiner
-            </p>
-            <input
-              type="text"
-              placeholder="Escribe tu nombre real..."
-              value={nombreJoiner}
-              onChange={(e) => setNombreJoiner(e.target.value)}
-              className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-xs"
-            />
-            <button
-              type="submit"
-              disabled={guardandoPerfil}
-              className="w-full bg-pink-600 hover:bg-pink-700 text-white text-[11px] font-bold py-1.5 rounded-xl transition-colors"
-            >
-              {guardandoPerfil ? 'Guardando...' : 'Guardar mi nombre'}
+          <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5 pt-2 border-t border-zinc-100">
+            <label className="text-[11px] font-bold text-zinc-500 block">Tu nombre real (para tus envíos)</label>
+            <input type="text" placeholder="Ej: Camila López" value={nombreJoiner} onChange={(e) => setNombreJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
+            <input type="text" placeholder="Tu Instagram (ej: @cami_skz)" value={instagramJoiner} onChange={(e) => setInstagramJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
+            <button type="submit" disabled={guardandoNombre} className="w-full py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold">
+              {guardandoNombre ? 'Guardando...' : '💾 Guardar mis datos'}
             </button>
-            {perfilGuardadoOk && (
-              <p className="text-[10px] text-emerald-600 font-bold text-center">✔ Nombre actualizado</p>
-            )}
           </form>
 
-          <div className="bg-white border border-zinc-200/80 rounded-2xl p-4 shadow-2xs">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
-              Secciones
+          <div className="bg-pink-50/70 border border-pink-200 rounded-2xl p-4 text-[11px] text-zinc-700 space-y-1.5">
+            <p className="font-extrabold text-pink-700">🏦 Datos de Transferencia</p>
+            <p><strong>Banco Pichincha (Ahorros):</strong> #2213367970</p>
+            <p><strong>Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
+            <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-lg mt-1 font-semibold">
+              ⚠️ Recuerda seguir a <strong>@atelierdehyun</strong> en Instagram para poder enviarte tus proofs.
             </p>
-            <nav className="space-y-1.5">
-              <button
-                type="button"
-                onClick={() => setPestanaInterna('gos')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold ${
-                  pestanaJoiner === 'gos'
-                    ? 'bg-pink-50 text-pink-600 border border-pink-200'
-                    : 'text-zinc-600 hover:bg-zinc-50'
-                }`}
-              >
-                <span>🧸 Mis Group Orders</span>
-                <span className="bg-white text-zinc-700 px-2 py-0.5 rounded-full text-[10px] border border-zinc-200">
-                  {misGos.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPestanaInterna('compras')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold ${
-                  pestanaJoiner === 'compras'
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-600 hover:bg-zinc-50'
-                }`}
-              >
-                <span>🛍️ Mis Compras Tienda</span>
-                <span className="bg-zinc-100 text-zinc-800 px-2 py-0.5 rounded-full text-[10px]">
-                  {misCompras.length}
-                </span>
-              </button>
-            </nav>
           </div>
-
-          <div className="bg-white border border-zinc-200/80 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Resumen GOs</p>
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Total activo:</span>
-              <span className="font-bold">${totalAcumuladoGos.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Por pagar:</span>
-              <span className="font-bold text-rose-600">${totalPendienteGos.toFixed(2)}</span>
-            </div>
-          </div>
-        </aside>
-        <main className="md:col-span-3 space-y-5">
-          {pestanaJoiner === 'gos' && (
-            <>
-              <div className="bg-white border border-zinc-200/80 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3 shadow-2xs">
-                <div>
-                  <h1 className="text-base font-extrabold text-zinc-900">Mis Group Orders</h1>
-                  <p className="text-xs text-zinc-500">Tus apartados separados por cada GO</p>
-                </div>
-                <div className="flex gap-1.5 bg-zinc-100 p-1 rounded-xl">
-                  {(['TODOS', 'PENDIENTES', 'PAGADOS'] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setFiltroEstado(tab)}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold ${
-                        filtroEstado === tab ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500'
-                      }`}
-                    >
-                      {tab === 'TODOS' ? 'Todos' : tab === 'PENDIENTES' ? 'Sin pagar' : 'Pagados'}
-                    </button>
-                  ))}
-                </div>
+        </div>
+        <div className="lg:col-span-8 space-y-4">
+          {itemsCancelados.length > 0 && (
+            <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 flex items-start gap-3">
+              <span className="text-xl">🚨</span>
+              <div className="text-xs text-rose-900 space-y-1">
+                <p className="font-extrabold text-sm text-rose-700">Pedido cancelado por falta de pago</p>
+                <p>El siguiente artículo fue cancelado porque no se registró el pago a tiempo: <strong>{itemsCancelados.map((i) => i.productoNombre).join(', ')}</strong>.</p>
               </div>
-
-              {Object.keys(gosAgrupados).length === 0 ? (
-                <div className="bg-white border border-zinc-200/80 rounded-2xl p-10 text-center text-xs text-zinc-500">
-                  No hay apartados en esta sección 🌸
-                </div>
-              ) : (
-                Object.entries(gosAgrupados).map(([nombreGo, items]) => {
-                  const subtotalGo = items.reduce((s, x) => s + x.precioUnitario, 0);
-                  return (
-                    <section key={nombreGo} className="bg-white border border-zinc-200/90 rounded-2xl overflow-hidden shadow-2xs">
-                      <div className="bg-zinc-50/80 border-b border-zinc-200/80 px-5 py-3.5 flex justify-between items-center">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase text-pink-600 bg-pink-50 border border-pink-200 px-2.5 py-0.5 rounded-full">
-                            Group Order
-                          </span>
-                          <h2 className="text-sm font-extrabold text-zinc-900 mt-1">{nombreGo}</h2>
-                        </div>
-                        <p className="text-sm font-black text-zinc-900">${subtotalGo.toFixed(2)} USD</p>
-                      </div>
-
-                      <div className="divide-y divide-zinc-100">
-                        {items.map((item) => (
-                          <div key={item.idUnico} className="p-5 flex flex-col sm:flex-row justify-between gap-4">
-                            <div className="flex gap-4">
-                              <div className="w-20 h-20 rounded-xl bg-zinc-100 border border-zinc-200 overflow-hidden shrink-0 flex items-center justify-center">
-                                {item.imagenUrl ? (
-                                  <img src={item.imagenUrl} alt={item.itemNombre} className="w-full h-full object-cover" />
-                                ) : (
-                                  <span className="text-2xl">🧸</span>
-                                )}
-                              </div>
-
-                              <div className="space-y-1.5">
-                                <p className="text-sm font-bold text-zinc-900">{item.itemNombre}</p>
-                                <p className="text-xs text-zinc-500">
-                                  Slot: <strong className="text-pink-600">{item.integranteElegido}</strong> · Cant: <strong>{item.cantidad}</strong>
-                                </p>
-
-                                <div className="flex flex-wrap gap-1.5 pt-1">
-                                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgeConfirmacion(item.estadoConfirmacion)}`}>
-                                    Estado: {item.estadoConfirmacion}
-                                  </span>
-                                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgePago(item.estadoPago)}`}>
-                                    Pago: {item.estadoPago}
-                                  </span>
-                                </div>
-
-                                <div className="flex flex-wrap gap-3 text-[11px] text-zinc-400 pt-1">
-                                  <span>📅 Límite: {item.fechaLimiteTexto}</span>
-                                  {item.fechaPago && <span className="text-emerald-600 font-semibold">✅ Pagado: {item.fechaPago}</span>}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex sm:flex-col justify-between sm:items-end items-center shrink-0">
-                              <p className="text-base font-black text-zinc-900">${item.precioUnitario.toFixed(2)} USD</p>
-                              {item.estadoConfirmacion === 'Cancelado' ? (
-                                <span className="text-[11px] font-bold text-rose-600">❌ Cancelado</span>
-                              ) : item.estadoPago !== 'Pagado' ? (
-                                <a
-                                  href={`https://wa.me{NUMERO_WHATSAPP}?text=${encodeURIComponent(
-                                    `¡Hola! ✨ Envío mi comprobante:\n👤 *Nombre:* ${nombreJoiner || usuarioEmail}\n📂 *GO:* ${item.catalogoNombre}\n📦 *Producto:* ${item.itemNombre} (${item.integranteElegido})\n💰 *Monto:* $${item.precioUnitario.toFixed(2)} USD`
-                                  )}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold"
-                                >
-                                  💬 Enviar comprobante
-                                </a>
-                              ) : (
-                                <span className="text-[11px] font-bold text-emerald-600">✔ Pago verificado</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  );
-                })
-              )}
-            </>
+            </div>
           )}
 
-          {pestanaJoiner === 'compras' && (
-            <div className="space-y-3">
-              <div className="bg-white border border-zinc-200/80 rounded-2xl p-4">
-                <h1 className="text-base font-extrabold text-zinc-900">Mis Compras de Tienda</h1>
+          {itemsUrgentes.length > 0 && (
+            <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+              <span className="text-xl">⏰</span>
+              <div className="text-xs text-amber-950 space-y-1">
+                <p className="font-extrabold text-sm text-amber-800">¡Recordatorio de pago próximo a vencer!</p>
+                <p>Tienes artículos pendientes de pago cuya fecha límite está por vencer. Envía tu comprobante para evitar la cancelación automática.</p>
               </div>
-              {misCompras.length === 0 ? (
-                <div className="bg-white border rounded-2xl p-10 text-center text-xs text-zinc-500">
-                  Aún no tienes compras en la tienda 🛍️
+            </div>
+          )}
+
+          {vista === 'pedidos' ? (
+            <>
+              <div className="flex flex-wrap justify-between items-center gap-2">
+                <h1 className="text-lg font-extrabold text-zinc-900">Mis Pedidos y Apartados</h1>
+                <button type="button" onClick={() => setVista('bodega')} className="text-xs font-extrabold text-pink-600 bg-pink-50 border border-pink-200 px-3.5 py-1.5 rounded-xl">
+                  📦 Ir a mi bodega para pedir envío ➔
+                </button>
+              </div>
+
+              {grupos.length === 0 ? (
+                <div className="bg-white border border-zinc-200/80 rounded-3xl p-10 text-center space-y-3">
+                  <p className="text-sm font-bold text-zinc-500">Aún no tienes apartados registrados 🌸</p>
+                  <Link href="/gos" className="inline-block px-5 py-2.5 rounded-full bg-pink-600 text-white text-xs font-bold">
+                    Explorar catálogos ➔
+                  </Link>
                 </div>
               ) : (
-                misCompras.map((compra) => (
-                  <div key={compra.id} className="bg-white border border-zinc-200/90 rounded-2xl p-5 flex justify-between items-center gap-4">
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-mono font-bold bg-zinc-900 text-white px-2 py-0.5 rounded">ORDEN #{compra.id}</span>
-                      <p className="text-sm font-bold text-zinc-900">{compra.producto_nombre || compra.detalles || 'Pedido Tienda'}</p>
-                      <div className="flex gap-1.5 pt-1">
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgeConfirmacion(compra.estado_confirmacion || 'Pendiente')}`}>
-                          {compra.estado_confirmacion || 'Pendiente'}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgePago(compra.estado_pago)}`}>
-                          {compra.estado_pago || 'Sin pagar'}
-                        </span>
-                      </div>
+                grupos.map((grupo) => (
+                  <div key={grupo.titulo} className="bg-white border border-zinc-200/80 rounded-3xl p-5 shadow-2xs space-y-4">
+                    <div className="flex justify-between items-center border-b border-zinc-100 pb-3">
+                      <span className="text-xs font-extrabold text-pink-600 uppercase">{grupo.titulo}</span>
+                      <span className="text-sm font-black text-zinc-900">${grupo.totalGrupo.toFixed(2)} USD</span>
                     </div>
-                    <p className="text-base font-black text-zinc-900">${Number(compra.total_pagar || 0).toFixed(2)} USD</p>
+
+                    <div className="space-y-3">
+                      {grupo.items.map((item) => (
+                        <div key={item.idUnico} className="flex items-center justify-between gap-3 bg-zinc-50/70 p-3 rounded-2xl border border-zinc-100">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="w-12 h-12 rounded-xl object-cover border shrink-0" /> : <div className="w-12 h-12 rounded-xl bg-white border flex items-center justify-center text-lg shrink-0">🧸</div>}
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-zinc-900 truncate">{item.productoNombre}</p>
+                              <p className="text-[11px] font-semibold text-pink-600">{item.detalleSlot}</p>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.estadoPago === 'Pagado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
+                                  {item.estadoPago === 'Pagado' ? '💚 Pagado (En bodega)' : '💸 ' + item.estadoPago}
+                                </span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.estadoConfirmacion === 'Confirmado' ? 'bg-blue-50 text-blue-700' : item.estadoConfirmacion === 'Cancelado' ? 'bg-rose-100 text-rose-700' : 'bg-zinc-200/70 text-zinc-600'}`}>
+                                  {item.estadoConfirmacion}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-xs font-extrabold text-zinc-900 shrink-0">${item.precioTotal.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))
               )}
+            </>
+          ) : (
+            <div className="space-y-5">
+              <div className="bg-white border border-zinc-200/80 rounded-3xl p-5 shadow-2xs space-y-4">
+                <div>
+                  <span className="text-[10px] font-bold uppercase bg-pink-50 text-pink-600 px-2.5 py-1 rounded-full">
+                    Estilo Pocamarket
+                  </span>
+                  <h1 className="text-lg font-extrabold text-zinc-900 mt-1">📦 Mi Bodega (Compras Pagadas)</h1>
+                  <p className="text-xs text-zinc-500">
+                    Marca los artículos pagados que deseas recibir juntos en un solo paquete y solicita tu envío.
+                  </p>
+                </div>
+
+                {itemsPagadosEnBodega.length === 0 ? (
+                  <p className="text-xs text-zinc-400 text-center py-8 bg-zinc-50 rounded-2xl border border-dashed">
+                    Aún no tienes artículos con pago confirmado en tu bodega 🌸 Cuando Lia confirme tu pago aparecerán aquí.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {itemsPagadosEnBodega.map((item) => {
+                      const marcado = !!seleccionadosEnvio[item.idUnico];
+                      return (
+                        <label
+                          key={item.idUnico}
+                          className={`flex items-center justify-between gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${marcado ? 'bg-pink-50/70 border-pink-400' : 'bg-zinc-50/60 border-zinc-200/80'}`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={marcado}
+                              onChange={(e) => setSeleccionadosEnvio((prev) => ({ ...prev, [item.idUnico]: e.target.checked }))}
+                              className="w-4 h-4 accent-pink-600 rounded"
+                            />
+                            {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" /> : <span className="w-11 h-11 rounded-xl bg-white border flex items-center justify-center shrink-0">🧸</span>}
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-bold text-zinc-400 uppercase">{item.goTitulo}</p>
+                              <p className="text-xs font-bold text-zinc-900 truncate">{item.productoNombre}</p>
+                              <p className="text-[11px] text-pink-600 font-semibold">{item.detalleSlot}</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full shrink-0">
+                            Listo para envío
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {itemsPagadosEnBodega.length > 0 && (
+                  <form onSubmit={handleSolicitarEnvioAcumulado} className="space-y-3 pt-4 border-t border-zinc-100">
+                    <p className="text-xs font-extrabold text-zinc-800">🚚 Datos de Despacho ({itemsMarcados.length} seleccionados)</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input type="text" required placeholder="Nombre quien recibe" value={envioNombre} onChange={(e) => setEnvioNombre(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs bg-zinc-50" />
+                      <input type="tel" required placeholder="Teléfono / WhatsApp" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs bg-zinc-50" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input type="text" required placeholder="Ciudad / Provincia" value={envioCiudad} onChange={(e) => setEnvioCiudad(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs bg-zinc-50" />
+                      <select value={envioMetodo} onChange={(e) => setEnvioMetodo(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs bg-zinc-50 font-bold">
+                        <option value="Quito (+$3.50)">Quito (+$3.50)</option>
+                        <option value="Otras Provincias (+$6.50)">Otras Provincias (+$6.50)</option>
+                        <option value="Perú Internacional ($0.00)">Perú Internacional ($0.00)</option>
+                        <option value="Retiro en Cumbayá ($0.00)">Retiro en Cumbayá ($0.00)</option>
+                      </select>
+                    </div>
+                    <input type="text" required placeholder="Dirección exacta y referencia" value={envioDireccion} onChange={(e) => setEnvioDireccion(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs bg-zinc-50 w-full" />
+
+                    <div className="bg-pink-50 border border-pink-200 rounded-2xl p-3.5 flex justify-between items-center text-sm font-black">
+                      <span>Total Envío ({itemsMarcados.length} artículos):</span>
+                      <span className="text-pink-600">${costoEnvioElegido.toFixed(2)} USD</span>
+                    </div>
+
+                    <button type="submit" disabled={enviandoSolicitud} className="w-full py-3 bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase rounded-xl">
+                      {enviandoSolicitud ? 'Enviando solicitud...' : '🚚 Solicitar Envío y Notificar por WhatsApp'}
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              {solicitudesPrevias.length > 0 && (
+                <div className="bg-white border border-zinc-200/80 rounded-3xl p-5 shadow-2xs space-y-3">
+                  <h2 className="text-sm font-extrabold text-zinc-900">📜 Historial de Envíos Solicitados</h2>
+                  {solicitudesPrevias.map((sol) => (
+                    <div key={sol.id} className="bg-zinc-50 border rounded-2xl p-3.5 text-xs space-y-1">
+                      <div className="flex justify-between font-bold">
+                        <span>{sol.metodo_envio} — {sol.ciudad}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] ${sol.estado_despacho === 'Enviado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
+                          {sol.estado_despacho}
+                        </span>
+                      </div>
+                      <p className="text-zinc-600 whitespace-pre-line text-[11px]">{sol.articulos_incluidos}</p>
+                      {sol.guia_rastreo && <p className="font-bold text-indigo-600">🔎 Guía de rastreo: {sol.guia_rastreo}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </main>
+        </div>
       </div>
     </div>
   );
