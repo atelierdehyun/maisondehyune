@@ -550,35 +550,96 @@ export default function AdminPanelPremium() {
                         <span>{tarjeta.items.length} orden(es)</span>
                       </div>
 
-                      <div className="space-y-2.5">
+                                            <div className="space-y-3">
                         {tarjeta.items.map((it) => {
-                          const listaSeparada = it.origen === 'SHOP' ? it.productoNombre.split(' + ').map((s) => s.trim()).filter(Boolean) : [it.productoNombre];
+                          const partesRaw = it.origen === 'SHOP'
+                            ? it.productoNombre.split(' + ').map((s) => s.trim()).filter(Boolean)
+                            : [it.productoNombre];
+
+                          // Agrupar por título de publicación para no repetir el nombre largo
+                          const gruposPorPost: Record<string, string[]> = {};
+                          partesRaw.forEach((linea) => {
+                            const match = linea.match(/^(\d+x)\s+(.+?)\s+\[(.+?)\]\s+(\(\$.*?\))$/);
+                            if (match) {
+                              const [, cant, tituloPost, variante, precio] = match;
+                              if (!gruposPorPost[tituloPost]) gruposPorPost[tituloPost] = [];
+                              gruposPorPost[tituloPost].push(`${cant} ${variante} ${precio}`);
+                            } else {
+                              if (!gruposPorPost[linea]) gruposPorPost[linea] = [];
+                            }
+                          });
+
                           return (
-                            <div key={it.idUnico} className="bg-zinc-50/80 border border-zinc-100 rounded-xl p-2.5 space-y-1.5 text-xs">
+                            <div key={it.idUnico} className="bg-zinc-50/90 border border-zinc-200/80 rounded-2xl p-3 space-y-2.5 text-xs">
                               <div className="flex items-start gap-2.5">
-                                {it.imagenUrl ? <img src={it.imagenUrl} alt="" className="w-10 h-10 rounded-lg object-cover border shrink-0 mt-0.5" /> : <span className="w-10 h-10 rounded-lg bg-white border flex items-center justify-center text-xs shrink-0">🧸</span>}
-                                <div className="flex-1 min-w-0 space-y-1">
-                                  {listaSeparada.map((linea, idxLinea) => (
-                                    <p key={idxLinea} className="font-bold text-zinc-900 leading-snug break-words">
-                                      {listaSeparada.length > 1 ? '• ' + linea : linea}
-                                    </p>
+                                {it.imagenUrl ? (
+                                  <img src={it.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" />
+                                ) : (
+                                  <span className="w-11 h-11 rounded-xl bg-white border flex items-center justify-center text-sm shrink-0">🧸</span>
+                                )}
+
+                                <div className="flex-1 min-w-0 space-y-2">
+                                  {Object.entries(gruposPorPost).map(([tituloPost, subItems], idxPost) => (
+                                    <div key={idxPost} className="space-y-1">
+                                      <p className="font-extrabold text-zinc-900 leading-snug break-words">
+                                        {tituloPost}{' '}
+                                        {subItems.length > 0 && (
+                                          <span className="text-[10px] font-bold bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full ml-1">
+                                            {subItems.length} elegido(s)
+                                          </span>
+                                        )}
+                                      </p>
+
+                                      {subItems.length > 0 && (
+                                        <div className="bg-white border border-zinc-200/70 rounded-xl p-2 space-y-1">
+                                          {subItems.map((sub, iSub) => (
+                                            <p key={iSub} className="text-[11px] font-semibold text-zinc-700 leading-tight">
+                                              • {sub}
+                                            </p>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {it.origen === 'GO' && (
+                                        <p className="text-[11px] font-bold text-pink-600">Slot: {it.detalleSlot}</p>
+                                      )}
+                                    </div>
                                   ))}
-                                  <p className="text-[11px] text-pink-600 font-semibold break-words leading-snug">{it.detalleSlot}</p>
                                 </div>
                               </div>
 
-                              <div className="flex justify-between items-center pt-1 border-t border-zinc-200/60 text-[11px]">
-                                <span className="text-zinc-400">Monto:</span>
+                              <div className="flex justify-between items-center pt-1.5 border-t border-zinc-200/60 text-[11px]">
+                                <span className="text-zinc-400">Monto pedido:</span>
                                 {it.origen === 'SHOP' && it.pedidoId && editandoTotalId === it.pedidoId ? (
                                   <div className="flex items-center gap-1">
-                                    <input type="number" step="0.01" value={inputTotalTemp} onChange={(e) => setInputTotalTemp(e.target.value)} className="border rounded px-2 py-0.5 w-20 text-xs bg-white font-bold" autoFocus />
-                                    <button type="button" onClick={() => guardarNuevoTotalPedido(it.pedidoId!, inputTotalTemp)} className="bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">OK</button>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={inputTotalTemp}
+                                      onChange={(e) => setInputTotalTemp(e.target.value)}
+                                      className="border rounded px-2 py-0.5 w-20 text-xs bg-white font-bold"
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => guardarNuevoTotalPedido(it.pedidoId!, inputTotalTemp)}
+                                      className="bg-emerald-600 text-white px-2 py-0.5 rounded font-bold"
+                                    >
+                                      OK
+                                    </button>
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-extrabold text-zinc-800">${it.precioTotal.toFixed(2)} USD</span>
                                     {it.origen === 'SHOP' && it.pedidoId && (
-                                      <button type="button" onClick={() => { setEditandoTotalId(it.pedidoId!); setInputTotalTemp(String(it.precioTotal)); }} className="text-[10px] text-indigo-600 underline font-bold">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditandoTotalId(it.pedidoId!);
+                                          setInputTotalTemp(String(it.precioTotal));
+                                        }}
+                                        className="text-[10px] text-indigo-600 underline font-bold"
+                                      >
                                         ✏️ editar
                                       </button>
                                     )}
@@ -589,7 +650,7 @@ export default function AdminPanelPremium() {
                           );
                         })}
                       </div>
-                    </div>
+
 
                     <div className="pt-3 border-t border-zinc-100 space-y-2.5">
                       <div className="flex justify-between items-center">
