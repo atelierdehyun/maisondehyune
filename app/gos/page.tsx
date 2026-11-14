@@ -225,7 +225,8 @@ export default function Masterlist() {
         ✧ cargando masterlists atelier... 🧸
       </div>
     );
-
+   }
+  
   return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-20">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3 sticky top-0 z-30">
