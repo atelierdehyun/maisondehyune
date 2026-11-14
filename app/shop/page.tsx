@@ -99,9 +99,7 @@ export default function AtelierShop() {
           alert('Ya agregaste el máximo stock disponible de este artículo 🌸');
           return prev;
         }
-        return prev.map((i) =>
-          i.producto.id === prod.id ? { ...i, cantidad: i.cantidad + 1 } : i
-        );
+        return prev.map((i) => (i.producto.id === prod.id ? { ...i, cantidad: i.cantidad + 1 } : i));
       }
       return [...prev, { producto: prod, cantidad: 1 }];
     });
@@ -145,7 +143,7 @@ export default function AtelierShop() {
     }
 
     const resumenArticulos = carrito
-      .map((i) => `${i.cantidad}x ${i.producto.nombre_producto} ($${(Number(i.producto.precio) * i.cantidad).toFixed(2)})`)
+      .map((i) => i.cantidad + 'x ' + i.producto.nombre_producto + ' ($' + (Number(i.producto.precio) * i.cantidad).toFixed(2) + ')')
       .join(' + ');
 
     const primeraFoto = carrito.at(0)?.producto.imagen_producto || null;
@@ -160,22 +158,34 @@ export default function AtelierShop() {
           total_pagar: totalFinalCarrito,
           estado_pago: 'Sin pagar',
           estado_confirmacion: 'Pendiente',
-          detalles: `IG: @${formInstagram} | Tlf: ${formTelefono} | Nombre: ${formNombre} | Ciudad: ${formCiudad} | Dir: ${formDireccion} | Envío: ${formMetodoEnvio.toUpperCase()} ($${costoEnvioActual.toFixed(2)})`,
+          detalles: 'IG: @' + formInstagram + ' | Tlf: ' + formTelefono + ' | Nombre: ' + formNombre + ' | Ciudad: ' + formCiudad + ' | Dir: ' + formDireccion + ' | Envío: ' + formMetodoEnvio.toUpperCase() + ' ($' + costoEnvioActual.toFixed(2) + ')',
         },
       ]),
       supabase.from('perfiles_joiners').upsert({
         user_email: usuarioEmail.toLowerCase().trim(),
         nombre_completo: formNombre.trim(),
-        usuario_red: `@${formInstagram.replace('@', '')}`,
+        usuario_red: '@' + formInstagram.replace('@', ''),
       }),
     ]);
+
+    const mensajeWsp =
+      '¡Hola, Atelier! Hice un pedido en la tienda 🛍️✨\n\n' +
+      '💌 *Nombre:* ' + formNombre + ' (@' + formInstagram.replace('@', '') + ')\n' +
+      '📱 *Teléfono:* ' + formTelefono + '\n' +
+      '📍 *Envío:* ' + formCiudad + ' — ' + formDireccion + '\n' +
+      '📦 *Productos:* ' + resumenArticulos + '\n' +
+      '💵 *Subtotal:* $' + subtotalCarrito.toFixed(2) + ' | *Envío:* $' + costoEnvioActual.toFixed(2) + '\n' +
+      '💰 *Total Final:* $' + totalFinalCarrito.toFixed(2) + ' USD\n\n' +
+      'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante. 💗';
 
     setDatosExito({
       resumen: resumenArticulos,
       subtotal: subtotalCarrito,
       envio: costoEnvioActual,
       total: totalFinalCarrito,
+      urlWhatsapp: 'https://wa.me' + encodeURIComponent(mensajeWsp),
     });
+
     setCarrito([]);
     setMostrarCarrito(false);
     cargarTienda();
@@ -207,9 +217,7 @@ export default function AtelierShop() {
               className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-extrabold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-2xs"
             >
               <span>🛒 Carrito</span>
-              <span className="bg-white text-pink-600 px-1.5 py-0.2 rounded-full text-[11px]">
-                {totalItemsCarrito}
-              </span>
+              <span className="bg-white text-pink-600 px-1.5 rounded-full text-[11px]">{totalItemsCarrito}</span>
             </button>
           </div>
         </div>
@@ -217,12 +225,8 @@ export default function AtelierShop() {
 
       <div className="max-w-6xl mx-auto px-4 pt-6 space-y-5">
         <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 text-center space-y-2 shadow-2xs">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 uppercase">
-            Hyune Atelier Shop
-          </h1>
-          <p className="text-xs text-zinc-500 max-w-xl mx-auto">
-            Agrega todo lo que quieras a tu carrito y paga un solo envío ✨
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 uppercase">Hyune Atelier Shop</h1>
+          <p className="text-xs text-zinc-500 max-w-xl mx-auto">Agrega todo lo que quieras a tu carrito y paga un solo envío ✨</p>
 
           <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-left">
             <input type="text" placeholder="🔍 Buscar producto..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs bg-zinc-50" />
@@ -249,26 +253,13 @@ export default function AtelierShop() {
             productosFiltrados.map((p) => (
               <div key={p.id} className="bg-white border border-zinc-200/80 rounded-2xl p-3.5 flex flex-col justify-between hover:shadow-md transition-all group">
                 <div>
-                  <div
-                    onClick={() => { setProductoDetalle(p); setFotoActivaDetalle(p.imagen_producto || ''); }}
-                    className="w-full h-44 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100 relative cursor-pointer flex items-center justify-center"
-                  >
-                    {p.imagen_producto ? (
-                      <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                    ) : (
-                      <span className="text-2xl">🛍️</span>
-                    )}
-                    <span className="absolute top-2 left-2 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full text-zinc-700 border border-zinc-200">
-                      {p.categoria || 'Merch'}
-                    </span>
+                  <div onClick={() => { setProductoDetalle(p); setFotoActivaDetalle(p.imagen_producto || ''); }} className="w-full h-44 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100 relative cursor-pointer flex items-center justify-center">
+                    {p.imagen_producto ? <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <span className="text-2xl">🛍️</span>}
+                    <span className="absolute top-2 left-2 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full text-zinc-700 border border-zinc-200">{p.categoria || 'Merch'}</span>
                     {p.estado_pago === 'SOLD OUT' || p.cantidad_disponible <= 0 ? (
-                      <span className="absolute inset-0 bg-zinc-950/60 text-white text-xs font-black flex items-center justify-center uppercase">
-                        SOLD OUT
-                      </span>
+                      <span className="absolute inset-0 bg-zinc-950/60 text-white text-xs font-black flex items-center justify-center uppercase">SOLD OUT</span>
                     ) : (
-                      <span className="absolute bottom-2 right-2 bg-zinc-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-                        Stock: {p.cantidad_disponible}
-                      </span>
+                      <span className="absolute bottom-2 right-2 bg-zinc-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">Stock: {p.cantidad_disponible}</span>
                     )}
                   </div>
 
@@ -289,11 +280,7 @@ export default function AtelierShop() {
                     type="button"
                     disabled={p.estado_pago === 'SOLD OUT' || p.cantidad_disponible <= 0}
                     onClick={() => agregarAlCarrito(p)}
-                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold ${
-                      p.estado_pago === 'SOLD OUT' || p.cantidad_disponible <= 0
-                        ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
-                        : 'bg-pink-600 hover:bg-pink-700 text-white'
-                    }`}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold ${p.estado_pago === 'SOLD OUT' || p.cantidad_disponible <= 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700 text-white'}`}
                   >
                     + Agregar
                   </button>
@@ -309,9 +296,7 @@ export default function AtelierShop() {
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-xl">
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[10px] font-bold uppercase text-pink-600 bg-pink-50 px-2.5 py-0.5 rounded-full">
-                  {productoDetalle.grupo || productoDetalle.due_date} · {productoDetalle.categoria || 'Merch'}
-                </span>
+                <span className="text-[10px] font-bold uppercase text-pink-600 bg-pink-50 px-2.5 py-0.5 rounded-full">{productoDetalle.grupo || productoDetalle.due_date} · {productoDetalle.categoria || 'Merch'}</span>
                 <h3 className="text-base font-extrabold text-zinc-900 mt-1">{productoDetalle.nombre_producto}</h3>
               </div>
               <button type="button" onClick={() => setProductoDetalle(null)} className="text-zinc-400 font-bold text-sm">✕</button>
@@ -415,7 +400,6 @@ export default function AtelierShop() {
           </div>
         </div>
       )}
-
       {datosExito && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-sm w-full space-y-3 shadow-xl text-center">
@@ -431,9 +415,7 @@ export default function AtelierShop() {
               ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
             </div>
             <a
-              href={`https://wa.me{encodeURIComponent(
-                `¡Hola, Atelier! Hice un pedido en la tienda 🛍️✨\n\n💌 *Nombre:* ${formNombre} (@${formInstagram})\n📱 *Teléfono:* ${formTelefono}\n📍 *Envío:* ${formCiudad} — ${formDireccion}\n📦 *Productos:* ${datosExito.resumen}\n💵 *Subtotal:* $${datosExito.subtotal.toFixed(2)} | *Envío:* $${datosExito.envio.toFixed(2)}\n💰 *Total Final:* $${datosExito.total.toFixed(2)} USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante. 💗`
-              )}`}
+              href={datosExito.urlWhatsapp}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setDatosExito(null)}
