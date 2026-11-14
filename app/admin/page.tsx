@@ -80,19 +80,19 @@ export default function AdminPanelPremium() {
   const [newProdDesc, setNewProdDesc] = useState('');
   const [newShopName, setNewShopName] = useState('');
   const [newShopPrice, setNewShopPrice] = useState('');
-  const [newShopStatus] = useState('INSTOCK');
+  const [newShopName, setNewShopName] = useState('');
+  const [newShopPrice, setNewShopPrice] = useState('');
+  const [newShopStatus, setNewShopStatus] = useState('INSTOCK');
   const [newShopImage, setNewShopImage] = useState('');
-  const [newShopGroup] = useState('stray kids');
+  const [newShopExtraImages, setNewShopExtraImages] = useState<string[]>([]);
+  const [newShopGroup, setNewShopGroup] = useState('Stray Kids');
+  const [newShopIntegrante, setNewShopIntegrante] = useState('Grupal / Todos');
+  const [newShopCategoria, setNewShopCategoria] = useState('Photocards');
   const [newShopQty, setNewShopQty] = useState('1');
   const [newShopDesc, setNewShopDesc] = useState('');
 
-  const [editandoProducto, setEditandoProducto] = useState<ProductoAdmin | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editPrice, setEditPrice] = useState('');
-  const [editQty, setEditQty] = useState('');
-  const [editDesc, setEditDesc] = useState('');
 
-  async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop') {
+  async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra') {
     const file = e.target.files ? Array.from(e.target.files).at(0) : null;
     if (!file) return;
     setSubiendoImagen(true);
@@ -103,9 +103,11 @@ export default function AdminPanelPremium() {
     const { data: { publicUrl } } = supabase.storage.from('fotos-productos').getPublicUrl(fileName);
     if (targetForm === 'go') setNewGoImage(publicUrl);
     else if (targetForm === 'prod') setNewProdImage(publicUrl);
-    else setNewShopImage(publicUrl);
+    else if (targetForm === 'shop') setNewShopImage(publicUrl);
+    else setNewShopExtraImages((prev) => [...prev, publicUrl]);
     setSubiendoImagen(false);
   }
+
   async function cargarDatosHibridos() {
     setLoading(true);
     try {
@@ -327,15 +329,35 @@ export default function AdminPanelPremium() {
 
   async function handleCrearItemShop(e: React.FormEvent) {
     e.preventDefault();
-    if (!newShopName || !newShopPrice) return alert('Llena los datos');
+    if (!newShopName || !newShopPrice) return alert('Llena el nombre y el precio 🛍️');
     setLoadingForm(true);
     const { error } = await supabase.from('tienda_productos').insert([{
-      nombre_producto: newShopName.toUpperCase(), precio: Number(newShopPrice), cantidad_disponible: Number(newShopQty),
-      descripcion: newShopDesc || null, estado_pago: newShopStatus, due_date: newShopGroup, imagen_producto: newShopImage || null,
+      nombre_producto: newShopName.toUpperCase(),
+      precio: Number(newShopPrice),
+      cantidad_disponible: Number(newShopQty),
+      descripcion: newShopDesc || null,
+      estado_pago: newShopStatus,
+      due_date: newShopGroup.toLowerCase(),
+      grupo: newShopGroup,
+      integrante: newShopIntegrante,
+      categoria: newShopCategoria,
+      imagen_producto: newShopImage || null,
+      fotos_extra: newShopExtraImages,
     }]);
     setLoadingForm(false);
-    if (!error) { alert('¡Añadido a la Shop! 🛍️'); setNewShopName(''); setNewShopPrice(''); setNewShopDesc(''); setNewShopImage(''); cargarDatosHibridos(); }
+    if (!error) {
+      alert('¡Producto publicado en la Tienda! 🛍️✨');
+      setNewShopName('');
+      setNewShopPrice('');
+      setNewShopDesc('');
+      setNewShopImage('');
+      setNewShopExtraImages([]);
+      cargarDatosHibridos();
+    } else {
+      alert('Error: ' + error.message);
+    }
   }
+
   async function handleEliminarGO(idGo: number) {
     if (!confirm('⚠️ ¿Borrar másterlist entera?')) return;
     const { error } = await supabase.from('gos').delete().eq('id', idGo);
@@ -619,60 +641,167 @@ export default function AdminPanelPremium() {
             </div>
           </div>
         )}
-        {pestanaAdmin === 'lanzar' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <form onSubmit={handleCreateGO} className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-3.5 shadow-2xs">
-              <h2 className="text-sm font-extrabold text-zinc-900">1. Nuevo Group Order</h2>
-              <input type="text" placeholder="Título del GO (ej: KARMA POB)" value={newGoTitle} onChange={(e) => setNewGoTitle(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
-              <input type="text" placeholder="Grupo (ej: stray kids)" value={newGoGroup} onChange={(e) => setNewGoGroup(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
-              <div className="border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center space-y-2">
-                {newGoImage ? <img src={newGoImage} alt="Preview" className="w-24 h-24 object-cover rounded-xl mx-auto border" /> : <p className="text-xs text-zinc-400">📸 Portada del GO</p>}
-                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'go')} className="text-xs w-full" />
+                {pestanaAdmin === 'lanzar' && (
+          <div className="space-y-8">
+            {/* TARJETA PRINCIPAL ESTILO RARE BEAUTY PARA TIENDA */}
+            <form onSubmit={handleCrearItemShop} className="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-2xs space-y-6">
+              <div className="flex flex-wrap justify-between items-center border-b border-zinc-100 pb-4 gap-2">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+                    Hyune Atelier Shop
+                  </span>
+                  <h2 className="text-lg font-extrabold text-zinc-900 mt-1">Agregar Nuevo Producto a la Tienda</h2>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loadingForm || subiendoImagen}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold shadow-2xs"
+                >
+                  {subiendoImagen ? 'Subiendo foto...' : '✨ Publicar en Tienda'}
+                </button>
               </div>
-              <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-zinc-900 text-white font-bold text-xs py-3 rounded-xl">➕ Crear GO</button>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Columna Izquierda: Portada grande + cuadritos de fotos extra */}
+                <div className="lg:col-span-5 space-y-3">
+                  <p className="text-xs font-bold text-zinc-700">Imágenes del Producto</p>
+                  <div className="w-full h-64 rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-200 overflow-hidden relative flex flex-col items-center justify-center p-3">
+                    {newShopImage ? (
+                      <>
+                        <img src={newShopImage} alt="Portada" className="max-h-full max-w-full object-contain rounded-xl" />
+                        <span className="absolute bottom-2 left-2 bg-zinc-900/80 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-lg">
+                          Portada
+                        </span>
+                      </>
+                    ) : (
+                      <p className="text-xs text-zinc-400 text-center">📸 Sube la foto principal del producto</p>
+                    )}
+                    <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'shop')} className="mt-2 text-[11px]" />
+                  </div>
+
+                  {/* Galería de fotos adicionales */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {newShopExtraImages.map((url, i) => (
+                      <div key={i} className="relative h-16 rounded-xl border overflow-hidden bg-zinc-50">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setNewShopExtraImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-0.5 right-0.5 bg-rose-600 text-white text-[9px] w-4 h-4 rounded-full"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    {newShopExtraImages.length < 4 && (
+                      <label className="h-16 rounded-xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center text-zinc-400 hover:border-indigo-400 cursor-pointer text-[10px] font-bold">
+                        <span>+ Foto</span>
+                        <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'shop-extra')} className="hidden" />
+                      </label>
+                    )}
+                  </div>
+                </div>
+                {/* Columna Derecha: Detalles, Grupo, Integrante, Categoría y Stock */}
+                <div className="lg:col-span-7 space-y-4">
+                  <p className="text-xs font-bold text-zinc-700">Detalles del Producto</p>
+                  <div>
+                    <label className="text-[11px] font-bold text-zinc-500 block mb-1">Nombre del Producto *</label>
+                    <input type="text" placeholder="Ej: Photocard Hyunjin Rockstar / Llavero SKZOO..." value={newShopName} onChange={(e) => setNewShopName(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full bg-zinc-50/50" />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-500 block mb-1">Estado</label>
+                      <select value={newShopStatus} onChange={(e) => setNewShopStatus(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2.5 text-xs w-full bg-zinc-50/50 font-bold">
+                        <option value="INSTOCK">🟢 In Stock (Envío inmediato)</option>
+                        <option value="PREORDER">🟡 Pre-Order (Un solo pago)</option>
+                        <option value="SOLD OUT">🔴 Sold Out</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-500 block mb-1">Grupo / Banda</label>
+                      <input type="text" placeholder="Ej: Stray Kids, Enhypen, TXT, Otros..." value={newShopGroup} onChange={(e) => setNewShopGroup(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full bg-zinc-50/50" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-500 block mb-1">Categoría del Artículo</label>
+                      <select value={newShopCategoria} onChange={(e) => setNewShopCategoria(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2.5 text-xs w-full bg-zinc-50/50 font-bold">
+                        <option value="Photocards">🃏 Photocards</option>
+                        <option value="Álbumes">💿 Álbumes</option>
+                        <option value="Plushies">🧸 Plushies / Peluches</option>
+                        <option value="Llaveros">🔑 Llaveros / Keyrings</option>
+                        <option value="Hecho a mano">🧶 Hecho a mano</option>
+                        <option value="Merch Oficial">✨ Merch Oficial / Random</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-500 block mb-1">Integrante (Opcional)</label>
+                      <input type="text" placeholder="Ej: Hyunjin, Bang Chan, Grupal..." value={newShopIntegrante} onChange={(e) => setNewShopIntegrante(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full bg-zinc-50/50" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-500 block mb-1">Precio (USD) *</label>
+                      <input type="number" step="0.01" placeholder="Ej: 15.00" value={newShopPrice} onChange={(e) => setNewShopPrice(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full bg-zinc-50/50 font-bold" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-500 block mb-1">Cantidad en Stock *</label>
+                      <input type="number" min="0" placeholder="Ej: 3" value={newShopQty} onChange={(e) => setNewShopQty(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full bg-zinc-50/50 font-bold" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-zinc-500 block mb-1">Descripción</label>
+                    <textarea rows={2} placeholder="Estado de la photocard, medidas, detalles del envío..." value={newShopDesc} onChange={(e) => setNewShopDesc(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs w-full bg-zinc-50/50" />
+                  </div>
+                </div>
+              </div>
             </form>
 
-            <form onSubmit={handleCrearProducto} className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-3.5 shadow-2xs">
-              <div className="flex justify-between items-center">
-                <h2 className="text-sm font-extrabold text-pink-600">2. Nuevo Artículo en GO</h2>
-                {selectedGoId && <button type="button" onClick={() => handleEliminarGO(selectedGoId)} className="text-[11px] text-rose-500 underline">Borrar GO</button>}
-              </div>
-              <select value={selectedGoId || ''} onChange={(e) => setSelectedGoId(Number(e.target.value))} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full bg-zinc-50 font-bold">
-                {gosAdmin.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
-              </select>
-              <input type="text" placeholder="Nombre del artículo" value={newProdName} onChange={(e) => setNewProdName(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="number" step="0.01" placeholder="Precio USD" value={newProdPrice} onChange={(e) => setNewProdPrice(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
-                <input type="number" placeholder="Stock por integrante" value={newProdQty} onChange={(e) => setNewProdQty(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
-              </div>
-              <input type="text" placeholder="Integrantes (Bang Chan, Lee Know...)" value={newProdSlots} onChange={(e) => setNewProdSlots(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
-              <div>
-                <label className="text-[11px] font-bold text-zinc-500 block mb-1">Fecha límite de pago (alertas automáticas):</label>
-                <input type="date" value={newProdDueDate} onChange={(e) => setNewProdDueDate(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs w-full" />
-              </div>
-              <div className="border-2 border-dashed border-pink-200 rounded-2xl p-4 text-center space-y-2 bg-pink-50/20">
-                {newProdImage ? <img src={newProdImage} alt="Preview" className="w-24 h-24 object-cover rounded-xl mx-auto border" /> : <p className="text-xs text-zinc-400">📸 Foto del producto</p>}
-                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'prod')} className="text-xs w-full" />
-              </div>
-              <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-pink-600 text-white font-bold text-xs py-3 rounded-xl">📦 Publicar en GO</button>
-            </form>
+            {/* TARJETAS DE GROUP ORDERS (GOs) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form onSubmit={handleCreateGO} className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-3.5 shadow-2xs">
+                <h2 className="text-sm font-extrabold text-zinc-900">1. Nuevo Group Order (GO)</h2>
+                <input type="text" placeholder="Título del GO (ej: KARMA POB)" value={newGoTitle} onChange={(e) => setNewGoTitle(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+                <input type="text" placeholder="Grupo (ej: stray kids)" value={newGoGroup} onChange={(e) => setNewGoGroup(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+                <div className="border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center space-y-2">
+                  {newGoImage ? <img src={newGoImage} alt="Preview" className="w-24 h-24 object-cover rounded-xl mx-auto border" /> : <p className="text-xs text-zinc-400">📸 Portada del GO</p>}
+                  <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'go')} className="text-xs w-full" />
+                </div>
+                <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-zinc-900 text-white font-bold text-xs py-3 rounded-xl">➕ Crear GO</button>
+              </form>
 
-            <form onSubmit={handleCrearItemShop} className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-3.5 shadow-2xs">
-              <h2 className="text-sm font-extrabold text-indigo-600">3. Nuevo Producto Tienda</h2>
-              <input type="text" placeholder="Nombre del producto" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="number" step="0.01" placeholder="Precio USD" value={newShopPrice} onChange={(e) => setNewShopPrice(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
-                <input type="number" placeholder="Cantidad disponible" value={newShopQty} onChange={(e) => setNewShopQty(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
-              </div>
-              <input type="text" placeholder="Descripción corta" value={newShopDesc} onChange={(e) => setNewShopDesc(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
-              <div className="border-2 border-dashed border-indigo-200 rounded-2xl p-4 text-center space-y-2 bg-indigo-50/20">
-                {newShopImage ? <img src={newShopImage} alt="Preview" className="w-24 h-24 object-cover rounded-xl mx-auto border" /> : <p className="text-xs text-zinc-400">📸 Foto de tienda</p>}
-                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'shop')} className="text-xs w-full" />
-              </div>
-              <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-indigo-600 text-white font-bold text-xs py-3 rounded-xl">🛍️ Publicar en Tienda</button>
-            </form>
+              <form onSubmit={handleCrearProducto} className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-3.5 shadow-2xs">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-sm font-extrabold text-pink-600">2. Nuevo Artículo en GO</h2>
+                  {selectedGoId && <button type="button" onClick={() => handleEliminarGO(selectedGoId)} className="text-[11px] text-rose-500 underline">Borrar GO</button>}
+                </div>
+                <select value={selectedGoId || ''} onChange={(e) => setSelectedGoId(Number(e.target.value))} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full bg-zinc-50 font-bold">
+                  {gosAdmin.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+                </select>
+                <input type="text" placeholder="Nombre del artículo" value={newProdName} onChange={(e) => setNewProdName(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" step="0.01" placeholder="Precio USD" value={newProdPrice} onChange={(e) => setNewProdPrice(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
+                  <input type="number" placeholder="Stock por integrante" value={newProdQty} onChange={(e) => setNewProdQty(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
+                </div>
+                <input type="text" placeholder="Integrantes (Bang Chan, Lee Know...)" value={newProdSlots} onChange={(e) => setNewProdSlots(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-500 block mb-1">Fecha límite de pago:</label>
+                  <input type="date" value={newProdDueDate} onChange={(e) => setNewProdDueDate(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs w-full" />
+                </div>
+                <div className="border-2 border-dashed border-pink-200 rounded-2xl p-4 text-center space-y-2 bg-pink-50/20">
+                  {newProdImage ? <img src={newProdImage} alt="Preview" className="w-24 h-24 object-cover rounded-xl mx-auto border" /> : <p className="text-xs text-zinc-400">📸 Foto del producto</p>}
+                  <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'prod')} className="text-xs w-full" />
+                </div>
+                <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-pink-600 text-white font-bold text-xs py-3 rounded-xl">📦 Publicar en GO</button>
+              </form>
+            </div>
           </div>
         )}
+
 
         {pestanaAdmin === 'items' && (
           <div className="bg-white border rounded-2xl p-5 space-y-3">
