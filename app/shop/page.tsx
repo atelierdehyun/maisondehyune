@@ -420,19 +420,23 @@ export default function AtelierShop() {
             </div>
           </div>
         </div>
-      )}      {datosExito && (
+            {datosExito && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-sm w-full space-y-3 shadow-xl text-center">
             <h4 className="text-sm font-black text-pink-600 uppercase">✨ ¡Pedido de Tienda Registrado! 🫧</h4>
-            <div className="bg-zinc-50 p-4 rounded-2xl text-left text-xs space-y-1.5 text-zinc-700">
-              <p><strong>🏦 Cuentas:</strong> Pichincha / Produbanco (Ahorros)</p>
+            <div className="bg-zinc-50 p-4 rounded-2xl text-left text-xs space-y-1.5 text-zinc-700 border">
+              <p><strong>🏦 Banco Pichincha (Ahorros):</strong> #2213367970</p>
+              <p><strong>👤 Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
               <p><strong>📦 Artículos:</strong> {datosExito.resumen}</p>
               <p><strong>Subtotal:</strong> ${datosExito.subtotal.toFixed(2)} + <strong>Envío:</strong> ${datosExito.envio.toFixed(2)}</p>
               <p className="text-sm font-black text-pink-600 pt-1 border-t">Total a transferir: ${datosExito.total.toFixed(2)} USD</p>
             </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
+              ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
+            </div>
             <a
-              href={`https://wa.me{NUMERO_WHATSAPP}?text=${encodeURIComponent(
-                `¡Hola, Atelier! Hice un pedido en la tienda 🛍️✨\n\n💌 *Nombre:* ${formNombre} (@${formInstagram})\n📱 *Teléfono:* ${formTelefono}\n📍 *Envío:* ${formCiudad} — ${formDireccion}\n📦 *Productos:* ${datosExito.resumen}\n💵 *Subtotal:* $${datosExito.subtotal.toFixed(2)} | *Envío:* $${datosExito.envio.toFixed(2)}\n💰 *Total Final:* $${datosExito.total.toFixed(2)} USD\n\nAdjunto mi comprobante de pago. 💗`
+              href={`https://wa.me{encodeURIComponent(
+                `¡Hola, Atelier! Hice un pedido en la tienda 🛍️✨\n\n💌 *Nombre:* ${formNombre} (@${formInstagram})\n📱 *Teléfono:* ${formTelefono}\n📍 *Envío:* ${formCiudad} — ${formDireccion}\n📦 *Productos:* ${datosExito.resumen}\n💵 *Subtotal:* $${datosExito.subtotal.toFixed(2)} | *Envío:* $${datosExito.envio.toFixed(2)}\n💰 *Total Final:* $${datosExito.total.toFixed(2)} USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante. 💗`
               )}`}
               target="_blank"
               rel="noopener noreferrer"
