@@ -1,10 +1,9 @@
-'use client';
++'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
-const NUMERO_WHATSAPP = '593999530327';
 const correoAdmin = 'liahwang1852@gmail.com';
 
 type Go = {
@@ -152,7 +151,6 @@ export default function Masterlist() {
     setProcesando(true);
     const mailLimpio = usuarioEmail.toLowerCase().trim();
 
-    // Agrupar cambios por producto para actualizar claims_integrantes sin sobrescribir
     const porProducto: Record<number, ItemCarritoGo[]> = {};
     carritoGlobal.forEach((item) => {
       if (!porProducto[item.productoId]) porProducto[item.productoId] = [];
@@ -231,7 +229,6 @@ export default function Masterlist() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-20">
-      {/* Barra superior con acceso al Carrito de Claims */}
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3 sticky top-0 z-30">
         <div className="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-3">
@@ -365,6 +362,7 @@ export default function Masterlist() {
                   ))}
                 </div>
               </div>
+
               {activeProducto && (
                 <div className="bg-white p-5 rounded-2xl border border-zinc-200/80 space-y-4 shadow-2xs">
                   <div className="flex justify-between items-center border-b pb-2">
@@ -484,6 +482,10 @@ export default function Masterlist() {
                       <option value="Retiro Físico en Cumbayá">🍰 Retiro Físico en Cumbayá</option>
                     </select>
 
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
+                      ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para proofs.
+                    </div>
+
                     <div className="bg-pink-50/80 border border-pink-200 rounded-2xl p-3.5 flex justify-between items-center text-sm font-black">
                       <span>Total a transferir:</span>
                       <span className="text-pink-600">${totalDineroBolsa.toFixed(2)} USD</span>
@@ -500,7 +502,7 @@ export default function Masterlist() {
         </div>
       )}
 
-            {mostrarModuloPago && datosUltimoClaim && (
+      {mostrarModuloPago && datosUltimoClaim && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
             <h4 className="text-sm font-black text-pink-600 uppercase">✨ ¡Claims Apartados con Éxito! 🐻</h4>
@@ -537,4 +539,3 @@ export default function Masterlist() {
     </div>
   );
 }
-
