@@ -505,13 +505,16 @@ export default function Masterlist() {
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
             <h4 className="text-sm font-black text-pink-600 uppercase">✨ ¡Claims Apartados con Éxito! 🐻</h4>
             <div className="bg-zinc-50 p-4 rounded-2xl text-left text-xs space-y-1.5 text-zinc-700 border">
-              <p><strong>🏦 Cuenta de Ahorros:</strong> Banco Pichincha / Produbanco</p>
+              <div className="space-y-0.5">
+  <p><strong>🏦 Banco Pichincha (Ahorros):</strong> #2213367970</p>
+  <p><strong>👤 Titular:</strong> Isabel Revollar — CI: 1752806388</p>
+</div>
               <p className="whitespace-pre-line text-[11px] bg-white p-2 rounded-lg border">{datosUltimoClaim.desglose}</p>
               <p className="text-sm font-black text-pink-600 pt-1">Total a transferir: ${datosUltimoClaim.total.toFixed(2)} USD</p>
             </div>
             <a
-              href={`https://wa.me{NUMERO_WHATSAPP}?text=${encodeURIComponent(
-                `¡Hola holis! Acabo de apartar slots en la web 🐻✨\n\n` +
+              href={`https://wa.me{encodeURIComponent(
+                `¡Hola! Acabo de apartar slots en la web 🐻✨\n\n` +
                   `💌 *Joiner:* ${datosUltimoClaim.nombre} (@${datosUltimoClaim.ig})\n` +
                   `📱 *Contacto:* ${datosUltimoClaim.tlf}\n` +
                   `📍 *Destino:* ${datosUltimoClaim.ciudad} — ${datosUltimoClaim.dir}\n` +
