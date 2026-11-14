@@ -500,28 +500,29 @@ export default function Masterlist() {
         </div>
       )}
 
-      {mostrarModuloPago && datosUltimoClaim && (
+            {mostrarModuloPago && datosUltimoClaim && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
             <h4 className="text-sm font-black text-pink-600 uppercase">✨ ¡Claims Apartados con Éxito! 🐻</h4>
             <div className="bg-zinc-50 p-4 rounded-2xl text-left text-xs space-y-1.5 text-zinc-700 border">
-              <div className="space-y-0.5">
-  <p><strong>🏦 Banco Pichincha (Ahorros):</strong> #2213367970</p>
-  <p><strong>👤 Titular:</strong> Isabel Revollar — CI: 1752806388</p>
-</div>
-              <p className="whitespace-pre-line text-[11px] bg-white p-2 rounded-lg border">{datosUltimoClaim.desglose}</p>
+              <p><strong>🏦 Banco Pichincha (Ahorros):</strong> #2213367970</p>
+              <p><strong>👤 Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
+              <p className="whitespace-pre-line text-[11px] bg-white p-2.5 rounded-lg border mt-1">{datosUltimoClaim.desglose}</p>
               <p className="text-sm font-black text-pink-600 pt-1">Total a transferir: ${datosUltimoClaim.total.toFixed(2)} USD</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
+              ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
             </div>
             <a
               href={`https://wa.me{encodeURIComponent(
-                `¡Hola! Acabo de apartar slots en la web 🐻✨\n\n` +
+                `¡Holis, Hyune Atelier! Acabo de apartar slots en la web 🐻✨\n\n` +
                   `💌 *Joiner:* ${datosUltimoClaim.nombre} (@${datosUltimoClaim.ig})\n` +
                   `📱 *Contacto:* ${datosUltimoClaim.tlf}\n` +
                   `📍 *Destino:* ${datosUltimoClaim.ciudad} — ${datosUltimoClaim.dir}\n` +
                   `🚚 *Método:* ${datosUltimoClaim.envio}\n\n` +
                   `📋 *Desglose de slots:*\n${datosUltimoClaim.desglose}\n\n` +
                   `💰 *Total a pagar:* $${datosUltimoClaim.total.toFixed(2)} USD\n\n` +
-                  `Adjunto mi comprobante por aquí. ¡Muchas gracias! 💗`
+                  `Confirmo que sigo a @atelierdehyun y adjunto mi comprobante por aquí. 💗`
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -536,3 +537,4 @@ export default function Masterlist() {
     </div>
   );
 }
+
