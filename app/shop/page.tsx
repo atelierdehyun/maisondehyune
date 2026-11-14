@@ -414,15 +414,24 @@ export default function AtelierShop() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
               ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
             </div>
+                        <a
+              href={'https://wa.me/593999530327?text=' + encodeURIComponent(
+                '¡Hola, Lia! Hice un pedido en la tienda 🛍️✨\n\n💌 Nombre: ' + formNombre + ' (@' + formInstagram + ')\n📱 Teléfono: ' + formTelefono + '\n📍 Envío: ' + formCiudad + ' — ' + formDireccion + '\n📦 Productos: ' + datosExito.resumen + '\n💵 Subtotal: $' + Number(datosExito.subtotal).toFixed(2) + ' | Envío: $' + Number(datosExito.envio).toFixed(2) + '\n💰 Total Final: $' + Number(datosExito.total).toFixed(2) + ' USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante. 💗'
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
+            >
+              💬 Enviar Comprobante por WhatsApp
+            </a>
+
             <button
-  type="button"
-  onClick={() => {
-    window.location.href = datosExito.urlWhatsapp;
-  }}
-  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
->
-  💬 Enviar Comprobante por WhatsApp
-</button>
+              type="button"
+              onClick={() => setDatosExito(null)}
+              className="w-full py-2 text-xs font-bold text-zinc-400 hover:text-zinc-700"
+            >
+              Cerrar ventana
+            </button>
 
           </div>
         </div>
