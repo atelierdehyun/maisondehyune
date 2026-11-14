@@ -95,7 +95,7 @@ export default function AdminPanelPremium() {
   const [editDesc, setEditDesc] = useState('');
 
   async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop') {
-    const file = e.target.files?.;
+    const file = e.target.files?.[0];
     if (!file) return;
     setSubiendoImagen(true);
     const fileExt = file.name.split('.').pop();
@@ -127,9 +127,8 @@ export default function AdminPanelPremium() {
 
         if (dataGos) {
           setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name })));
-          if (dataGos.length > 0 && !selectedGoId) setSelectedGoId(dataGos.id);
-          if (dataGos.length > 0 && goStockFiltro === 'TODOS') setGoStockFiltro(dataGos.id);
-        }
+          if (dataGos.length > 0 && !selectedGoId) setSelectedGoId(dataGos[0].id);
+          if (dataGos.length > 0 && goStockFiltro === 'TODOS') setGoStockFiltro(dataGos[0].id);
 
         const mapaSeg: Record<string, any> = {};
         if (dataSeg) dataSeg.forEach((s: any) => { mapaSeg[s.claim_key] = s; });
@@ -240,7 +239,7 @@ export default function AdminPanelPremium() {
   }
 
   async function actualizarTarjetaCompleta(tarjeta: TarjetaJoiner, campo: 'estadoConfirmacion' | 'estadoPago' | 'fechaPago', valor: string) {
-    const fechaAuto = campo === 'estadoPago' && valor === 'Pagado' ? new Date().toISOString().split('T') : null;
+    const fechaAuto = campo === 'estadoPago' && valor === 'Pagado' ? new Date().toISOString().split('T')[0] : null;
 
     setTarjetasJoiners((prev) =>
       prev.map((t) => {
@@ -452,10 +451,10 @@ export default function AdminPanelPremium() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {tarjetasFiltradas.map((tarjeta, idx) => {
-                const inicial = tarjeta.nombreReal.slice(0, 2).toUpperCase();
-                const estadoConfirmActual = tarjeta.items?.estadoConfirmacion || 'Pendiente';
-                const estadoPagoActual = tarjeta.items?.estadoPago || 'Sin pagar';
-                const fechaPagoActual = tarjeta.items?.fechaPago || '';
+                const estadoConfirmActual = tarjeta.items[0]?.estadoConfirmacion || 'Pendiente';
+const estadoPagoActual = tarjeta.items[0]?.estadoPago || 'Sin pagar';
+const fechaPagoActual = tarjeta.items[0]?.fechaPago || '';
+
 
                 return (
                   <div key={tarjeta.tarjetaId} className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
