@@ -48,7 +48,10 @@ type ProductoAdmin = {
   due_date?: string;
 };
 export default function AdminPanelPremium() {
-  const [pestanaAdmin, setPestanaAdmin] = useState<'joiners' | 'stock' | 'lanzar' | 'items'>('joiners');
+  const [pestanaAdmin, setPestanaAdmin] = useState<'joiners' | 'envios' | 'stock' | 'lanzar' | 'items'>('joiners');
+const [solicitudesEnvio, setSolicitudesEnvio] = useState<any[]>([]);
+const [guiasTemp, setGuiasTemp] = useState<Record<number, string>>({});
+
   const [usuarioEmail, setUsuarioEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingForm, setLoadingForm] = useState(false);
@@ -118,14 +121,20 @@ export default function AdminPanelPremium() {
       if (user?.email && user.email === correoAdmin) {
         setUsuarioEmail(user.email);
 
-        const [{ data: dataGos }, { data: dataAllProds }, { data: dataSeg }, { data: dataPerfiles }, { data: dataTiendaProds }, { data: dataPedidos }] =
-          await Promise.all([
-            supabase.from('gos').select('*'),
-            supabase.from('productos').select('id, nombre_producto, precio, go_id, cantidad_disponible, descripcion, lista_slots, stock_slots, claims_integrantes, imagen_producto, due_date, gos(title)'),
-            supabase.from('seguimiento_claims').select('*'),
-            supabase.from('perfiles_joiners').select('*'),
-            supabase.from('tienda_productos').select('*'),
-            supabase.from('pedidos').select('*').order('id', { ascending: false }),
+            const [{ data: dataGos }, { data: dataAllProds }, { data: dataSeg }, { data: dataPerfiles }, { data: dataTiendaProds }, { data: dataPedidos }, { data: dataEnvios }] =
+      await Promise.all([
+        supabase.from('gos').select('*'),
+        supabase.from('productos').select('id, nombre_producto, precio, go_id, cantidad_disponible, descripcion, lista_slots, stock_slots, claims_integrantes, imagen_producto, due_date, gos(title)'),
+        supabase.from('seguimiento_claims').select('*'),
+        supabase.from('perfiles_joiners').select('*'),
+        supabase.from('tienda_productos').select('*'),
+        supabase.from('pedidos').select('*').order('id', { ascending: false }),
+        supabase.from('solicitudes_envio').select('*').order('id', { ascending: false }),
+      ]);
+
+    if (dataEnvios) setSolicitudesEnvio(dataEnvios);
+
+            
           ]);
 
         if (dataGos) {
@@ -286,6 +295,18 @@ export default function AdminPanelPremium() {
       }
     }
   }
+
+  async function handleMarcarEnviado(solId: number) {
+  const guia = (guiasTemp[solId] || '').trim();
+  const { error } = await supabase
+    .from('solicitudes_envio')
+    .update({ estado_despacho: 'Enviado', guia_rastreo: guia || null })
+    .eq('id', solId);
+  if (!error) {
+    alert('🚚 ¡Envío marcado como DESPACHADO! El joiner ya puede ver su guía en su cuenta.');
+    cargarDatosHibridos();
+  }
+}
 
   async function notificarCancelacionFaltaPago(tarjeta: TarjetaJoiner) {
     if (!confirm(`¿Marcar el pedido de ${tarjeta.nombreReal} como CANCELADO por falta de pago?`)) return;
@@ -474,6 +495,10 @@ export default function AdminPanelPremium() {
             <div className="flex flex-wrap gap-1 bg-zinc-100 p-1 rounded-xl">
               {[
                 { id: 'joiners', label: '📋 Órdenes por Joiner' },
+                    { id: 'joiners', label: '📋 Órdenes por Joiner' },
+              { id: 'envios', label: `🚚 Envíos (${solicitudesEnvio.filter((s) => s.estado_despacho !== 'Enviado').length})` },
+              { id: 'stock', label: '📦 Stock por GO' },
+
                 { id: 'stock', label: '📦 Stock por GO' },
                 { id: 'lanzar', label: '➕ Crear GO / Tienda' },
                 { id: 'items', label: '🛠️ Editar Ítems' },
@@ -645,6 +670,60 @@ export default function AdminPanelPremium() {
             )}
           </div>
         )}
+              {pestanaAdmin === 'envios' && (
+        <div className="space-y-4">
+          <div>
+            <h1 className="text-xl font-extrabold text-zinc-900">🚚 Solicitudes de Envío (Bodega)</h1>
+            <p className="text-xs text-zinc-500">Paquetes acumulados que tus joiners pidieron despachar</p>
+          </div>
+
+          {solicitudesEnvio.length === 0 ? (
+            <div className="bg-white border border-zinc-200 rounded-2xl p-10 text-center text-xs text-zinc-400">
+              Aún no hay solicitudes de envío registradas 📦
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {solicitudesEnvio.map((sol) => (
+                <div key={sol.id} className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
+                  <div className="flex justify-between items-start gap-2 border-b border-zinc-100 pb-3">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-zinc-900">{sol.nombre_completo} (@{sol.instagram})</h3>
+                      <p className="text-[11px] text-zinc-400">{sol.user_email} · Tlf: {sol.telefono}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${sol.estado_despacho === 'Enviado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
+                      {sol.estado_despacho === 'Enviado' ? '✔ Enviado' : '⏳ Pendiente'}
+                    </span>
+                  </div>
+
+                  <div className="text-xs text-zinc-700 space-y-1">
+                    <p><strong>Destino:</strong> {sol.ciudad} — {sol.direccion}</p>
+                    <p><strong>Método:</strong> {sol.metodo_envio} (<span className="text-pink-600 font-bold">${Number(sol.costo_envio || 0).toFixed(2)}</span>)</p>
+                    <pre className="whitespace-pre-line font-sans text-[11px] bg-zinc-50 p-3 rounded-xl border mt-2">{sol.articulos_incluidos}</pre>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <input
+                      type="text"
+                      placeholder={sol.guia_rastreo || 'Código de guía Servientrega (opcional)...'}
+                      value={guiasTemp[sol.id] ?? (sol.guia_rastreo || '')}
+                      onChange={(e) => setGuiasTemp((prev) => ({ ...prev, [sol.id]: e.target.value }))}
+                      className="border border-zinc-200 rounded-xl px-3 py-2 text-xs flex-1 bg-zinc-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleMarcarEnviado(sol.id)}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0"
+                    >
+                      🚚 Marcar Enviado
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
         {pestanaAdmin === 'stock' && (
           <div className="space-y-5">
             <div className="bg-white border border-zinc-200/80 rounded-2xl p-4 space-y-3">
