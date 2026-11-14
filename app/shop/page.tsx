@@ -4,7 +4,6 @@ import { supabase } from '../supabase';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
-const NUMERO_WHATSAPP = '593999530327';
 
 const PRECIOS_ENVIO = {
   quito: 3.5,
@@ -31,7 +30,6 @@ interface ItemCarrito {
   producto: ProductoShop;
   cantidad: number;
 }
-
 export default function AtelierShop() {
   const [productos, setProductos] = useState<ProductoShop[]>([]);
   const [filtroGrupo, setFiltroGrupo] = useState<string>('TODOS');
@@ -45,6 +43,7 @@ export default function AtelierShop() {
   const [mostrarCarrito, setMostrarCarrito] = useState(false);
   const [productoDetalle, setProductoDetalle] = useState<ProductoShop | null>(null);
   const [fotoActivaDetalle, setFotoActivaDetalle] = useState<string>('');
+
   const [formNombre, setFormNombre] = useState('');
   const [formInstagram, setFormInstagram] = useState('');
   const [formTelefono, setFormTelefono] = useState('');
@@ -52,7 +51,6 @@ export default function AtelierShop() {
   const [formDireccion, setFormDireccion] = useState('');
   const [formMetodoEnvio, setFormMetodoEnvio] = useState('quito');
   const [datosExito, setDatosExito] = useState<any>(null);
-
   async function cargarTienda() {
     try {
       setLoading(true);
@@ -227,13 +225,7 @@ export default function AtelierShop() {
           </p>
 
           <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-left">
-            <input
-              type="text"
-              placeholder="🔍 Buscar producto..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs bg-zinc-50"
-            />
+            <input type="text" placeholder="🔍 Buscar producto..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs bg-zinc-50" />
             <select value={filtroGrupo} onChange={(e) => setFiltroGrupo(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold">
               <option value="TODOS">🎵 Grupo: Todos</option>
               {gruposUnicos.map((g) => <option key={g} value={g}>{g}</option>)}
@@ -311,6 +303,7 @@ export default function AtelierShop() {
           )}
         </div>
       </div>
+
       {productoDetalle && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-xl">
@@ -387,13 +380,14 @@ export default function AtelierShop() {
                     </div>
                     <input type="text" required placeholder="Dirección exacta" value={formDireccion} onChange={(e) => setFormDireccion(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 w-full" />
 
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Método de Envío</label>
-                      <select value={formMetodoEnvio} onChange={(e) => setFormMetodoEnvio(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold w-full">
-                        <option value="quito">Quito (+$3.50)</option>
-                        <option value="provincia">Otras Provincias (+$6.50)</option>
-                        <option value="peru">Perú Internac. ($0.00)</option>
-                      </select>
+                    <select value={formMetodoEnvio} onChange={(e) => setFormMetodoEnvio(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold w-full">
+                      <option value="quito">Quito (+$3.50)</option>
+                      <option value="provincia">Otras Provincias (+$6.50)</option>
+                      <option value="peru">Perú Internac. ($0.00)</option>
+                    </select>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
+                      ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para proofs.
                     </div>
 
                     <div className="bg-pink-50/70 border border-pink-100 rounded-2xl p-3.5 space-y-1 text-xs">
@@ -420,7 +414,9 @@ export default function AtelierShop() {
             </div>
           </div>
         </div>
-            {datosExito && (
+      )}
+
+      {datosExito && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-sm w-full space-y-3 shadow-xl text-center">
             <h4 className="text-sm font-black text-pink-600 uppercase">✨ ¡Pedido de Tienda Registrado! 🫧</h4>
