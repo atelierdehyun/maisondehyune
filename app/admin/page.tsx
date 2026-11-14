@@ -46,6 +46,8 @@ type ProductoAdmin = {
   isShop?: boolean;
   estado_pago?: string;
   due_date?: string;
+  era?: string | null;
+  tipo_pc?: string | null;
   variantes?: { nombre: string; precio: number; stock: number }[] | null;
 };
 export default function AdminPanelPremium() {
@@ -71,6 +73,7 @@ export default function AdminPanelPremium() {
   const [inputsStock, setInputsStock] = useState<{ [prodId: number]: { [slot: string]: string } }>({});
   const [goStockFiltro, setGoStockFiltro] = useState<number | 'TODOS'>('TODOS');
   const correoAdmin = 'liahwang1852@gmail.com';
+
   const [newGoTitle, setNewGoTitle] = useState('');
   const [newGoGroup, setNewGoGroup] = useState('stray kids');
   const [newGoImage, setNewGoImage] = useState('');
@@ -91,6 +94,8 @@ export default function AdminPanelPremium() {
   const [newShopGroup, setNewShopGroup] = useState('Stray Kids');
   const [newShopIntegrante, setNewShopIntegrante] = useState('Grupal / Todos');
   const [newShopCategoria, setNewShopCategoria] = useState('Photocards');
+  const [newShopEra, setNewShopEra] = useState('');
+  const [newShopTipoPc, setNewShopTipoPc] = useState('Álbum PC');
   const [newShopQty, setNewShopQty] = useState('1');
   const [newShopDesc, setNewShopDesc] = useState('');
   const [newShopVariantes, setNewShopVariantes] = useState<{ nombre: string; precio: string; stock: string }[]>([]);
@@ -99,6 +104,8 @@ export default function AdminPanelPremium() {
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
   const [editQty, setEditQty] = useState('');
+  const [editEra, setEditEra] = useState('');
+  const [editTipoPc, setEditTipoPc] = useState('Álbum PC');
   const [editDesc, setEditDesc] = useState('');
   const [editVariantes, setEditVariantes] = useState<{ nombre: string; precio: number; stock: number }[]>([]);
   const [filtroItemsEditar, setFiltroItemsEditar] = useState<string>('TIENDA');
@@ -218,7 +225,7 @@ export default function AdminPanelPremium() {
             id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
             cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
             imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date,
-            variantes: p.variantes, isShop: true,
+            era: p.era, tipo_pc: p.tipo_pc, variantes: p.variantes, isShop: true,
           })));
         }
 
@@ -408,6 +415,8 @@ export default function AdminPanelPremium() {
       grupo: newShopGroup,
       integrante: newShopIntegrante,
       categoria: newShopCategoria,
+      era: newShopEra.trim().toUpperCase() || null,
+      tipo_pc: newShopTipoPc,
       imagen_producto: newShopImage || null,
       fotos_extra: newShopExtraImages,
       variantes: variantesLimpias,
@@ -415,7 +424,7 @@ export default function AdminPanelPremium() {
     setLoadingForm(false);
     if (!error) {
       alert('¡Producto publicado en la Tienda! 🛍️✨');
-      setNewShopName(''); setNewShopPrice(''); setNewShopDesc(''); setNewShopImage(''); setNewShopExtraImages([]); setNewShopVariantes([]);
+      setNewShopName(''); setNewShopPrice(''); setNewShopEra(''); setNewShopDesc(''); setNewShopImage(''); setNewShopExtraImages([]); setNewShopVariantes([]);
       cargarDatosHibridos();
     } else alert('Error: ' + error.message);
   }
@@ -437,6 +446,8 @@ export default function AdminPanelPremium() {
     setEditName(p.nombre_producto);
     setEditPrice(String(p.precio));
     setEditQty(String(p.cantidad_disponible));
+    setEditEra(p.era || '');
+    setEditTipoPc(p.tipo_pc || 'Álbum PC');
     setEditDesc(p.descripcion || '');
     setEditVariantes(Array.isArray(p.variantes) ? p.variantes.map((v) => ({ ...v })) : []);
   };
@@ -456,6 +467,8 @@ export default function AdminPanelPremium() {
           precio: precioMin,
           cantidad_disponible: stockTotal,
           estado_pago: stockTotal > 0 ? 'INSTOCK' : 'SOLD OUT',
+          era: editEra.trim().toUpperCase() || null,
+          tipo_pc: editTipoPc,
           variantes: editVariantes.map((v) => ({
             nombre: v.nombre,
             precio: Number(v.precio),
@@ -474,6 +487,8 @@ export default function AdminPanelPremium() {
       };
       if (editandoProducto.isShop) {
         payload.estado_pago = nuevoStock > 0 ? 'INSTOCK' : 'SOLD OUT';
+        payload.era = editEra.trim().toUpperCase() || null;
+        payload.tipo_pc = editTipoPc;
       }
       await supabase
         .from(editandoProducto.isShop ? 'tienda_productos' : 'productos')
@@ -593,6 +608,7 @@ export default function AdminPanelPremium() {
                         <span className="font-bold text-pink-600">{tarjeta.categoriaTitulo}</span>
                         <span>{tarjeta.items.length} orden(es)</span>
                       </div>
+
                       <div className="space-y-3">
                         {tarjeta.items.map((it) => {
                           const partesRaw = it.origen === 'SHOP' ? it.productoNombre.split(' + ').map((s) => s.trim()).filter(Boolean) : [it.productoNombre];
@@ -635,7 +651,6 @@ export default function AdminPanelPremium() {
                                   ))}
                                 </div>
                               </div>
-
                               <div className="flex justify-between items-center pt-1.5 border-t border-zinc-200/60 text-[11px]">
                                 <span className="text-zinc-400">Monto pedido:</span>
                                 {it.origen === 'SHOP' && it.pedidoId && editandoTotalId === it.pedidoId ? (
@@ -700,358 +715,3 @@ export default function AdminPanelPremium() {
             </div>
           </div>
         )}
-        {pestanaAdmin === 'envios' && (
-          <div className="space-y-4">
-            <h1 className="text-xl font-extrabold text-zinc-900">🚚 Solicitudes de Envío (Bodega)</h1>
-            {solicitudesEnvio.length === 0 ? (
-              <div className="bg-white border rounded-2xl p-10 text-center text-xs text-zinc-400">Aún no hay solicitudes de envío registradas 📦</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {solicitudesEnvio.map((sol) => (
-                  <div key={sol.id} className="bg-white border rounded-2xl p-5 shadow-2xs space-y-3">
-                    <div className="flex justify-between items-start gap-2 border-b pb-3">
-                      <div>
-                        <h3 className="text-sm font-extrabold text-zinc-900">{sol.nombre_completo} (@{sol.instagram})</h3>
-                        <p className="text-[11px] text-zinc-400">{sol.user_email} · Tlf: {sol.telefono}</p>
-                      </div>
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${sol.estado_despacho === 'Enviado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
-                        {sol.estado_despacho}
-                      </span>
-                    </div>
-                    <div className="text-xs text-zinc-700 space-y-1">
-                      <p><strong>Destino:</strong> {sol.ciudad} — {sol.direccion}</p>
-                      <p><strong>Método:</strong> {sol.metodo_envio} (${Number(sol.costo_envio || 0).toFixed(2)})</p>
-                      <pre className="whitespace-pre-line font-sans text-[11px] bg-zinc-50 p-3 rounded-xl border mt-2">{sol.articulos_incluidos}</pre>
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <input type="text" placeholder={sol.guia_rastreo || 'Guía Servientrega...'} value={guiasTemp[sol.id] ?? (sol.guia_rastreo || '')} onChange={(e) => setGuiasTemp((prev) => ({ ...prev, [sol.id]: e.target.value }))} className="border rounded-xl px-3 py-2 text-xs flex-1 bg-zinc-50" />
-                      <button type="button" onClick={() => handleMarcarEnviado(sol.id)} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shrink-0">🚚 Marcar Enviado</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {pestanaAdmin === 'stock' && (
-          <div className="space-y-5">
-            <div className="bg-white border rounded-2xl p-4 space-y-3">
-              <h2 className="text-base font-extrabold text-zinc-900">📦 Gestor de Stock separado por GO</h2>
-              <div className="flex flex-wrap gap-2">
-                {gosAdmin.map((g) => (
-                  <button key={g.id} type="button" onClick={() => setGoStockFiltro(g.id)} className={`px-3.5 py-2 rounded-xl text-xs font-bold ${goStockFiltro === g.id ? 'bg-pink-600 text-white' : 'bg-zinc-100 text-zinc-700'}`}>
-                    🧸 {g.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {productosStockFiltrados.map((prod) => (
-                <div key={prod.id} className="bg-white border rounded-2xl p-5 space-y-4 shadow-2xs">
-                  <div className="flex items-center gap-3 border-b pb-3">
-                    {prod.imagen_producto && <img src={prod.imagen_producto} alt="" className="w-12 h-12 rounded-xl object-cover border" />}
-                    <div>
-                      <h3 className="text-sm font-extrabold text-zinc-900">{prod.nombre_producto}</h3>
-                      <p className="text-xs text-zinc-500">${Number(prod.precio).toFixed(2)} USD</p>
-                    </div>
-                  </div>
-                  {inputsStock[prod.id] && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {Object.entries(inputsStock[prod.id]).map(([slot, val]) => (
-                        <div key={slot} className="bg-zinc-50 border rounded-xl p-2 flex justify-between items-center text-xs">
-                          <span className="font-bold truncate pr-1">{slot}</span>
-                          <input type="number" value={val} onChange={(e) => handleEditInputLocal(prod.id, slot, e.target.value)} className="border bg-white rounded-lg w-12 px-1.5 py-1 text-center font-bold" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button type="button" onClick={() => handleGuardarStockBD(prod.id)} className="w-full bg-zinc-900 text-white text-xs font-bold py-2.5 rounded-xl">💾 Guardar stock</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {pestanaAdmin === 'lanzar' && (
-          <div className="space-y-8">
-            <form onSubmit={handleCrearItemShop} className="bg-white border rounded-3xl p-6 shadow-2xs space-y-6">
-              <div className="flex flex-wrap justify-between items-center border-b pb-4 gap-2">
-                <h2 className="text-lg font-extrabold text-zinc-900">Agregar Nuevo Producto a la Tienda</h2>
-                <button type="submit" disabled={loadingForm || subiendoImagen} className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold">
-                  {subiendoImagen ? 'Subiendo...' : '✨ Publicar en Tienda'}
-                </button>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-5 space-y-3">
-                  <div className="w-full h-56 rounded-2xl bg-zinc-50 border-2 border-dashed flex flex-col items-center justify-center p-3">
-                    {newShopImage ? <img src={newShopImage} alt="Portada" className="max-h-full max-w-full object-contain rounded-xl" /> : <p className="text-xs text-zinc-400">📸 Foto principal (Portada)</p>}
-                    <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'shop')} className="mt-2 text-[11px]" />
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {newShopExtraImages.map((url, i) => (
-                      <div key={i} className="relative h-16 rounded-xl border overflow-hidden">
-                        <img src={url} alt="" className="w-full h-full object-cover" />
-                        <button type="button" onClick={() => setNewShopExtraImages((prev) => prev.filter((_, idx) => idx !== i))} className="absolute top-0.5 right-0.5 bg-rose-600 text-white text-[9px] w-4 h-4 rounded-full">✕</button>
-                      </div>
-                    ))}
-                    {newShopExtraImages.length < 4 && (
-                      <label className="h-16 rounded-xl border-2 border-dashed flex items-center justify-center text-zinc-400 cursor-pointer text-[10px] font-bold">
-                        <span>+ Foto</span>
-                        <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'shop-extra')} className="hidden" />
-                      </label>
-                    )}
-                  </div>
-                </div>
-                <div className="lg:col-span-7 space-y-3">
-                  <input type="text" placeholder="Nombre del Producto *" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <select value={newShopStatus} onChange={(e) => setNewShopStatus(e.target.value)} className="border rounded-xl px-3 py-2.5 text-xs font-bold">
-                      <option value="INSTOCK">🟢 In Stock</option>
-                      <option value="PREORDER">🟡 Pre-Order</option>
-                      <option value="SOLD OUT">🔴 Sold Out</option>
-                    </select>
-                    <input type="text" placeholder="Grupo (Stray Kids, Enhypen...)" value={newShopGroup} onChange={(e) => setNewShopGroup(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <select value={newShopCategoria} onChange={(e) => setNewShopCategoria(e.target.value)} className="border rounded-xl px-3 py-2.5 text-xs font-bold">
-                      <option value="Photocards">🃏 Photocards</option>
-                      <option value="Álbumes">💿 Álbumes</option>
-                      <option value="Plushies">🧸 Plushies</option>
-                      <option value="Llaveros">🔑 Llaveros</option>
-                      <option value="Hecho a mano">🧶 Hecho a mano</option>
-                      <option value="Merch Oficial">✨ Merch Oficial</option>
-                    </select>
-                    <input type="text" placeholder="Integrante (ej: Hyunjin)" value={newShopIntegrante} onChange={(e) => setNewShopIntegrante(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input type="number" step="0.01" placeholder="Precio único USD" value={newShopPrice} onChange={(e) => setNewShopPrice(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold" />
-                    <input type="number" min="0" placeholder="Stock único" value={newShopQty} onChange={(e) => setNewShopQty(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold" />
-                  </div>
-                  <div className="bg-indigo-50/50 border border-indigo-200 rounded-2xl p-3 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <p className="text-xs font-extrabold text-indigo-900">🃏 Opciones / Photocards en esta foto</p>
-                      <button type="button" onClick={() => setNewShopVariantes((prev) => [...prev, { nombre: '', precio: '', stock: '1' }])} className="px-3 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold">+ Agregar opción</button>
-                    </div>
-                    {newShopVariantes.map((v, idx) => (
-                      <div key={idx} className="grid grid-cols-12 gap-1.5 items-center bg-white p-1.5 rounded-xl border">
-                        <input type="text" placeholder="Ej: #1 Hyunjin" value={v.nombre} onChange={(e) => { const c = [...newShopVariantes]; c[idx].nombre = e.target.value; setNewShopVariantes(c); }} className="col-span-5 border rounded px-2 py-1 text-xs" />
-                        <input type="number" step="0.01" placeholder="Precio $" value={v.precio} onChange={(e) => { const c = [...newShopVariantes]; c[idx].precio = e.target.value; setNewShopVariantes(c); }} className="col-span-3 border rounded px-2 py-1 text-xs font-bold" />
-                        <input type="number" min="0" placeholder="Stock" value={v.stock} onChange={(e) => { const c = [...newShopVariantes]; c[idx].stock = e.target.value; setNewShopVariantes(c); }} className="col-span-3 border rounded px-2 py-1 text-xs text-center font-bold" />
-                        <button type="button" onClick={() => setNewShopVariantes((prev) => prev.filter((_, i) => i !== idx))} className="col-span-1 text-rose-500 font-bold text-xs">✕</button>
-                      </div>
-                    ))}
-                  </div>
-                  <textarea rows={2} placeholder="Descripción..." value={newShopDesc} onChange={(e) => setNewShopDesc(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs w-full" />
-                </div>
-              </div>
-            </form>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <form onSubmit={handleCreateGO} className="bg-white border rounded-2xl p-5 space-y-3">
-                <h2 className="text-sm font-extrabold">1. Nuevo Group Order (GO)</h2>
-                <input type="text" placeholder="Título del GO" value={newGoTitle} onChange={(e) => setNewGoTitle(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" />
-                <input type="text" placeholder="Grupo (stray kids, enhypen...)" value={newGoGroup} onChange={(e) => setNewGoGroup(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" />
-                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'go')} className="text-xs w-full" />
-                <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-zinc-900 text-white font-bold text-xs py-3 rounded-xl">➕ Crear GO</button>
-              </form>
-
-              <form onSubmit={handleCrearProducto} className="bg-white border rounded-2xl p-5 space-y-3">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-sm font-extrabold text-pink-600">2. Nuevo Artículo en GO</h2>
-                  {selectedGoId && <button type="button" onClick={() => handleEliminarGO(selectedGoId)} className="text-[11px] text-rose-500 underline">Borrar GO</button>}
-                </div>
-                <select value={selectedGoId || ''} onChange={(e) => setSelectedGoId(Number(e.target.value))} className="border rounded-xl px-3.5 py-2.5 text-xs w-full font-bold">
-                  {gosAdmin.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
-                </select>
-                <input type="text" placeholder="Nombre del artículo" value={newProdName} onChange={(e) => setNewProdName(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" />
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="number" step="0.01" placeholder="Precio USD" value={newProdPrice} onChange={(e) => setNewProdPrice(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs" />
-                  <input type="number" placeholder="Stock por slot" value={newProdQty} onChange={(e) => setNewProdQty(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs" />
-                </div>
-                <input type="text" placeholder="Integrantes (Bang Chan, Lee Know...)" value={newProdSlots} onChange={(e) => setNewProdSlots(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" />
-                <input type="date" value={newProdDueDate} onChange={(e) => setNewProdDueDate(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs w-full" />
-                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'prod')} className="text-xs w-full" />
-                <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-pink-600 text-white font-bold text-xs py-3 rounded-xl">📦 Publicar en GO</button>
-              </form>
-            </div>
-          </div>
-        )}
-        {pestanaAdmin === 'items' && (
-          <div className="space-y-5">
-            <div className="flex flex-wrap justify-between items-center gap-3">
-              <div>
-                <h2 className="text-xl font-extrabold text-zinc-900">🛠️ Editar Ítems Publicados</h2>
-                <p className="text-xs text-zinc-500">Filtra por Tienda o por GO y ubícalos rápido por su foto</p>
-              </div>
-              <input
-                type="text"
-                placeholder="🔍 Buscar artículo por nombre..."
-                value={busquedaItemsEditar}
-                onChange={(e) => setBusquedaItemsEditar(e.target.value)}
-                className="bg-white border border-zinc-200 rounded-xl px-4 py-2 text-xs w-full sm:w-72 shadow-2xs"
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-2 items-center">
-              <button
-                type="button"
-                onClick={() => setFiltroItemsEditar('TIENDA')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all ${filtroItemsEditar === 'TIENDA' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white text-indigo-700 border border-indigo-200'}`}
-              >
-                🛍️ Tienda / Shop ({productosTiendaAdmin.length})
-              </button>
-
-              {gosAdmin.map((g) => {
-                const countGo = productosAdmin.filter((p) => p.go_id === g.id).length;
-                return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => setFiltroItemsEditar('GO_' + g.id)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${filtroItemsEditar === 'GO_' + g.id ? 'bg-pink-600 text-white shadow-2xs' : 'bg-white text-zinc-700 border border-zinc-200'}`}
-                  >
-                    🧸 {g.title} ({countGo})
-                  </button>
-                );
-              })}
-
-              <button
-                type="button"
-                onClick={() => setFiltroItemsEditar('TODOS')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${filtroItemsEditar === 'TODOS' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
-              >
-                Ver Todos ({todosLosProductosAdmin.length})
-              </button>
-            </div>
-            {editandoProducto && (
-              <form onSubmit={handleGuardarEdicion} className="bg-amber-50 border-2 border-amber-300 p-5 rounded-3xl space-y-3 shadow-sm">
-                <div className="flex items-center gap-3 border-b border-amber-200/70 pb-3">
-                  {editandoProducto.imagen_producto && (
-                    <img src={editandoProducto.imagen_producto} alt="" className="w-12 h-12 rounded-xl object-cover border bg-white" />
-                  )}
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-amber-800">Editando artículo:</span>
-                    <h3 className="text-sm font-black text-zinc-900">{editandoProducto.nombre_producto}</h3>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 items-center">
-                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-white font-bold flex-1 min-w-[200px]" />
-                  {editVariantes.length === 0 && (
-                    <>
-                      <input type="number" step="0.01" placeholder="Precio $" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-28 bg-white font-bold" />
-                      <input type="number" min="0" placeholder="Stock" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-24 bg-white font-bold text-center" />
-                    </>
-                  )}
-                  <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold px-5 py-2 rounded-xl">
-                    💾 Guardar cambios
-                  </button>
-                  <button type="button" onClick={() => setEditandoProducto(null)} className="text-xs font-bold text-zinc-500 px-3 py-2">
-                    Cancelar
-                  </button>
-                </div>
-
-                {editVariantes.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-2 border-t border-amber-200/70">
-                    {editVariantes.map((v, idx) => (
-                      <div key={idx} className="bg-white border rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs">
-                        <span className="font-bold text-zinc-800 truncate flex-1">{v.nombre}</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-zinc-400">$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={v.precio}
-                            onChange={(e) => {
-                              const c = [...editVariantes];
-                              c[idx].precio = Number(e.target.value);
-                              setEditVariantes(c);
-                            }}
-                            className="border rounded-lg px-1.5 py-1 w-16 text-xs font-bold"
-                          />
-                          <span className="text-[10px] text-zinc-400">Stock:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={v.stock}
-                            onChange={(e) => {
-                              const c = [...editVariantes];
-                              c[idx].stock = Number(e.target.value);
-                              setEditVariantes(c);
-                            }}
-                            className="border rounded-lg px-1.5 py-1 w-14 text-xs font-bold text-center bg-pink-50"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </form>
-            )}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {todosLosProductosAdmin
-                .filter((p) => {
-                  if (filtroItemsEditar === 'TIENDA' && !p.isShop) return false;
-                  if (filtroItemsEditar.startsWith('GO_')) {
-                    const idGoFiltro = Number(filtroItemsEditar.replace('GO_', ''));
-                    if (p.isShop || p.go_id !== idGoFiltro) return false;
-                  }
-                  if (busquedaItemsEditar && !p.nombre_producto.toLowerCase().includes(busquedaItemsEditar.toLowerCase())) {
-                    return false;
-                  }
-                  return true;
-                })
-                .map((p) => {
-                  const goPadre = !p.isShop ? gosAdmin.find((g) => g.id === p.go_id)?.title : null;
-                  return (
-                    <div key={(p.isShop ? 's-' : 'g-') + p.id} className="bg-white border border-zinc-200/90 rounded-2xl p-3 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all">
-                      <div>
-                        <div className="w-full h-36 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100 relative flex items-center justify-center mb-2.5">
-                          {p.imagen_producto ? (
-                            <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-2xl">{p.isShop ? '🛍️' : '🧸'}</span>
-                          )}
-                          <span className={`absolute top-2 left-2 text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow-2xs ${p.isShop ? 'bg-indigo-600 text-white' : 'bg-pink-600 text-white'}`}>
-                            {p.isShop ? 'TIENDA' : 'GO'}
-                          </span>
-                          <span className="absolute bottom-2 right-2 bg-zinc-900/85 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-                            Stock: {p.cantidad_disponible}
-                          </span>
-                        </div>
-
-                        {goPadre && (
-                          <p className="text-[10px] font-bold text-pink-600 uppercase truncate">{goPadre}</p>
-                        )}
-                        <h3 className="text-xs font-extrabold text-zinc-900 line-clamp-2 leading-snug">
-                          {p.nombre_producto}
-                        </h3>
-                        <p className="text-xs font-black text-zinc-700 mt-1">${Number(p.precio).toFixed(2)} USD</p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1.5 pt-3 mt-3 border-t border-zinc-100">
-                        <button
-                          type="button"
-                          onClick={() => iniciarEdicion(p)}
-                          className="py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-extrabold"
-                        >
-                          ✏️ Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleEliminarProducto(p.id, p.isShop)}
-                          className="py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-extrabold"
-                        >
-                          🗑️ Borrar
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
