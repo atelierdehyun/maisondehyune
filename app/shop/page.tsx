@@ -21,6 +21,8 @@ interface ProductoShop {
   grupo?: string | null;
   integrante?: string | null;
   categoria?: string | null;
+  era?: string | null;
+  tipo_pc?: string | null;
   imagen_producto: string | null;
   fotos_extra?: string[] | null;
   cantidad_disponible: number;
@@ -35,11 +37,13 @@ interface ItemCarrito {
   maxStock: number;
   cantidad: number;
 }
+
 export default function AtelierShop() {
   const [productos, setProductos] = useState<ProductoShop[]>([]);
   const [filtroGrupo, setFiltroGrupo] = useState<string>('TODOS');
   const [filtroIntegrante, setFiltroIntegrante] = useState<string>('TODOS');
-  const [filtroTipo, setFiltroTipo] = useState<string>('TODOS');
+  const [filtroEra, setFiltroEra] = useState<string>('TODOS');
+  const [filtroTipoPc, setFiltroTipoPc] = useState<string>('TODOS');
   const [busqueda, setBusqueda] = useState('');
   const [loading, setLoading] = useState(true);
   const [usuarioEmail, setUsuarioEmail] = useState('');
@@ -88,19 +92,42 @@ export default function AtelierShop() {
   }, []);
 
   const gruposUnicos = Array.from(new Set(productos.map((p) => (p.grupo || p.due_date || 'Otros').toUpperCase())));
-  const integrantesUnicos = Array.from(new Set(productos.map((p) => p.integrante || 'Grupal / Todos')));
-  const tiposUnicos = Array.from(new Set(productos.map((p) => p.categoria || 'Merch')));
 
-  const productosFiltrados = productos.filter((p) => {
-    const grupoProd = (p.grupo || p.due_date || 'Otros').toUpperCase();
+  const prodsDelGrupo = filtroGrupo === 'TODOS'
+    ? productos
+    : productos.filter((p) => (p.grupo || p.due_date || 'Otros').toUpperCase() === filtroGrupo);
+
+  const integrantesDisponibles = Array.from(new Set(prodsDelGrupo.map((p) => p.integrante || 'Grupal / Todos')));
+  const erasDisponibles = Array.from(
+    new Set(prodsDelGrupo.map((p) => (p.era || '').toUpperCase().trim()).filter(Boolean))
+  );
+  const tiposPcDisponibles = Array.from(
+    new Set(prodsDelGrupo.map((p) => p.tipo_pc || p.categoria || 'Álbum PC'))
+  );
+
+  const productosFiltrados = prodsDelGrupo.filter((p) => {
     const integProd = p.integrante || 'Grupal / Todos';
-    const tipoProd = p.categoria || 'Merch';
-    if (filtroGrupo !== 'TODOS' && grupoProd !== filtroGrupo) return false;
+    const eraProd = (p.era || '').toUpperCase().trim();
+    const tipoProd = p.tipo_pc || p.categoria || 'Álbum PC';
     if (filtroIntegrante !== 'TODOS' && integProd !== filtroIntegrante) return false;
-    if (filtroTipo !== 'TODOS' && tipoProd !== filtroTipo) return false;
+    if (filtroEra !== 'TODOS' && eraProd !== filtroEra) return false;
+    if (filtroTipoPc !== 'TODOS' && tipoProd !== filtroTipoPc) return false;
     if (busqueda && !p.nombre_producto.toLowerCase().includes(busqueda.toLowerCase())) return false;
     return true;
   });
+
+  const relacionadosMismaEra = productoDetalle
+    ? productos.filter((otro) => {
+        if (otro.id === productoDetalle.id) return false;
+        const mismoGrupo = (otro.grupo || '').toUpperCase() === (productoDetalle.grupo || '').toUpperCase();
+        if (!mismoGrupo) return false;
+        if (productoDetalle.era && otro.era) {
+          return otro.era.toUpperCase().trim() === productoDetalle.era.toUpperCase().trim();
+        }
+        const primeraPalabra = productoDetalle.nombre_producto.split(' ').at(0) || '';
+        return primeraPalabra.length >= 3 && otro.nombre_producto.startsWith(primeraPalabra);
+      }).slice(0, 6)
+    : [];
   function abrirModalProducto(prod: ProductoShop) {
     setProductoDetalle(prod);
     setFotoActivaDetalle(prod.imagen_producto || '');
@@ -110,42 +137,22 @@ export default function AtelierShop() {
   }
 
   function agregarAlCarrito(prod: ProductoShop, variante?: VarianteShop | null) {
-    if (!usuarioEmail) {
-      return alert('Inicia sesión primero para agregar productos al carrito 🎀');
-    }
-
+    if (!usuarioEmail) return alert('Inicia sesión primero para agregar productos al carrito 🎀');
     const tieneVariantes = Array.isArray(prod.variantes) && prod.variantes.length > 0;
-    if (tieneVariantes && !variante) {
-      abrirModalProducto(prod);
-      return;
-    }
+    if (tieneVariantes && !variante) { abrirModalProducto(prod); return; }
 
     const keyUnica = variante ? prod.id + '__' + variante.nombre : String(prod.id);
     const precioUnit = variante ? Number(variante.precio) : Number(prod.precio);
     const maxStock = variante ? Number(variante.stock) : Number(prod.cantidad_disponible);
-
     if (maxStock <= 0) return alert('Esta opción ya se agotó 🌸');
 
     setCarrito((prev) => {
       const existe = prev.find((i) => i.keyUnica === keyUnica);
       if (existe) {
-        if (existe.cantidad >= maxStock) {
-          alert('Ya agregaste el máximo stock disponible 🌸');
-          return prev;
-        }
+        if (existe.cantidad >= maxStock) { alert('Ya agregaste el máximo stock disponible 🌸'); return prev; }
         return prev.map((i) => (i.keyUnica === keyUnica ? { ...i, cantidad: i.cantidad + 1 } : i));
       }
-      return [
-        ...prev,
-        {
-          keyUnica,
-          producto: prod,
-          varianteNombre: variante?.nombre,
-          precioUnitario: precioUnit,
-          maxStock,
-          cantidad: 1,
-        },
-      ];
+      return [...prev, { keyUnica, producto: prod, varianteNombre: variante?.nombre, precioUnitario: precioUnit, maxStock, cantidad: 1 }];
     });
     setProductoDetalle(null);
     setMostrarCarrito(true);
@@ -153,39 +160,31 @@ export default function AtelierShop() {
 
   function cambiarCantidadCarrito(keyUnica: string, delta: number) {
     setCarrito((prev) =>
-      prev
-        .map((item) => {
-          if (item.keyUnica !== keyUnica) return item;
-          const nuevaCant = item.cantidad + delta;
-          if (nuevaCant > item.maxStock) return item;
-          return { ...item, cantidad: nuevaCant };
-        })
-        .filter((item) => item.cantidad > 0)
+      prev.map((item) => {
+        if (item.keyUnica !== keyUnica) return item;
+        const nuevaCant = item.cantidad + delta;
+        if (nuevaCant > item.maxStock) return item;
+        return { ...item, cantidad: nuevaCant };
+      }).filter((item) => item.cantidad > 0)
     );
   }
 
   const totalItemsCarrito = carrito.reduce((acc, i) => acc + i.cantidad, 0);
   const subtotalCarrito = carrito.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
+
   async function procesarPedidoCarrito(e: React.FormEvent) {
     e.preventDefault();
     if (carrito.length === 0) return;
-    if (!formNombre || !formInstagram || !formTelefono) {
-      return alert('Completa tu Nombre, Instagram y Teléfono 🧸🌸');
-    }
+    if (!formNombre || !formInstagram || !formTelefono) return alert('Completa tu Nombre, Instagram y Teléfono 🧸🌸');
 
     setLoading(true);
-
     const porProd: Record<number, ItemCarrito[]> = {};
-    carrito.forEach((it) => {
-      if (!porProd[it.producto.id]) porProd[it.producto.id] = [];
-      porProd[it.producto.id].push(it);
-    });
+    carrito.forEach((it) => { if (!porProd[it.producto.id]) porProd[it.producto.id] = []; porProd[it.producto.id].push(it); });
 
     for (const [prodIdStr, itemsProd] of Object.entries(porProd)) {
       const prodId = Number(prodIdStr);
       const { data: prodDb } = await supabase.from('tienda_productos').select('*').eq('id', prodId).single();
       if (!prodDb) continue;
-
       const varsDb: VarianteShop[] = Array.isArray(prodDb.variantes) ? [...prodDb.variantes] : [];
       if (varsDb.length > 0) {
         itemsProd.forEach((it) => {
@@ -193,47 +192,29 @@ export default function AtelierShop() {
           if (idx >= 0) varsDb[idx].stock = Math.max(0, Number(varsDb[idx].stock) - it.cantidad);
         });
         const stockRestanteTotal = varsDb.reduce((s, v) => s + Number(v.stock), 0);
-        await supabase
-          .from('tienda_productos')
-          .update({
-            variantes: varsDb,
-            cantidad_disponible: stockRestanteTotal,
-            estado_pago: stockRestanteTotal === 0 ? 'SOLD OUT' : prodDb.estado_pago,
-          })
-          .eq('id', prodId);
+        await supabase.from('tienda_productos').update({ variantes: varsDb, cantidad_disponible: stockRestanteTotal, estado_pago: stockRestanteTotal === 0 ? 'SOLD OUT' : prodDb.estado_pago }).eq('id', prodId);
       } else {
         const cantComprada = itemsProd.reduce((s, i) => s + i.cantidad, 0);
         const nuevoStock = Math.max(0, Number(prodDb.cantidad_disponible) - cantComprada);
-        await supabase
-          .from('tienda_productos')
-          .update({
-            cantidad_disponible: nuevoStock,
-            estado_pago: nuevoStock === 0 ? 'SOLD OUT' : prodDb.estado_pago,
-          })
-          .eq('id', prodId);
+        await supabase.from('tienda_productos').update({ cantidad_disponible: nuevoStock, estado_pago: nuevoStock === 0 ? 'SOLD OUT' : prodDb.estado_pago }).eq('id', prodId);
       }
     }
 
-    const resumenArticulos = carrito
-      .map((i) => i.cantidad + 'x ' + i.producto.nombre_producto + (i.varianteNombre ? ' [' + i.varianteNombre + ']' : '') + ' ($' + (i.precioUnitario * i.cantidad).toFixed(2) + ')')
-      .join(' + ');
-
+    const resumenArticulos = carrito.map((i) => i.cantidad + 'x ' + i.producto.nombre_producto + (i.varianteNombre ? ' [' + i.varianteNombre + ']' : '') + ' ($' + (i.precioUnitario * i.cantidad).toFixed(2) + ')').join(' + ');
     const primeraFoto = carrito.at(0)?.producto.imagen_producto || null;
 
     await Promise.all([
-      supabase.from('pedidos').insert([
-        {
-          user_email: usuarioEmail.toLowerCase().trim(),
-          tipo_servicio: 'SHOP',
-          producto_nombre: resumenArticulos,
-          imagen_producto: primeraFoto,
-          total_pagar: subtotalCarrito,
-          estado_pago: 'Sin pagar',
-          estado_confirmacion: 'Pendiente',
-          estado_envio: 'En bodega',
-          detalles: 'IG: @' + formInstagram.replace('@', '') + ' | Tlf: ' + formTelefono + ' | Nombre: ' + formNombre + ' | Envío acumulado (Bodega)',
-        },
-      ]),
+      supabase.from('pedidos').insert([{
+        user_email: usuarioEmail.toLowerCase().trim(),
+        tipo_servicio: 'SHOP',
+        producto_nombre: resumenArticulos,
+        imagen_producto: primeraFoto,
+        total_pagar: subtotalCarrito,
+        estado_pago: 'Sin pagar',
+        estado_confirmacion: 'Pendiente',
+        estado_envio: 'En bodega',
+        detalles: 'IG: @' + formInstagram.replace('@', '') + ' | Tlf: ' + formTelefono + ' | Nombre: ' + formNombre + ' | Envío acumulado (Bodega)',
+      }]),
       supabase.from('perfiles_joiners').upsert({
         user_email: usuarioEmail.toLowerCase().trim(),
         nombre_completo: formNombre.trim(),
@@ -241,41 +222,21 @@ export default function AtelierShop() {
       }),
     ]);
 
-    setDatosExito({
-      resumen: resumenArticulos,
-      total: subtotalCarrito,
-    });
-
+    setDatosExito({ resumen: resumenArticulos, total: subtotalCarrito });
     setCarrito([]);
     setMostrarCarrito(false);
     cargarTienda();
   }
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">
-        ✧ cargando Hyune Atelier Shop... 🛍️
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando Hyune Atelier Shop... 🛍️</div>;
 
   return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto flex justify-between items-center gap-2">
-          <Link href="/gos" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">
-            ← Ver Group Orders
-          </Link>
-
+          <Link href="/gos" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">← Ver Group Orders</Link>
           <div className="flex items-center gap-2.5">
-            <Link href="/mi-escritorio" className="text-xs font-bold text-zinc-600 hover:text-pink-600">
-              Mi Cuenta / Bodega
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => setMostrarCarrito(true)}
-              className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-extrabold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-2xs"
-            >
+            <Link href="/mi-escritorio" className="text-xs font-bold text-zinc-600 hover:text-pink-600">Mi Cuenta / Bodega</Link>
+            <button type="button" onClick={() => setMostrarCarrito(true)} className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-extrabold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-2xs">
               <span>🛒 Carrito</span>
               <span className="bg-white text-pink-600 px-1.5 rounded-full text-[11px]">{totalItemsCarrito}</span>
             </button>
@@ -284,28 +245,47 @@ export default function AtelierShop() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pt-6 space-y-5">
-        <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 text-center space-y-2 shadow-2xs">
+        <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 text-center space-y-3 shadow-2xs">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 uppercase">Hyune Atelier Shop</h1>
-          <p className="text-xs text-zinc-500 max-w-xl mx-auto">
-            Compra tus artículos hoy, guárdalos en tu bodega sin pagar envío aún y solicita un solo envío cuando quieras ✨
-          </p>
+          <p className="text-xs text-zinc-500 max-w-xl mx-auto">Filtra por grupo, integrante, era o tipo de PC. Guarda tus compras en bodega y solicita un solo envío ✨</p>
 
-          <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-left">
-            <input type="text" placeholder="🔍 Buscar producto..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs bg-zinc-50" />
-            <select value={filtroGrupo} onChange={(e) => setFiltroGrupo(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold">
-              <option value="TODOS">🎵 Grupo: Todos</option>
-              {gruposUnicos.map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
+          <div className="flex flex-wrap justify-center gap-1.5 pt-1">
+            <button
+              type="button"
+              onClick={() => { setFiltroGrupo('TODOS'); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all ${filtroGrupo === 'TODOS' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+            >
+              Todos los Grupos
+            </button>
+            {gruposUnicos.map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => { setFiltroGrupo(g); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); }}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all ${filtroGrupo === g ? 'bg-pink-600 text-white' : 'bg-pink-50 text-pink-700'}`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+
+          <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-left">
+            <input type="text" placeholder="🔍 Buscar por nombre..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs bg-zinc-50" />
             <select value={filtroIntegrante} onChange={(e) => setFiltroIntegrante(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold">
-              <option value="TODOS">🪞 Integrante: Todos</option>
-              {integrantesUnicos.map((i) => <option key={i} value={i}>{i}</option>)}
+              <option value="TODOS">🪞 Integrante ({filtroGrupo === 'TODOS' ? 'Todos' : filtroGrupo})</option>
+              {integrantesDisponibles.map((i) => <option key={i} value={i}>{i}</option>)}
             </select>
-            <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold">
-              <option value="TODOS">🏷️ Categoría: Todas</option>
-              {tiposUnicos.map((t) => <option key={t} value={t}>{t}</option>)}
+            <select value={filtroEra} onChange={(e) => setFiltroEra(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold">
+              <option value="TODOS">💿 Era / Álbum: Todas</option>
+              {erasDisponibles.map((er) => <option key={er} value={er}>{er}</option>)}
+            </select>
+            <select value={filtroTipoPc} onChange={(e) => setFiltroTipoPc(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold">
+              <option value="TODOS">🃏 Tipo: Todos (Álbum, POB, Merch)</option>
+              {tiposPcDisponibles.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
             </select>
           </div>
         </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {productosFiltrados.length === 0 ? (
             <div className="col-span-full bg-white border border-dashed border-zinc-300 rounded-3xl p-12 text-center text-xs text-zinc-400">
@@ -319,7 +299,9 @@ export default function AtelierShop() {
                   <div>
                     <div onClick={() => abrirModalProducto(p)} className="w-full h-44 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100 relative cursor-pointer flex items-center justify-center">
                       {p.imagen_producto ? <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <span className="text-2xl">🛍️</span>}
-                      <span className="absolute top-2 left-2 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full text-zinc-700 border border-zinc-200">{p.categoria || 'Merch'}</span>
+                      <span className="absolute top-2 left-2 bg-white/95 text-[10px] font-extrabold px-2 py-0.5 rounded-full text-zinc-700 border border-zinc-200">
+                        {p.tipo_pc || p.categoria || 'Álbum PC'}
+                      </span>
                       {tieneVars && (
                         <span className="absolute top-2 right-2 bg-indigo-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
                           {p.variantes?.length} opciones
@@ -334,8 +316,9 @@ export default function AtelierShop() {
 
                     <div className="pt-3 space-y-1">
                       <div className="flex flex-wrap gap-1 text-[10px] font-bold text-pink-600 uppercase">
-                        <span>{p.grupo || p.due_date || 'K-POP'}</span>
+                        <span>{p.grupo || p.due_date}</span>
                         {p.integrante && p.integrante !== 'Grupal / Todos' && <span>· {p.integrante}</span>}
+                        {p.era && <span className="bg-pink-50 text-pink-700 px-1.5 rounded">{p.era}</span>}
                       </div>
                       <h2 onClick={() => abrirModalProducto(p)} className="text-xs font-extrabold text-zinc-900 line-clamp-2 cursor-pointer hover:text-pink-600">
                         {p.nombre_producto}
@@ -367,21 +350,17 @@ export default function AtelierShop() {
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[10px] font-bold uppercase text-pink-600 bg-pink-50 px-2.5 py-0.5 rounded-full">{productoDetalle.grupo || productoDetalle.due_date} · {productoDetalle.categoria || 'Merch'}</span>
+                <span className="text-[10px] font-bold uppercase text-pink-600 bg-pink-50 px-2.5 py-0.5 rounded-full">
+                  {productoDetalle.grupo} {productoDetalle.era ? `· ${productoDetalle.era}` : ''} · {productoDetalle.tipo_pc || productoDetalle.categoria}
+                </span>
                 <h3 className="text-base font-extrabold text-zinc-900 mt-1">{productoDetalle.nombre_producto}</h3>
               </div>
               <button type="button" onClick={() => setProductoDetalle(null)} className="text-zinc-400 font-bold text-sm">✕</button>
             </div>
-            <div className="w-full h-64 bg-zinc-50 rounded-2xl border overflow-hidden flex items-center justify-center">
+
+            <div className="w-full h-60 bg-zinc-50 rounded-2xl border overflow-hidden flex items-center justify-center">
               {fotoActivaDetalle ? <img src={fotoActivaDetalle} alt="" className="max-h-full max-w-full object-contain" /> : <span className="text-4xl">🛍️</span>}
             </div>
-            {productoDetalle.fotos_extra && productoDetalle.fotos_extra.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto">
-                {[productoDetalle.imagen_producto, ...productoDetalle.fotos_extra].filter(Boolean).map((url, idx) => (
-                  <img key={idx} src={url as string} alt="" onClick={() => setFotoActivaDetalle(url as string)} className={`w-14 h-14 rounded-xl object-cover border-2 cursor-pointer ${fotoActivaDetalle === url ? 'border-pink-600' : 'border-zinc-200'}`} />
-                ))}
-              </div>
-            )}
 
             {Array.isArray(productoDetalle.variantes) && productoDetalle.variantes.length > 0 && (
               <div className="space-y-2">
@@ -393,13 +372,7 @@ export default function AtelierShop() {
                       type="button"
                       disabled={v.stock <= 0}
                       onClick={() => setVarianteSeleccionada(v)}
-                      className={`p-2.5 rounded-xl border text-left text-xs flex justify-between items-center transition-all ${
-                        v.stock <= 0
-                          ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed'
-                          : varianteSeleccionada?.nombre === v.nombre
-                          ? 'bg-pink-50 border-pink-600 text-pink-900 font-bold'
-                          : 'bg-white border-zinc-200 hover:border-pink-300'
-                      }`}
+                      className={`p-2.5 rounded-xl border text-left text-xs flex justify-between items-center ${v.stock <= 0 ? 'bg-zinc-100 text-zinc-400' : varianteSeleccionada?.nombre === v.nombre ? 'bg-pink-50 border-pink-600 font-bold' : 'bg-white border-zinc-200'}`}
                     >
                       <div>
                         <p className="font-bold">{v.nombre}</p>
@@ -413,6 +386,28 @@ export default function AtelierShop() {
             )}
 
             <p className="text-xs text-zinc-600">{productoDetalle.descripcion || 'Artículo disponible en Hyune Atelier Shop.'}</p>
+
+            {relacionadosMismaEra.length > 0 && (
+              <div className="bg-pink-50/50 border border-pink-200/80 rounded-2xl p-3 space-y-2">
+                <p className="text-[11px] font-extrabold text-pink-700">✨ Guía de colección: Otros integrantes de esta era</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {relacionadosMismaEra.map((rel) => (
+                    <button
+                      key={rel.id}
+                      type="button"
+                      onClick={() => abrirModalProducto(rel)}
+                      className="bg-white border border-pink-100 rounded-xl p-1.5 text-left hover:border-pink-400 transition-all"
+                    >
+                      <div className="w-full h-16 bg-zinc-50 rounded-lg overflow-hidden mb-1">
+                        {rel.imagen_producto && <img src={rel.imagen_producto} alt="" className="w-full h-full object-cover" />}
+                      </div>
+                      <p className="text-[10px] font-extrabold text-pink-600 truncate">{rel.integrante || 'Integrante'}</p>
+                      <p className="text-[10px] font-bold text-zinc-800">${Number(rel.precio).toFixed(2)}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-between items-center pt-2 border-t">
               <span className="text-lg font-black text-zinc-900">
@@ -436,18 +431,17 @@ export default function AtelierShop() {
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b pb-3">
                 <h3 className="text-base font-black text-zinc-900">🛒 Tu Carrito ({totalItemsCarrito})</h3>
-                <button type="button" onClick={() => setMostrarCarrito(false)} className="text-zinc-400 hover:text-zinc-800 font-bold text-sm">✕</button>
+                <button type="button" onClick={() => setMostrarCarrito(false)} className="text-zinc-400 font-bold text-sm">✕</button>
               </div>
-
               {carrito.length === 0 ? (
-                <p className="text-xs text-zinc-400 text-center py-12">Tu carrito está vacío 🌸 Agrega productos de la tienda.</p>
+                <p className="text-xs text-zinc-400 text-center py-12">Tu carrito está vacío 🌸</p>
               ) : (
                 <>
                   <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                     {carrito.map((item) => (
-                      <div key={item.keyUnica} className="flex items-center justify-between gap-2 bg-zinc-50 border border-zinc-200/80 p-2.5 rounded-2xl text-xs">
+                      <div key={item.keyUnica} className="flex items-center justify-between gap-2 bg-zinc-50 border p-2.5 rounded-2xl text-xs">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {item.producto.imagen_producto ? <img src={item.producto.imagen_producto} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" /> : <span className="w-11 h-11 rounded-xl bg-white flex items-center justify-center shrink-0">🛍️</span>}
+                          {item.producto.imagen_producto && <img src={item.producto.imagen_producto} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" />}
                           <div className="truncate">
                             <p className="font-bold text-zinc-900 truncate">{item.producto.nombre_producto}</p>
                             {item.varianteNombre && <p className="text-[10px] font-bold text-indigo-600">{item.varianteNombre}</p>}
@@ -462,29 +456,20 @@ export default function AtelierShop() {
                       </div>
                     ))}
                   </div>
-
                   <form onSubmit={procesarPedidoCarrito} className="space-y-2.5 border-t pt-3">
-                    <p className="text-[11px] font-bold uppercase text-zinc-400">Tus Datos de Joiner</p>
                     <div className="grid grid-cols-2 gap-2">
                       <input type="text" required placeholder="Nombre Completo" value={formNombre} onChange={(e) => setFormNombre(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50" />
                       <input type="text" required placeholder="Instagram (sin @)" value={formInstagram} onChange={(e) => setFormInstagram(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold text-pink-600" />
                     </div>
                     <input type="tel" required placeholder="Teléfono / WhatsApp" value={formTelefono} onChange={(e) => setFormTelefono(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 w-full" />
-
-                    <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-2.5 text-[11px] text-indigo-900">
-                      📦 <strong>Envío acumulado:</strong> Ahora solo pagas tus artículos. Cuando quieras recibir todo junto, solicita tu envío desde <strong>Mi Cuenta / Bodega</strong>.
-                    </div>
-
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
-                      ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para proofs.
+                      ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido.
                     </div>
-
-                    <div className="bg-pink-50/70 border border-pink-100 rounded-2xl p-3.5 flex justify-between items-center text-sm font-black">
+                    <div className="bg-pink-50 border border-pink-100 rounded-2xl p-3.5 flex justify-between items-center text-sm font-black">
                       <span>Total Artículos:</span>
                       <span className="text-pink-600">${subtotalCarrito.toFixed(2)} USD</span>
                     </div>
-
-                    <button type="submit" className="w-full py-3 bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase rounded-xl">
+                    <button type="submit" className="w-full py-3 bg-zinc-950 text-white font-black text-xs uppercase rounded-xl">
                       🔒 Confirmar Compra (${subtotalCarrito.toFixed(2)})
                     </button>
                   </form>
@@ -505,22 +490,17 @@ export default function AtelierShop() {
               <p><strong>📦 Artículos:</strong> {datosExito.resumen}</p>
               <p className="text-sm font-black text-pink-600 pt-1 border-t">Total a transferir: ${datosExito.total.toFixed(2)} USD</p>
             </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
-              ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
-            </div>
             <a
               href={'https://wa.me/593999530327?text=' + encodeURIComponent(
-                '¡Hola, Lia! Hice una compra en la tienda:\n\n• *Nombre:* ' + formNombre + ' (@' + formInstagram + ')\n• *Teléfono:* ' + formTelefono + '\n• *Productos:* ' + datosExito.resumen + '\n• *Total Artículos:* $' + Number(datosExito.total).toFixed(2) + ' USD (Envío acumulado en bodega)\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
+                '¡Hola, Lia! Hice una compra en la tienda:\n\n• *Nombre:* ' + formNombre + ' (@' + formInstagram + ')\n• *Teléfono:* ' + formTelefono + '\n• *Productos:* ' + datosExito.resumen + '\n• *Total Artículos:* $' + Number(datosExito.total).toFixed(2) + ' USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
+              className="w-full py-3 bg-emerald-600 text-white font-bold text-xs uppercase rounded-xl block"
             >
               💬 Enviar Comprobante por WhatsApp
             </a>
-            <button type="button" onClick={() => setDatosExito(null)} className="w-full py-2 text-xs font-bold text-zinc-400 hover:text-zinc-700">
-              Cerrar ventana
-            </button>
+            <button type="button" onClick={() => setDatosExito(null)} className="w-full py-2 text-xs font-bold text-zinc-400">Cerrar ventana</button>
           </div>
         </div>
       )}
