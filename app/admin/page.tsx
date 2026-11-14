@@ -46,6 +46,7 @@ type ProductoAdmin = {
   isShop?: boolean;
   estado_pago?: string;
   due_date?: string;
+  variantes?: { nombre: string; precio: number; stock: number }[] | null;
 };
 export default function AdminPanelPremium() {
   const [pestanaAdmin, setPestanaAdmin] = useState<'joiners' | 'envios' | 'stock' | 'lanzar' | 'items'>('joiners');
@@ -100,8 +101,8 @@ export default function AdminPanelPremium() {
   const [editQty, setEditQty] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editVariantes, setEditVariantes] = useState<{ nombre: string; precio: number; stock: number }[]>([]);
-
-
+  const [filtroItemsEditar, setFiltroItemsEditar] = useState<string>('TIENDA');
+  const [busquedaItemsEditar, setBusquedaItemsEditar] = useState('');
   async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra') {
     const file = e.target.files ? Array.from(e.target.files).at(0) : null;
     if (!file) return;
@@ -117,6 +118,7 @@ export default function AdminPanelPremium() {
     else setNewShopExtraImages((prev) => [...prev, publicUrl]);
     setSubiendoImagen(false);
   }
+
   async function cargarDatosHibridos() {
     setLoading(true);
     try {
@@ -215,7 +217,8 @@ export default function AdminPanelPremium() {
           setProductosTiendaAdmin(dataTiendaProds.map((p: any) => ({
             id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
             cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
-            imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date, variantes: p.variantes, isShop: true,
+            imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date,
+            variantes: p.variantes, isShop: true,
           })));
         }
 
@@ -429,58 +432,59 @@ export default function AdminPanelPremium() {
     if (!error) cargarDatosHibridos();
   }
 
-              {editandoProducto && (
-              <form onSubmit={handleGuardarEdicion} className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-3">
-                <div className="flex flex-wrap gap-2 items-center">
-                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-lg px-3 py-1.5 text-xs bg-white font-bold flex-1 min-w-[180px]" />
-                  {editVariantes.length === 0 && (
-                    <>
-                      <input type="number" step="0.01" placeholder="Precio" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs w-24 bg-white font-bold" />
-                      <input type="number" min="0" placeholder="Stock" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs w-20 bg-white font-bold text-center" />
-                    </>
-                  )}
-                  <button type="submit" className="bg-emerald-600 text-white text-xs font-bold px-4 py-1.5 rounded-lg">💾 Guardar</button>
-                  <button type="button" onClick={() => setEditandoProducto(null)} className="text-xs text-zinc-500 px-2">Cancelar</button>
-                </div>
+  const iniciarEdicion = (p: ProductoAdmin) => {
+    setEditandoProducto(p);
+    setEditName(p.nombre_producto);
+    setEditPrice(String(p.precio));
+    setEditQty(String(p.cantidad_disponible));
+    setEditDesc(p.descripcion || '');
+    setEditVariantes(Array.isArray(p.variantes) ? p.variantes.map((v) => ({ ...v })) : []);
+  };
 
-                {editVariantes.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-amber-200/70">
-                    {editVariantes.map((v, idx) => (
-                      <div key={idx} className="bg-white border rounded-xl p-2 flex items-center justify-between gap-2 text-xs">
-                        <span className="font-bold text-zinc-800 truncate flex-1">{v.nombre}</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-zinc-400">$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={v.precio}
-                            onChange={(e) => {
-                              const c = [...editVariantes];
-                              c[idx].precio = Number(e.target.value);
-                              setEditVariantes(c);
-                            }}
-                            className="border rounded px-1.5 py-1 w-16 text-xs font-bold"
-                          />
-                          <span className="text-[10px] text-zinc-400">Stock:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={v.stock}
-                            onChange={(e) => {
-                              const c = [...editVariantes];
-                              c[idx].stock = Number(e.target.value);
-                              setEditVariantes(c);
-                            }}
-                            className="border rounded px-1.5 py-1 w-14 text-xs font-bold text-center bg-pink-50"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </form>
-            )}
+  async function handleGuardarEdicion(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editandoProducto) return;
+    setLoadingForm(true);
 
+    if (editandoProducto.isShop && editVariantes.length > 0) {
+      const stockTotal = editVariantes.reduce((s, v) => s + Math.max(0, Number(v.stock || 0)), 0);
+      const precioMin = Math.min(...editVariantes.map((v) => Number(v.precio || 0)));
+      await supabase
+        .from('tienda_productos')
+        .update({
+          nombre_producto: editName.toUpperCase(),
+          precio: precioMin,
+          cantidad_disponible: stockTotal,
+          estado_pago: stockTotal > 0 ? 'INSTOCK' : 'SOLD OUT',
+          variantes: editVariantes.map((v) => ({
+            nombre: v.nombre,
+            precio: Number(v.precio),
+            stock: Math.max(0, Number(v.stock)),
+          })),
+          descripcion: editDesc || null,
+        })
+        .eq('id', editandoProducto.id);
+    } else {
+      const nuevoStock = Math.max(0, Number(editQty));
+      const payload: any = {
+        nombre_producto: editName.toUpperCase(),
+        precio: Number(editPrice),
+        cantidad_disponible: nuevoStock,
+        descripcion: editDesc || null,
+      };
+      if (editandoProducto.isShop) {
+        payload.estado_pago = nuevoStock > 0 ? 'INSTOCK' : 'SOLD OUT';
+      }
+      await supabase
+        .from(editandoProducto.isShop ? 'tienda_productos' : 'productos')
+        .update(payload)
+        .eq('id', editandoProducto.id);
+    }
+
+    setLoadingForm(false);
+    setEditandoProducto(null);
+    cargarDatosHibridos();
+  }
   const categoriasGos = Array.from(new Set(tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo)));
   const tarjetasFiltradas = tarjetasJoiners.filter((t) => {
     if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
@@ -532,7 +536,7 @@ export default function AdminPanelPremium() {
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
                 <h1 className="text-xl font-extrabold text-zinc-900">Órdenes por Joiner</h1>
-                <p className="text-xs text-zinc-500">Lista completa de artículos por persona</p>
+                <p className="text-xs text-zinc-500">Artículos agrupados por publicación y persona</p>
               </div>
               <input type="text" placeholder="Buscar por nombre o correo..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="bg-white border border-zinc-200 rounded-xl px-4 py-2 text-xs w-full sm:w-72 shadow-2xs" />
             </div>
@@ -589,21 +593,16 @@ export default function AdminPanelPremium() {
                         <span className="font-bold text-pink-600">{tarjeta.categoriaTitulo}</span>
                         <span>{tarjeta.items.length} orden(es)</span>
                       </div>
-
-                                            <div className="space-y-3">
+                      <div className="space-y-3">
                         {tarjeta.items.map((it) => {
-                          const partesRaw = it.origen === 'SHOP'
-                            ? it.productoNombre.split(' + ').map((s) => s.trim()).filter(Boolean)
-                            : [it.productoNombre];
-
-                          // Agrupar por título de publicación para no repetir el nombre largo
+                          const partesRaw = it.origen === 'SHOP' ? it.productoNombre.split(' + ').map((s) => s.trim()).filter(Boolean) : [it.productoNombre];
                           const gruposPorPost: Record<string, string[]> = {};
                           partesRaw.forEach((linea) => {
                             const match = linea.match(/^(\d+x)\s+(.+?)\s+\[(.+?)\]\s+(\(\$.*?\))$/);
                             if (match) {
                               const [, cant, tituloPost, variante, precio] = match;
                               if (!gruposPorPost[tituloPost]) gruposPorPost[tituloPost] = [];
-                              gruposPorPost[tituloPost].push(`${cant} ${variante} ${precio}`);
+                              gruposPorPost[tituloPost].push(cant + ' ' + variante + ' ' + precio);
                             } else {
                               if (!gruposPorPost[linea]) gruposPorPost[linea] = [];
                             }
@@ -612,12 +611,7 @@ export default function AdminPanelPremium() {
                           return (
                             <div key={it.idUnico} className="bg-zinc-50/90 border border-zinc-200/80 rounded-2xl p-3 space-y-2.5 text-xs">
                               <div className="flex items-start gap-2.5">
-                                {it.imagenUrl ? (
-                                  <img src={it.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" />
-                                ) : (
-                                  <span className="w-11 h-11 rounded-xl bg-white border flex items-center justify-center text-sm shrink-0">🧸</span>
-                                )}
-
+                                {it.imagenUrl ? <img src={it.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" /> : <span className="w-11 h-11 rounded-xl bg-white border flex items-center justify-center text-sm shrink-0">🧸</span>}
                                 <div className="flex-1 min-w-0 space-y-2">
                                   {Object.entries(gruposPorPost).map(([tituloPost, subItems], idxPost) => (
                                     <div key={idxPost} className="space-y-1">
@@ -629,20 +623,14 @@ export default function AdminPanelPremium() {
                                           </span>
                                         )}
                                       </p>
-
                                       {subItems.length > 0 && (
                                         <div className="bg-white border border-zinc-200/70 rounded-xl p-2 space-y-1">
                                           {subItems.map((sub, iSub) => (
-                                            <p key={iSub} className="text-[11px] font-semibold text-zinc-700 leading-tight">
-                                              • {sub}
-                                            </p>
+                                            <p key={iSub} className="text-[11px] font-semibold text-zinc-700 leading-tight">• {sub}</p>
                                           ))}
                                         </div>
                                       )}
-
-                                      {it.origen === 'GO' && (
-                                        <p className="text-[11px] font-bold text-pink-600">Slot: {it.detalleSlot}</p>
-                                      )}
+                                      {it.origen === 'GO' && <p className="text-[11px] font-bold text-pink-600">Slot: {it.detalleSlot}</p>}
                                     </div>
                                   ))}
                                 </div>
@@ -652,34 +640,14 @@ export default function AdminPanelPremium() {
                                 <span className="text-zinc-400">Monto pedido:</span>
                                 {it.origen === 'SHOP' && it.pedidoId && editandoTotalId === it.pedidoId ? (
                                   <div className="flex items-center gap-1">
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      value={inputTotalTemp}
-                                      onChange={(e) => setInputTotalTemp(e.target.value)}
-                                      className="border rounded px-2 py-0.5 w-20 text-xs bg-white font-bold"
-                                      autoFocus
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => guardarNuevoTotalPedido(it.pedidoId!, inputTotalTemp)}
-                                      className="bg-emerald-600 text-white px-2 py-0.5 rounded font-bold"
-                                    >
-                                      OK
-                                    </button>
+                                    <input type="number" step="0.01" value={inputTotalTemp} onChange={(e) => setInputTotalTemp(e.target.value)} className="border rounded px-2 py-0.5 w-20 text-xs bg-white font-bold" autoFocus />
+                                    <button type="button" onClick={() => guardarNuevoTotalPedido(it.pedidoId!, inputTotalTemp)} className="bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">OK</button>
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-extrabold text-zinc-800">${it.precioTotal.toFixed(2)} USD</span>
                                     {it.origen === 'SHOP' && it.pedidoId && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setEditandoTotalId(it.pedidoId!);
-                                          setInputTotalTemp(String(it.precioTotal));
-                                        }}
-                                        className="text-[10px] text-indigo-600 underline font-bold"
-                                      >
+                                      <button type="button" onClick={() => { setEditandoTotalId(it.pedidoId!); setInputTotalTemp(String(it.precioTotal)); }} className="text-[10px] text-indigo-600 underline font-bold">
                                         ✏️ editar
                                       </button>
                                     )}
@@ -690,7 +658,7 @@ export default function AdminPanelPremium() {
                           );
                         })}
                       </div>
-</div>
+                    </div>
 
                     <div className="pt-3 border-t border-zinc-100 space-y-2.5">
                       <div className="flex justify-between items-center">
@@ -859,7 +827,6 @@ export default function AdminPanelPremium() {
                     <input type="number" step="0.01" placeholder="Precio único USD" value={newShopPrice} onChange={(e) => setNewShopPrice(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold" />
                     <input type="number" min="0" placeholder="Stock único" value={newShopQty} onChange={(e) => setNewShopQty(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold" />
                   </div>
-
                   <div className="bg-indigo-50/50 border border-indigo-200 rounded-2xl p-3 space-y-2">
                     <div className="flex justify-between items-center">
                       <p className="text-xs font-extrabold text-indigo-900">🃏 Opciones / Photocards en esta foto</p>
@@ -878,6 +845,7 @@ export default function AdminPanelPremium() {
                 </div>
               </div>
             </form>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <form onSubmit={handleCreateGO} className="bg-white border rounded-2xl p-5 space-y-3">
                 <h2 className="text-sm font-extrabold">1. Nuevo Group Order (GO)</h2>
@@ -908,32 +876,178 @@ export default function AdminPanelPremium() {
             </div>
           </div>
         )}
-
         {pestanaAdmin === 'items' && (
-          <div className="bg-white border rounded-2xl p-5 space-y-3">
-            <h2 className="text-sm font-extrabold">Todos los Ítems Publicados</h2>
+          <div className="space-y-5">
+            <div className="flex flex-wrap justify-between items-center gap-3">
+              <div>
+                <h2 className="text-xl font-extrabold text-zinc-900">🛠️ Editar Ítems Publicados</h2>
+                <p className="text-xs text-zinc-500">Filtra por Tienda o por GO y ubícalos rápido por su foto</p>
+              </div>
+              <input
+                type="text"
+                placeholder="🔍 Buscar artículo por nombre..."
+                value={busquedaItemsEditar}
+                onChange={(e) => setBusquedaItemsEditar(e.target.value)}
+                className="bg-white border border-zinc-200 rounded-xl px-4 py-2 text-xs w-full sm:w-72 shadow-2xs"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2 items-center">
+              <button
+                type="button"
+                onClick={() => setFiltroItemsEditar('TIENDA')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all ${filtroItemsEditar === 'TIENDA' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white text-indigo-700 border border-indigo-200'}`}
+              >
+                🛍️ Tienda / Shop ({productosTiendaAdmin.length})
+              </button>
+
+              {gosAdmin.map((g) => {
+                const countGo = productosAdmin.filter((p) => p.go_id === g.id).length;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setFiltroItemsEditar('GO_' + g.id)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${filtroItemsEditar === 'GO_' + g.id ? 'bg-pink-600 text-white shadow-2xs' : 'bg-white text-zinc-700 border border-zinc-200'}`}
+                  >
+                    🧸 {g.title} ({countGo})
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => setFiltroItemsEditar('TODOS')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${filtroItemsEditar === 'TODOS' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+              >
+                Ver Todos ({todosLosProductosAdmin.length})
+              </button>
+            </div>
             {editandoProducto && (
-              <form onSubmit={handleGuardarEdicion} className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex flex-wrap gap-2 items-center">
-                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs bg-white" />
-                <input type="number" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs w-24 bg-white" />
-                <input type="number" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs w-20 bg-white" />
-                <button type="submit" className="bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Guardar</button>
-                <button type="button" onClick={() => setEditandoProducto(null)} className="text-xs text-zinc-500 px-2">Cancelar</button>
-              </form>
-            )}
-            <div className="divide-y">
-              {todosLosProductosAdmin.map((p) => (
-                <div key={(p.isShop ? 's-' : 'g-') + p.id} className="py-3 flex justify-between items-center text-xs">
+              <form onSubmit={handleGuardarEdicion} className="bg-amber-50 border-2 border-amber-300 p-5 rounded-3xl space-y-3 shadow-sm">
+                <div className="flex items-center gap-3 border-b border-amber-200/70 pb-3">
+                  {editandoProducto.imagen_producto && (
+                    <img src={editandoProducto.imagen_producto} alt="" className="w-12 h-12 rounded-xl object-cover border bg-white" />
+                  )}
                   <div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded mr-2 ${p.isShop ? 'bg-indigo-50 text-indigo-700' : 'bg-pink-50 text-pink-700'}`}>{p.isShop ? 'TIENDA' : 'GO'}</span>
-                    <span className="font-bold">{p.nombre_producto}</span> — ${Number(p.precio).toFixed(2)} USD (Stock: {p.cantidad_disponible})
-                  </div>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => iniciarEdicion(p)} className="text-blue-600 font-bold">Editar</button>
-                    <button type="button" onClick={() => handleEliminarProducto(p.id, p.isShop)} className="text-rose-600 font-bold">Borrar</button>
+                    <span className="text-[10px] font-bold uppercase text-amber-800">Editando artículo:</span>
+                    <h3 className="text-sm font-black text-zinc-900">{editandoProducto.nombre_producto}</h3>
                   </div>
                 </div>
-              ))}
+
+                <div className="flex flex-wrap gap-2 items-center">
+                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-white font-bold flex-1 min-w-[200px]" />
+                  {editVariantes.length === 0 && (
+                    <>
+                      <input type="number" step="0.01" placeholder="Precio $" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-28 bg-white font-bold" />
+                      <input type="number" min="0" placeholder="Stock" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-24 bg-white font-bold text-center" />
+                    </>
+                  )}
+                  <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold px-5 py-2 rounded-xl">
+                    💾 Guardar cambios
+                  </button>
+                  <button type="button" onClick={() => setEditandoProducto(null)} className="text-xs font-bold text-zinc-500 px-3 py-2">
+                    Cancelar
+                  </button>
+                </div>
+
+                {editVariantes.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-2 border-t border-amber-200/70">
+                    {editVariantes.map((v, idx) => (
+                      <div key={idx} className="bg-white border rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs">
+                        <span className="font-bold text-zinc-800 truncate flex-1">{v.nombre}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-zinc-400">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={v.precio}
+                            onChange={(e) => {
+                              const c = [...editVariantes];
+                              c[idx].precio = Number(e.target.value);
+                              setEditVariantes(c);
+                            }}
+                            className="border rounded-lg px-1.5 py-1 w-16 text-xs font-bold"
+                          />
+                          <span className="text-[10px] text-zinc-400">Stock:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={v.stock}
+                            onChange={(e) => {
+                              const c = [...editVariantes];
+                              c[idx].stock = Number(e.target.value);
+                              setEditVariantes(c);
+                            }}
+                            className="border rounded-lg px-1.5 py-1 w-14 text-xs font-bold text-center bg-pink-50"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </form>
+            )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {todosLosProductosAdmin
+                .filter((p) => {
+                  if (filtroItemsEditar === 'TIENDA' && !p.isShop) return false;
+                  if (filtroItemsEditar.startsWith('GO_')) {
+                    const idGoFiltro = Number(filtroItemsEditar.replace('GO_', ''));
+                    if (p.isShop || p.go_id !== idGoFiltro) return false;
+                  }
+                  if (busquedaItemsEditar && !p.nombre_producto.toLowerCase().includes(busquedaItemsEditar.toLowerCase())) {
+                    return false;
+                  }
+                  return true;
+                })
+                .map((p) => {
+                  const goPadre = !p.isShop ? gosAdmin.find((g) => g.id === p.go_id)?.title : null;
+                  return (
+                    <div key={(p.isShop ? 's-' : 'g-') + p.id} className="bg-white border border-zinc-200/90 rounded-2xl p-3 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all">
+                      <div>
+                        <div className="w-full h-36 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100 relative flex items-center justify-center mb-2.5">
+                          {p.imagen_producto ? (
+                            <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-2xl">{p.isShop ? '🛍️' : '🧸'}</span>
+                          )}
+                          <span className={`absolute top-2 left-2 text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow-2xs ${p.isShop ? 'bg-indigo-600 text-white' : 'bg-pink-600 text-white'}`}>
+                            {p.isShop ? 'TIENDA' : 'GO'}
+                          </span>
+                          <span className="absolute bottom-2 right-2 bg-zinc-900/85 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                            Stock: {p.cantidad_disponible}
+                          </span>
+                        </div>
+
+                        {goPadre && (
+                          <p className="text-[10px] font-bold text-pink-600 uppercase truncate">{goPadre}</p>
+                        )}
+                        <h3 className="text-xs font-extrabold text-zinc-900 line-clamp-2 leading-snug">
+                          {p.nombre_producto}
+                        </h3>
+                        <p className="text-xs font-black text-zinc-700 mt-1">${Number(p.precio).toFixed(2)} USD</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5 pt-3 mt-3 border-t border-zinc-100">
+                        <button
+                          type="button"
+                          onClick={() => iniciarEdicion(p)}
+                          className="py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-extrabold"
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEliminarProducto(p.id, p.isShop)}
+                          className="py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-extrabold"
+                        >
+                          🗑️ Borrar
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         )}
