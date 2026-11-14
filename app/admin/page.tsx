@@ -99,6 +99,8 @@ export default function AdminPanelPremium() {
   const [editPrice, setEditPrice] = useState('');
   const [editQty, setEditQty] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [editVariantes, setEditVariantes] = useState<{ nombre: string; precio: number; stock: number }[]>([]);
+
 
   async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra') {
     const file = e.target.files ? Array.from(e.target.files).at(0) : null;
@@ -213,7 +215,7 @@ export default function AdminPanelPremium() {
           setProductosTiendaAdmin(dataTiendaProds.map((p: any) => ({
             id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
             cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
-            imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date, isShop: true,
+            imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date, variantes: p.variantes, isShop: true,
           })));
         }
 
@@ -427,20 +429,58 @@ export default function AdminPanelPremium() {
     if (!error) cargarDatosHibridos();
   }
 
-  const iniciarEdicion = (p: ProductoAdmin) => {
-    setEditandoProducto(p); setEditName(p.nombre_producto); setEditPrice(String(p.precio));
-    setEditQty(String(p.cantidad_disponible)); setEditDesc(p.descripcion || '');
-  };
+              {editandoProducto && (
+              <form onSubmit={handleGuardarEdicion} className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-3">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-lg px-3 py-1.5 text-xs bg-white font-bold flex-1 min-w-[180px]" />
+                  {editVariantes.length === 0 && (
+                    <>
+                      <input type="number" step="0.01" placeholder="Precio" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs w-24 bg-white font-bold" />
+                      <input type="number" min="0" placeholder="Stock" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs w-20 bg-white font-bold text-center" />
+                    </>
+                  )}
+                  <button type="submit" className="bg-emerald-600 text-white text-xs font-bold px-4 py-1.5 rounded-lg">💾 Guardar</button>
+                  <button type="button" onClick={() => setEditandoProducto(null)} className="text-xs text-zinc-500 px-2">Cancelar</button>
+                </div>
 
-  async function handleGuardarEdicion(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editandoProducto) return;
-    setLoadingForm(true);
-    await supabase.from(editandoProducto.isShop ? 'tienda_productos' : 'productos')
-      .update({ nombre_producto: editName.toUpperCase(), precio: Number(editPrice), cantidad_disponible: Number(editQty), descripcion: editDesc || null })
-      .eq('id', editandoProducto.id);
-    setLoadingForm(false); setEditandoProducto(null); cargarDatosHibridos();
-  }
+                {editVariantes.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-amber-200/70">
+                    {editVariantes.map((v, idx) => (
+                      <div key={idx} className="bg-white border rounded-xl p-2 flex items-center justify-between gap-2 text-xs">
+                        <span className="font-bold text-zinc-800 truncate flex-1">{v.nombre}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-zinc-400">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={v.precio}
+                            onChange={(e) => {
+                              const c = [...editVariantes];
+                              c[idx].precio = Number(e.target.value);
+                              setEditVariantes(c);
+                            }}
+                            className="border rounded px-1.5 py-1 w-16 text-xs font-bold"
+                          />
+                          <span className="text-[10px] text-zinc-400">Stock:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={v.stock}
+                            onChange={(e) => {
+                              const c = [...editVariantes];
+                              c[idx].stock = Number(e.target.value);
+                              setEditVariantes(c);
+                            }}
+                            className="border rounded px-1.5 py-1 w-14 text-xs font-bold text-center bg-pink-50"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </form>
+            )}
+
   const categoriasGos = Array.from(new Set(tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo)));
   const tarjetasFiltradas = tarjetasJoiners.filter((t) => {
     if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
