@@ -134,8 +134,6 @@ const [guiasTemp, setGuiasTemp] = useState<Record<number, string>>({});
 
     if (dataEnvios) setSolicitudesEnvio(dataEnvios);
 
-            
-          ]);
 
         if (dataGos) {
           setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name })));
