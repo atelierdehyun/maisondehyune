@@ -232,7 +232,7 @@ export default function AdminPanelPremium() {
             correo,
             articulos: mapeoClientes[correo],
             totalAcumulado: mapeoClientes[correo].reduce(
-              (s, i) => s + i.precio,
+              (s, i) => s + Number(i.precio || 0),
               0
             ),
           }))
@@ -866,7 +866,7 @@ export default function AdminPanelPremium() {
                     </div>
                     <div className="text-right shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
                       <p className="text-sm font-black text-pink-500">
-                        ${j.totalAcumulado.toFixed(2)} USD
+                        ${Number(j.totalAcumulado || 0).toFixed(2)} USD
                       </p>
                     </div>
                   </div>
