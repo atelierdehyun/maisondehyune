@@ -438,15 +438,17 @@ export default function Masterlist() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
               ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
             </div>
-            <button
-  type="button"
-  onClick={() => {
-    window.location.href = datosUltimoClaim.urlWhatsapp;
-  }}
-  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
->
-  💬 Enviar Comprobante a WhatsApp 🍰
-</button>
+                        <button
+              type="button"
+              onClick={() => {
+                const texto = `¡Holis, Hyune Atelier! Acabo de apartar slots en la web 🐻✨\n\n💌 Joiner: ${datosUltimoClaim.nombre || formNombre} (@${datosUltimoClaim.ig || formInstagram})\n📱 Contacto: ${datosUltimoClaim.tlf || formTelefono}\n📍 Destino: ${datosUltimoClaim.ciudad || formCiudad} — ${datosUltimoClaim.dir || formDireccion}\n\n📋 Desglose:\n${datosUltimoClaim.desglose}\n\n💰 Total a pagar: $${Number(datosUltimoClaim.total).toFixed(2)} USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante por aquí. 💗`;
+                window.location.assign('https://whatsapp.com' + encodeURIComponent(texto));
+              }}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
+            >
+              💬 Enviar Comprobante a WhatsApp 🍰
+            </button>
+
 
           </div>
         </div>
