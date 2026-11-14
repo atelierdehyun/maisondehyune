@@ -46,10 +46,9 @@ type ProductoAdmin = {
   isShop?: boolean;
   estado_pago?: string;
   due_date?: string;
-  gos?: { title: string };
 };
 export default function AdminPanelPremium() {
-  const [pestanaAdmin, setPestanaAdmin] = useState<'joiners' | 'lanzar' | 'items' | 'stock'>('joiners');
+  const [pestanaAdmin, setPestanaAdmin] = useState<'joiners' | 'stock' | 'lanzar' | 'items'>('joiners');
   const [usuarioEmail, setUsuarioEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingForm, setLoadingForm] = useState(false);
@@ -57,7 +56,6 @@ export default function AdminPanelPremium() {
 
   const [tarjetasJoiners, setTarjetasJoiners] = useState<TarjetaJoiner[]>([]);
   const [filtroCategoria, setFiltroCategoria] = useState<string>('TODOS');
-  const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'PENDIENTES' | 'PAGADOS'>('TODOS');
   const [busqueda, setBusqueda] = useState('');
   const [editandoNombreCorreo, setEditandoNombreCorreo] = useState<string | null>(null);
   const [inputNombreTemp, setInputNombreTemp] = useState('');
@@ -82,9 +80,9 @@ export default function AdminPanelPremium() {
   const [newProdDesc, setNewProdDesc] = useState('');
   const [newShopName, setNewShopName] = useState('');
   const [newShopPrice, setNewShopPrice] = useState('');
-  const [newShopStatus, setNewShopStatus] = useState('INSTOCK');
+  const [newShopStatus] = useState('INSTOCK');
   const [newShopImage, setNewShopImage] = useState('');
-  const [newShopGroup, setNewShopGroup] = useState('stray kids');
+  const [newShopGroup] = useState('stray kids');
   const [newShopQty, setNewShopQty] = useState('1');
   const [newShopDesc, setNewShopDesc] = useState('');
 
@@ -95,7 +93,7 @@ export default function AdminPanelPremium() {
   const [editDesc, setEditDesc] = useState('');
 
   async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop') {
-    const file = e.target.files?.[0];
+    const file = e.target.files ? Array.from(e.target.files).at(0) : null;
     if (!file) return;
     setSubiendoImagen(true);
     const fileExt = file.name.split('.').pop();
@@ -127,8 +125,10 @@ export default function AdminPanelPremium() {
 
         if (dataGos) {
           setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name })));
-          if (dataGos.length > 0 && !selectedGoId) setSelectedGoId(dataGos[0].id);
-          if (dataGos.length > 0 && goStockFiltro === 'TODOS') setGoStockFiltro(dataGos[0].id);
+          const primerGo = dataGos.at(0);
+          if (primerGo && !selectedGoId) setSelectedGoId(primerGo.id);
+          if (primerGo && goStockFiltro === 'TODOS') setGoStockFiltro(primerGo.id);
+        }
 
         const mapaSeg: Record<string, any> = {};
         if (dataSeg) dataSeg.forEach((s: any) => { mapaSeg[s.claim_key] = s; });
@@ -137,15 +137,15 @@ export default function AdminPanelPremium() {
         if (dataPerfiles) dataPerfiles.forEach((pf: any) => { if (pf.nombre_completo) mapaNombres[pf.user_email.toLowerCase()] = pf.nombre_completo; });
 
         const agrupadoPorGoYJoiner: Record<string, TarjetaJoiner> = {};
-        const agregarATarjeta = (correoRaw: string, categoria: string, origen: 'GO' | 'SHOP', item: ItemTarjeta, nombreFallback?: string) => {
+        const agregarATarjeta = (correoRaw: string, categoria: string, origen: 'GO' | 'SHOP', item: ItemTarjeta) => {
           const correo = correoRaw.toLowerCase().trim();
-          if (nombreFallback && !mapaNombres[correo]) mapaNombres[correo] = nombreFallback;
           const keyTarjeta = `${categoria}__${correo}`;
           if (!agrupadoPorGoYJoiner[keyTarjeta]) {
+            const aliasCorreo = correo.split('@').at(0) || correo;
             agrupadoPorGoYJoiner[keyTarjeta] = {
               tarjetaId: keyTarjeta,
               correo,
-              nombreReal: mapaNombres[correo] || correo.split('@'),
+              nombreReal: mapaNombres[correo] || aliasCorreo,
               categoriaTitulo: categoria,
               origen,
               items: [],
@@ -239,7 +239,8 @@ export default function AdminPanelPremium() {
   }
 
   async function actualizarTarjetaCompleta(tarjeta: TarjetaJoiner, campo: 'estadoConfirmacion' | 'estadoPago' | 'fechaPago', valor: string) {
-    const fechaAuto = campo === 'estadoPago' && valor === 'Pagado' ? new Date().toISOString().split('T')[0] : null;
+    const hoyIso = new Date().toISOString().split('T').at(0) || '';
+    const fechaAuto = campo === 'estadoPago' && valor === 'Pagado' ? hoyIso : null;
 
     setTarjetasJoiners((prev) =>
       prev.map((t) => {
@@ -282,9 +283,9 @@ export default function AdminPanelPremium() {
   }
 
   async function notificarCancelacionFaltaPago(tarjeta: TarjetaJoiner) {
-    if (!confirm(`¿Marcar el pedido de ${tarjeta.nombreReal} como CANCELADO por falta de pago y notificarle en su cuenta?`)) return;
+    if (!confirm(`¿Marcar el pedido de ${tarjeta.nombreReal} como CANCELADO por falta de pago?`)) return;
     await actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', 'Cancelado');
-    alert('🚨 Listo: El pedido aparece como CANCELADO y al joiner le saldrá la alerta roja al entrar a su cuenta.');
+    alert('🚨 Listo: El pedido aparece como CANCELADO y al joiner le saldrá la alerta roja en su cuenta.');
   }
   const handleEditInputLocal = (prodId: number, slot: string, valor: string) => {
     setInputsStock((prev) => ({ ...prev, [prodId]: { ...(prev[prodId] || {}), [slot]: valor } }));
@@ -362,12 +363,9 @@ export default function AdminPanelPremium() {
     setLoadingForm(false); setEditandoProducto(null); cargarDatosHibridos();
   }
 
-  const categoriasDisponibles = Array.from(new Set(tarjetasJoiners.map((t) => t.categoriaTitulo)));
+  const categoriasGos = Array.from(new Set(tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo)));
   const tarjetasFiltradas = tarjetasJoiners.filter((t) => {
     if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
-    const estaPagado = t.items.every((i) => i.estadoPago === 'Pagado');
-    if (filtroEstado === 'PAGADOS' && !estaPagado) return false;
-    if (filtroEstado === 'PENDIENTES' && estaPagado) return false;
     if (busqueda && !t.nombreReal.toLowerCase().includes(busqueda.toLowerCase()) && !t.correo.toLowerCase().includes(busqueda.toLowerCase())) return false;
     return true;
   });
@@ -419,7 +417,7 @@ export default function AdminPanelPremium() {
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
                 <h1 className="text-xl font-extrabold text-zinc-900">Órdenes por Joiner</h1>
-                <p className="text-xs text-zinc-500">Cada tarjeta es una persona dentro de un GO específico</p>
+                <p className="text-xs text-zinc-500">Cada tarjeta es una persona dentro de un GO o de Tienda</p>
               </div>
               <input
                 type="text"
@@ -438,111 +436,127 @@ export default function AdminPanelPremium() {
               >
                 Todos ({tarjetasJoiners.length})
               </button>
-              {categoriasDisponibles.map((cat) => (
+              {categoriasGos.map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setFiltroCategoria(cat)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === cat ? 'bg-pink-600 text-white' : 'bg-white text-zinc-700 border border-zinc-200'}`}
                 >
-                  {cat === 'Tienda / Shop' ? '🛍️ ' : '🧸 '} {cat}
+                  🧸 {cat}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setFiltroCategoria('Tienda / Shop')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === 'Tienda / Shop' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}
+              >
+                🛍️ Tienda / Shop ({tarjetasJoiners.filter((t) => t.origen === 'SHOP').length})
+              </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {tarjetasFiltradas.map((tarjeta, idx) => {
-                const estadoConfirmActual = tarjeta.items[0]?.estadoConfirmacion || 'Pendiente';
-const estadoPagoActual = tarjeta.items[0]?.estadoPago || 'Sin pagar';
-const fechaPagoActual = tarjeta.items[0]?.fechaPago || '';
+            {tarjetasFiltradas.length === 0 ? (
+              <div className="bg-white border border-zinc-200 rounded-2xl p-10 text-center text-xs text-zinc-500">
+                No hay órdenes registradas en esta categoría todavía 🌸
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {tarjetasFiltradas.map((tarjeta, idx) => {
+                  const primerItem = tarjeta.items.at(0);
+                  const inicial = tarjeta.nombreReal.slice(0, 2).toUpperCase();
+                  const estadoConfirmActual = primerItem?.estadoConfirmacion || 'Pendiente';
+                  const estadoPagoActual = primerItem?.estadoPago || 'Sin pagar';
+                  const fechaPagoActual = primerItem?.fechaPago || '';
+                  const colorAvatar = coloresAvatar.at(idx % coloresAvatar.length) || 'bg-pink-600';
 
+                  return (
+                    <div key={tarjeta.tarjetaId} className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl ${colorAvatar} text-white font-black text-xs flex items-center justify-center shrink-0`}>
+                              {inicial}
+                            </div>
+                            <div>
+                              {editandoNombreCorreo === tarjeta.correo ? (
+                                <div className="flex gap-1">
+                                  <input type="text" value={inputNombreTemp} onChange={(e) => setInputNombreTemp(e.target.value)} className="border rounded px-2 py-0.5 text-xs w-32" autoFocus />
+                                  <button type="button" onClick={() => guardarNombreJoiner(tarjeta.correo)} className="bg-emerald-600 text-white text-[10px] px-2 rounded font-bold">OK</button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <h3 className="text-sm font-extrabold text-zinc-900 capitalize">{tarjeta.nombreReal}</h3>
+                                  <button type="button" onClick={() => { setEditandoNombreCorreo(tarjeta.correo); setInputNombreTemp(tarjeta.nombreReal); }} className="text-[11px] text-zinc-400 hover:text-pink-600">✏️</button>
+                                </div>
+                              )}
+                              <p className="text-[11px] text-zinc-400">{tarjeta.correo}</p>
+                            </div>
+                          </div>
 
-                return (
-                  <div key={tarjeta.tarjetaId} className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl ${coloresAvatar[idx % coloresAvatar.length]} text-white font-black text-xs flex items-center justify-center shrink-0`}>
-                            {inicial}
-                          </div>
-                          <div>
-                            {editandoNombreCorreo === tarjeta.correo ? (
-                              <div className="flex gap-1">
-                                <input type="text" value={inputNombreTemp} onChange={(e) => setInputNombreTemp(e.target.value)} className="border rounded px-2 py-0.5 text-xs w-32" autoFocus />
-                                <button type="button" onClick={() => guardarNombreJoiner(tarjeta.correo)} className="bg-emerald-600 text-white text-[10px] px-2 rounded font-bold">OK</button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <h3 className="text-sm font-extrabold text-zinc-900 capitalize">{tarjeta.nombreReal}</h3>
-                                <button type="button" onClick={() => { setEditandoNombreCorreo(tarjeta.correo); setInputNombreTemp(tarjeta.nombreReal); }} className="text-[11px] text-zinc-400 hover:text-pink-600">✏️</button>
-                              </div>
-                            )}
-                            <p className="text-[11px] text-zinc-400">{tarjeta.correo}</p>
-                          </div>
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${estadoConfirmActual === 'Confirmado' ? 'bg-emerald-50 text-emerald-700' : estadoConfirmActual === 'Cancelado' ? 'bg-rose-100 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
+                            {estadoConfirmActual === 'Confirmado' ? '✔ Confirmado' : estadoConfirmActual === 'Cancelado' ? '❌ Cancelado' : '⏳ Pendiente'}
+                          </span>
                         </div>
 
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${estadoConfirmActual === 'Confirmado' ? 'bg-emerald-50 text-emerald-700' : estadoConfirmActual === 'Cancelado' ? 'bg-rose-100 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {estadoConfirmActual === 'Confirmado' ? '✔ Confirmado' : estadoConfirmActual === 'Cancelado' ? '❌ Cancelado' : '⏳ Pendiente'}
-                        </span>
-                      </div>
+                        <div className="flex justify-between items-center text-[11px] text-zinc-500 border-b border-zinc-100 pb-2">
+                          <span className="font-bold text-pink-600">{tarjeta.categoriaTitulo}</span>
+                          <span>{tarjeta.items.length} artículo(s)</span>
+                        </div>
 
-                      <div className="flex justify-between items-center text-[11px] text-zinc-500 border-b border-zinc-100 pb-2">
-                        <span className="font-bold text-pink-600">{tarjeta.categoriaTitulo}</span>
-                        <span>{tarjeta.items.length} artículo(s)</span>
-                      </div>
-
-                      <div className="space-y-2.5">
-                        {tarjeta.items.map((it) => (
-                          <div key={it.idUnico} className="flex justify-between items-center gap-2 text-xs">
-                            <div className="flex items-center gap-2 min-w-0">
-                              {it.imagenUrl ? <img src={it.imagenUrl} alt="" className="w-8 h-8 rounded-lg object-cover border shrink-0" /> : <span className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-xs shrink-0">🧸</span>}
-                              <div className="truncate">
-                                <p className="font-semibold text-zinc-800 truncate">{it.productoNombre}</p>
-                                <p className="text-[10px] text-pink-600 font-bold">{it.detalleSlot}</p>
+                        <div className="space-y-2.5">
+                          {tarjeta.items.map((it) => (
+                            <div key={it.idUnico} className="flex justify-between items-center gap-2 text-xs">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {it.imagenUrl ? <img src={it.imagenUrl} alt="" className="w-8 h-8 rounded-lg object-cover border shrink-0" /> : <span className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-xs shrink-0">🧸</span>}
+                                <div className="truncate">
+                                  <p className="font-semibold text-zinc-800 truncate">{it.productoNombre}</p>
+                                  <p className="text-[10px] text-pink-600 font-bold">{it.detalleSlot}</p>
+                                </div>
                               </div>
+                              <span className="font-bold text-zinc-700 shrink-0">{it.cantidad} · ${it.precioTotal.toFixed(2)}</span>
                             </div>
-                            <span className="font-bold text-zinc-700 shrink-0">{it.cantidad} · ${it.precioTotal.toFixed(2)}</span>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-zinc-100 space-y-2.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-zinc-500">Total</span>
+                          <span className="text-base font-black text-zinc-900">${tarjeta.totalTarjeta.toFixed(2)} USD</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <select value={estadoConfirmActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', e.target.value)} className="text-[11px] font-bold rounded-xl px-2.5 py-2 border bg-zinc-50">
+                            <option value="Pendiente">⏳ Sin confirmar</option>
+                            <option value="Confirmado">✅ Confirmado</option>
+                            <option value="Cancelado">❌ Cancelado</option>
+                          </select>
+                          <select value={estadoPagoActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoPago', e.target.value)} className={`text-[11px] font-bold rounded-xl px-2.5 py-2 border ${estadoPagoActual === 'Pagado' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-zinc-900'}`}>
+                            <option value="Sin pagar">💸 Sin pagar</option>
+                            <option value="Verificando">🔵 Verificando</option>
+                            <option value="Pagado">💚 Pagado</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                          <span>Fecha pago:</span>
+                          <input type="date" value={fechaPagoActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'fechaPago', e.target.value)} className="border border-zinc-200 rounded-lg px-2 py-1 text-[11px]" />
+                        </div>
+
+                        {estadoPagoActual !== 'Pagado' && estadoConfirmActual !== 'Cancelado' && (
+                          <button
+                            type="button"
+                            onClick={() => notificarCancelacionFaltaPago(tarjeta)}
+                            className="w-full py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold"
+                          >
+                            🚨 Notificar cancelación por falta de pago
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="pt-3 border-t border-zinc-100 space-y-2.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-zinc-500">Total en este GO</span>
-                        <span className="text-base font-black text-zinc-900">${tarjeta.totalTarjeta.toFixed(2)} USD</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <select value={estadoConfirmActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', e.target.value)} className="text-[11px] font-bold rounded-xl px-2.5 py-2 border bg-zinc-50">
-                          <option value="Pendiente">⏳ Sin confirmar</option>
-                          <option value="Confirmado">✅ Confirmado</option>
-                          <option value="Cancelado">❌ Cancelado</option>
-                        </select>
-                        <select value={estadoPagoActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoPago', e.target.value)} className={`text-[11px] font-bold rounded-xl px-2.5 py-2 border ${estadoPagoActual === 'Pagado' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-zinc-900'}`}>
-                          <option value="Sin pagar">💸 Sin pagar</option>
-                          <option value="Verificando">🔵 Verificando</option>
-                          <option value="Pagado">💚 Pagado</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] text-zinc-500">
-                        <span>Fecha pago:</span>
-                        <input type="date" value={fechaPagoActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'fechaPago', e.target.value)} className="border border-zinc-200 rounded-lg px-2 py-1 text-[11px]" />
-                      </div>
-
-                      {estadoPagoActual !== 'Pagado' && estadoConfirmActual !== 'Cancelado' && (
-                        <button
-                          type="button"
-                          onClick={() => notificarCancelacionFaltaPago(tarjeta)}
-                          className="w-full py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition-colors"
-                        >
-                          🚨 Notificar cancelación por falta de pago
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
         {pestanaAdmin === 'stock' && (
@@ -556,7 +570,7 @@ const fechaPagoActual = tarjeta.items[0]?.fechaPago || '';
                     key={g.id}
                     type="button"
                     onClick={() => setGoStockFiltro(g.id)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${goStockFiltro === g.id ? 'bg-pink-600 text-white shadow-2xs' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold ${goStockFiltro === g.id ? 'bg-pink-600 text-white' : 'bg-zinc-100 text-zinc-700'}`}
                   >
                     🧸 {g.title}
                   </button>
@@ -596,7 +610,7 @@ const fechaPagoActual = tarjeta.items[0]?.fechaPago || '';
                   <button
                     type="button"
                     onClick={() => handleGuardarStockBD(prod.id)}
-                    className="w-full bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors"
+                    className="w-full bg-zinc-900 text-white text-xs font-bold py-2.5 rounded-xl"
                   >
                     💾 Guardar stock de este producto
                   </button>
@@ -659,6 +673,7 @@ const fechaPagoActual = tarjeta.items[0]?.fechaPago || '';
             </form>
           </div>
         )}
+
         {pestanaAdmin === 'items' && (
           <div className="bg-white border rounded-2xl p-5 space-y-3">
             <h2 className="text-sm font-extrabold">Todos los Ítems Publicados</h2>
