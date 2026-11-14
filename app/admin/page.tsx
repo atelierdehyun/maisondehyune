@@ -650,7 +650,7 @@ export default function AdminPanelPremium() {
                           );
                         })}
                       </div>
-
+</div>
 
                     <div className="pt-3 border-t border-zinc-100 space-y-2.5">
                       <div className="flex justify-between items-center">
