@@ -5,12 +5,6 @@ import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-const PRECIOS_ENVIO = {
-  quito: 3.5,
-  provincia: 6.5,
-  peru: 0.0,
-};
-
 interface VarianteShop {
   nombre: string;
   precio: number;
@@ -59,15 +53,22 @@ export default function AtelierShop() {
   const [formNombre, setFormNombre] = useState('');
   const [formInstagram, setFormInstagram] = useState('');
   const [formTelefono, setFormTelefono] = useState('');
-  const [formCiudad, setFormCiudad] = useState('');
-  const [formDireccion, setFormDireccion] = useState('');
-  const [formMetodoEnvio, setFormMetodoEnvio] = useState('quito');
   const [datosExito, setDatosExito] = useState<any>(null);
   async function cargarTienda() {
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) setUsuarioEmail(session.user.email);
+      if (session?.user?.email) {
+        const mail = session.user.email.toLowerCase().trim();
+        setUsuarioEmail(mail);
+        const { data: perfil } = await supabase
+          .from('perfiles_joiners')
+          .select('*')
+          .eq('user_email', mail)
+          .maybeSingle();
+        if (perfil?.nombre_completo) setFormNombre(perfil.nombre_completo);
+        if (perfil?.usuario_red) setFormInstagram(perfil.usuario_red.replace('@', ''));
+      }
 
       const { data, error } = await supabase
         .from('tienda_productos')
@@ -165,18 +166,15 @@ export default function AtelierShop() {
 
   const totalItemsCarrito = carrito.reduce((acc, i) => acc + i.cantidad, 0);
   const subtotalCarrito = carrito.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
-  const costoEnvioActual = PRECIOS_ENVIO[formMetodoEnvio as keyof typeof PRECIOS_ENVIO] || 0;
-  const totalFinalCarrito = subtotalCarrito + costoEnvioActual;
   async function procesarPedidoCarrito(e: React.FormEvent) {
     e.preventDefault();
     if (carrito.length === 0) return;
-    if (!formNombre || !formInstagram || !formTelefono || !formCiudad || !formDireccion) {
-      return alert('Completa todos los datos de envío e Instagram 🧸🌸');
+    if (!formNombre || !formInstagram || !formTelefono) {
+      return alert('Completa tu Nombre, Instagram y Teléfono 🧸🌸');
     }
 
     setLoading(true);
 
-    // Agrupar descuentos por producto
     const porProd: Record<number, ItemCarrito[]> = {};
     carrito.forEach((it) => {
       if (!porProd[it.producto.id]) porProd[it.producto.id] = [];
@@ -229,10 +227,11 @@ export default function AtelierShop() {
           tipo_servicio: 'SHOP',
           producto_nombre: resumenArticulos,
           imagen_producto: primeraFoto,
-          total_pagar: totalFinalCarrito,
+          total_pagar: subtotalCarrito,
           estado_pago: 'Sin pagar',
           estado_confirmacion: 'Pendiente',
-          detalles: 'IG: @' + formInstagram + ' | Tlf: ' + formTelefono + ' | Nombre: ' + formNombre + ' | Ciudad: ' + formCiudad + ' | Dir: ' + formDireccion + ' | Envío: ' + formMetodoEnvio.toUpperCase() + ' ($' + costoEnvioActual.toFixed(2) + ')',
+          estado_envio: 'En bodega',
+          detalles: 'IG: @' + formInstagram.replace('@', '') + ' | Tlf: ' + formTelefono + ' | Nombre: ' + formNombre + ' | Envío acumulado (Bodega)',
         },
       ]),
       supabase.from('perfiles_joiners').upsert({
@@ -244,9 +243,7 @@ export default function AtelierShop() {
 
     setDatosExito({
       resumen: resumenArticulos,
-      subtotal: subtotalCarrito,
-      envio: costoEnvioActual,
-      total: totalFinalCarrito,
+      total: subtotalCarrito,
     });
 
     setCarrito([]);
@@ -271,7 +268,7 @@ export default function AtelierShop() {
 
           <div className="flex items-center gap-2.5">
             <Link href="/mi-escritorio" className="text-xs font-bold text-zinc-600 hover:text-pink-600">
-              Mi Cuenta
+              Mi Cuenta / Bodega
             </Link>
 
             <button
@@ -289,7 +286,9 @@ export default function AtelierShop() {
       <div className="max-w-6xl mx-auto px-4 pt-6 space-y-5">
         <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 text-center space-y-2 shadow-2xs">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 uppercase">Hyune Atelier Shop</h1>
-          <p className="text-xs text-zinc-500 max-w-xl mx-auto">Agrega todo lo que quieras a tu carrito y paga un solo envío ✨</p>
+          <p className="text-xs text-zinc-500 max-w-xl mx-auto">
+            Compra tus artículos hoy, guárdalos en tu bodega sin pagar envío aún y solicita un solo envío cuando quieras ✨
+          </p>
 
           <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-left">
             <input type="text" placeholder="🔍 Buscar producto..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs bg-zinc-50" />
@@ -444,7 +443,7 @@ export default function AtelierShop() {
                 <p className="text-xs text-zinc-400 text-center py-12">Tu carrito está vacío 🌸 Agrega productos de la tienda.</p>
               ) : (
                 <>
-                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                     {carrito.map((item) => (
                       <div key={item.keyUnica} className="flex items-center justify-between gap-2 bg-zinc-50 border border-zinc-200/80 p-2.5 rounded-2xl text-xs">
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -465,44 +464,28 @@ export default function AtelierShop() {
                   </div>
 
                   <form onSubmit={procesarPedidoCarrito} className="space-y-2.5 border-t pt-3">
-                    <p className="text-[11px] font-bold uppercase text-zinc-400">Datos de Envío</p>
+                    <p className="text-[11px] font-bold uppercase text-zinc-400">Tus Datos de Joiner</p>
                     <div className="grid grid-cols-2 gap-2">
                       <input type="text" required placeholder="Nombre Completo" value={formNombre} onChange={(e) => setFormNombre(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50" />
                       <input type="text" required placeholder="Instagram (sin @)" value={formInstagram} onChange={(e) => setFormInstagram(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold text-pink-600" />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input type="tel" required placeholder="Teléfono" value={formTelefono} onChange={(e) => setFormTelefono(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50" />
-                      <input type="text" required placeholder="Ciudad / Provincia" value={formCiudad} onChange={(e) => setFormCiudad(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50" />
-                    </div>
-                    <input type="text" required placeholder="Dirección exacta" value={formDireccion} onChange={(e) => setFormDireccion(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 w-full" />
+                    <input type="tel" required placeholder="Teléfono / WhatsApp" value={formTelefono} onChange={(e) => setFormTelefono(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 w-full" />
 
-                    <select value={formMetodoEnvio} onChange={(e) => setFormMetodoEnvio(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold w-full">
-                      <option value="quito">Quito (+$3.50)</option>
-                      <option value="provincia">Otras Provincias (+$6.50)</option>
-                      <option value="peru">Perú Internac. ($0.00)</option>
-                    </select>
+                    <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-2.5 text-[11px] text-indigo-900">
+                      📦 <strong>Envío acumulado:</strong> Ahora solo pagas tus artículos. Cuando quieras recibir todo junto, solicita tu envío desde <strong>Mi Cuenta / Bodega</strong>.
+                    </div>
 
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
                       ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para proofs.
                     </div>
 
-                    <div className="bg-pink-50/70 border border-pink-100 rounded-2xl p-3.5 space-y-1 text-xs">
-                      <div className="flex justify-between text-zinc-600">
-                        <span>Subtotal productos:</span>
-                        <span className="font-bold">${subtotalCarrito.toFixed(2)} USD</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-600">
-                        <span>Costo de envío:</span>
-                        <span className="font-bold">${costoEnvioActual.toFixed(2)} USD</span>
-                      </div>
-                      <div className="flex justify-between text-sm font-black text-zinc-900 border-t border-pink-200/60 pt-1.5 mt-1">
-                        <span>Total + Envío:</span>
-                        <span className="text-pink-600">${totalFinalCarrito.toFixed(2)} USD</span>
-                      </div>
+                    <div className="bg-pink-50/70 border border-pink-100 rounded-2xl p-3.5 flex justify-between items-center text-sm font-black">
+                      <span>Total Artículos:</span>
+                      <span className="text-pink-600">${subtotalCarrito.toFixed(2)} USD</span>
                     </div>
 
                     <button type="submit" className="w-full py-3 bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase rounded-xl">
-                      🔒 Confirmar Pedido (${totalFinalCarrito.toFixed(2)})
+                      🔒 Confirmar Compra (${subtotalCarrito.toFixed(2)})
                     </button>
                   </form>
                 </>
@@ -515,12 +498,11 @@ export default function AtelierShop() {
       {datosExito && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-sm w-full space-y-3 shadow-xl text-center">
-            <h4 className="text-sm font-black text-pink-600 uppercase">✨ ¡Pedido de Tienda Registrado! 🫧</h4>
+            <h4 className="text-sm font-black text-pink-600 uppercase">✨ ¡Compra Registrada! 🫧</h4>
             <div className="bg-zinc-50 p-4 rounded-2xl text-left text-xs space-y-1.5 text-zinc-700 border">
               <p><strong>🏦 Banco Pichincha (Ahorros):</strong> #2213367970</p>
               <p><strong>👤 Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
               <p><strong>📦 Artículos:</strong> {datosExito.resumen}</p>
-              <p><strong>Subtotal:</strong> ${datosExito.subtotal.toFixed(2)} + <strong>Envío:</strong> ${datosExito.envio.toFixed(2)}</p>
               <p className="text-sm font-black text-pink-600 pt-1 border-t">Total a transferir: ${datosExito.total.toFixed(2)} USD</p>
             </div>
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
@@ -528,7 +510,7 @@ export default function AtelierShop() {
             </div>
             <a
               href={'https://wa.me/593999530327?text=' + encodeURIComponent(
-                '¡Hola, Lia! Hice un pedido en la tienda:\n\n• *Nombre:* ' + formNombre + ' (@' + formInstagram + ')\n• *Teléfono:* ' + formTelefono + '\n• *Envío:* ' + formCiudad + ' — ' + formDireccion + '\n• *Productos:* ' + datosExito.resumen + '\n• *Subtotal:* $' + Number(datosExito.subtotal).toFixed(2) + ' | *Envío:* $' + Number(datosExito.envio).toFixed(2) + '\n• *Total Final:* $' + Number(datosExito.total).toFixed(2) + ' USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
+                '¡Hola, Lia! Hice una compra en la tienda:\n\n• *Nombre:* ' + formNombre + ' (@' + formInstagram + ')\n• *Teléfono:* ' + formTelefono + '\n• *Productos:* ' + datosExito.resumen + '\n• *Total Artículos:* $' + Number(datosExito.total).toFixed(2) + ' USD (Envío acumulado en bodega)\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
               )}
               target="_blank"
               rel="noopener noreferrer"
