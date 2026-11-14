@@ -42,11 +42,12 @@ type ProductoAdmin = {
   descripcion: string | null;
   lista_slots?: string | null;
   stock_slots?: { [key: string]: number } | null;
+  imagen_producto?: string | null;
   isShop?: boolean;
   estado_pago?: string;
   due_date?: string;
+  gos?: { title: string };
 };
-
 export default function AdminPanelPremium() {
   const [pestanaAdmin, setPestanaAdmin] = useState<'joiners' | 'lanzar' | 'items' | 'stock'>('joiners');
   const [usuarioEmail, setUsuarioEmail] = useState('');
@@ -65,8 +66,9 @@ export default function AdminPanelPremium() {
   const [productosAdmin, setProductosAdmin] = useState<ProductoAdmin[]>([]);
   const [productosTiendaAdmin, setProductosTiendaAdmin] = useState<ProductoAdmin[]>([]);
   const [inputsStock, setInputsStock] = useState<{ [prodId: number]: { [slot: string]: string } }>({});
-  const [idProductoStockSelected, setIdProductoStockSelected] = useState<number | null>(null);
+  const [goStockFiltro, setGoStockFiltro] = useState<number | 'TODOS'>('TODOS');
   const correoAdmin = 'liahwang1852@gmail.com';
+
   const [newGoTitle, setNewGoTitle] = useState('');
   const [newGoGroup, setNewGoGroup] = useState('stray kids');
   const [newGoImage, setNewGoImage] = useState('');
@@ -76,8 +78,8 @@ export default function AdminPanelPremium() {
   const [newProdSlots, setNewProdSlots] = useState('');
   const [newProdImage, setNewProdImage] = useState('');
   const [newProdQty, setNewProdQty] = useState('1');
+  const [newProdDueDate, setNewProdDueDate] = useState('');
   const [newProdDesc, setNewProdDesc] = useState('');
-
   const [newShopName, setNewShopName] = useState('');
   const [newShopPrice, setNewShopPrice] = useState('');
   const [newShopStatus, setNewShopStatus] = useState('INSTOCK');
@@ -93,7 +95,7 @@ export default function AdminPanelPremium() {
   const [editDesc, setEditDesc] = useState('');
 
   async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop') {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.;
     if (!file) return;
     setSubiendoImagen(true);
     const fileExt = file.name.split('.').pop();
@@ -105,9 +107,7 @@ export default function AdminPanelPremium() {
     else if (targetForm === 'prod') setNewProdImage(publicUrl);
     else setNewShopImage(publicUrl);
     setSubiendoImagen(false);
-    alert('¡Imagen cargada! 📸');
   }
-
   async function cargarDatosHibridos() {
     setLoading(true);
     try {
@@ -118,7 +118,7 @@ export default function AdminPanelPremium() {
         const [{ data: dataGos }, { data: dataAllProds }, { data: dataSeg }, { data: dataPerfiles }, { data: dataTiendaProds }, { data: dataPedidos }] =
           await Promise.all([
             supabase.from('gos').select('*'),
-            supabase.from('productos').select('id, nombre_producto, precio, go_id, cantidad_disponible, descripcion, lista_slots, stock_slots, claims_integrantes, imagen_producto, gos(title)'),
+            supabase.from('productos').select('id, nombre_producto, precio, go_id, cantidad_disponible, descripcion, lista_slots, stock_slots, claims_integrantes, imagen_producto, due_date, gos(title)'),
             supabase.from('seguimiento_claims').select('*'),
             supabase.from('perfiles_joiners').select('*'),
             supabase.from('tienda_productos').select('*'),
@@ -127,7 +127,8 @@ export default function AdminPanelPremium() {
 
         if (dataGos) {
           setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name })));
-          if (dataGos.length > 0 && !selectedGoId) setSelectedGoId(dataGos[0].id);
+          if (dataGos.length > 0 && !selectedGoId) setSelectedGoId(dataGos.id);
+          if (dataGos.length > 0 && goStockFiltro === 'TODOS') setGoStockFiltro(dataGos.id);
         }
 
         const mapaSeg: Record<string, any> = {};
@@ -145,7 +146,7 @@ export default function AdminPanelPremium() {
             agrupadoPorGoYJoiner[keyTarjeta] = {
               tarjetaId: keyTarjeta,
               correo,
-              nombreReal: mapaNombres[correo] || correo.split('@')[0],
+              nombreReal: mapaNombres[correo] || correo.split('@'),
               categoriaTitulo: categoria,
               origen,
               items: [],
@@ -174,35 +175,21 @@ export default function AdminPanelPremium() {
 
               if (typeof dataClaim === 'string') {
                 agregarATarjeta(dataClaim, goTitle, 'GO', {
-                  idUnico: claimKey,
-                  claimKeyBase: claimKey,
-                  origen: 'GO',
-                  goTitulo: goTitle,
-                  productoNombre: p.nombre_producto,
-                  imagenUrl: p.imagen_producto || null,
-                  detalleSlot: integrante,
-                  cantidad: 1,
-                  precioTotal: Number(p.precio || 0),
+                  idUnico: claimKey, claimKeyBase: claimKey, origen: 'GO', goTitulo: goTitle,
+                  productoNombre: p.nombre_producto, imagenUrl: p.imagen_producto || null,
+                  detalleSlot: integrante, cantidad: 1, precioTotal: Number(p.precio || 0),
                   estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                  estadoPago: seg?.estado_pago || 'Sin pagar',
-                  fechaPago: seg?.fecha_pago || '',
+                  estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
                 });
               } else if (typeof dataClaim === 'object') {
                 Object.entries(dataClaim).forEach(([correoCliente, cant]: [string, any]) => {
                   if (!correoCliente || !cant) return;
                   agregarATarjeta(correoCliente, goTitle, 'GO', {
-                    idUnico: `${claimKey}-${correoCliente}`,
-                    claimKeyBase: claimKey,
-                    origen: 'GO',
-                    goTitulo: goTitle,
-                    productoNombre: p.nombre_producto,
-                    imagenUrl: p.imagen_producto || null,
-                    detalleSlot: integrante,
-                    cantidad: Number(cant),
-                    precioTotal: Number(p.precio || 0) * Number(cant),
+                    idUnico: `${claimKey}-${correoCliente}`, claimKeyBase: claimKey, origen: 'GO', goTitulo: goTitle,
+                    productoNombre: p.nombre_producto, imagenUrl: p.imagen_producto || null,
+                    detalleSlot: integrante, cantidad: Number(cant), precioTotal: Number(p.precio || 0) * Number(cant),
                     estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                    estadoPago: seg?.estado_pago || 'Sin pagar',
-                    fechaPago: seg?.fecha_pago || '',
+                    estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
                   });
                 });
               }
@@ -215,7 +202,7 @@ export default function AdminPanelPremium() {
           setProductosTiendaAdmin(dataTiendaProds.map((p: any) => ({
             id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
             cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
-            estado_pago: p.estado_pago, due_date: p.due_date, isShop: true,
+            imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date, isShop: true,
           })));
         }
 
@@ -223,19 +210,13 @@ export default function AdminPanelPremium() {
           dataPedidos.forEach((ped: any) => {
             if (ped.user_email && ped.user_email !== 'STOCK_TIENDA_FISICA') {
               agregarATarjeta(ped.user_email, 'Tienda / Shop', 'SHOP', {
-                idUnico: `shop-${ped.id}`,
-                pedidoId: ped.id,
-                origen: 'SHOP',
-                goTitulo: 'Tienda / Shop',
+                idUnico: `shop-${ped.id}`, pedidoId: ped.id, origen: 'SHOP', goTitulo: 'Tienda / Shop',
                 productoNombre: ped.producto_nombre || ped.detalles || 'Pedido Tienda',
-                imagenUrl: ped.imagen_producto || null,
-                detalleSlot: ped.detalles || 'Compra directa',
-                cantidad: 1,
-                precioTotal: Number(ped.total_pagar || 0),
+                imagenUrl: ped.imagen_producto || null, detalleSlot: ped.detalles || 'Compra directa',
+                cantidad: 1, precioTotal: Number(ped.total_pagar || 0),
                 estadoConfirmacion: ped.estado_confirmacion || 'Pendiente',
-                estadoPago: ped.estado_pago || 'Sin pagar',
-                fechaPago: ped.fecha_pago || '',
-              }, ped.nombre_cliente || ped.user_name);
+                estadoPago: ped.estado_pago || 'Sin pagar', fechaPago: ped.fecha_pago || '',
+              });
             }
           });
         }
@@ -259,7 +240,7 @@ export default function AdminPanelPremium() {
   }
 
   async function actualizarTarjetaCompleta(tarjeta: TarjetaJoiner, campo: 'estadoConfirmacion' | 'estadoPago' | 'fechaPago', valor: string) {
-    const fechaAuto = campo === 'estadoPago' && valor === 'Pagado' ? new Date().toISOString().split('T')[0] : null;
+    const fechaAuto = campo === 'estadoPago' && valor === 'Pagado' ? new Date().toISOString().split('T') : null;
 
     setTarjetasJoiners((prev) =>
       prev.map((t) => {
@@ -301,6 +282,11 @@ export default function AdminPanelPremium() {
     }
   }
 
+  async function notificarCancelacionFaltaPago(tarjeta: TarjetaJoiner) {
+    if (!confirm(`¿Marcar el pedido de ${tarjeta.nombreReal} como CANCELADO por falta de pago y notificarle en su cuenta?`)) return;
+    await actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', 'Cancelado');
+    alert('🚨 Listo: El pedido aparece como CANCELADO y al joiner le saldrá la alerta roja al entrar a su cuenta.');
+  }
   const handleEditInputLocal = (prodId: number, slot: string, valor: string) => {
     setInputsStock((prev) => ({ ...prev, [prodId]: { ...(prev[prodId] || {}), [slot]: valor } }));
   };
@@ -310,7 +296,7 @@ export default function AdminPanelPremium() {
     const jsonNuevo: { [key: string]: number } = {};
     Object.entries(inputsProd).forEach(([slot, val]) => { jsonNuevo[slot] = Math.max(0, parseInt(val) || 0); });
     const { error } = await supabase.from('productos').update({ stock_slots: jsonNuevo }).eq('id', prodId);
-    if (!error) { alert('¡Inventario guardado! ✨'); cargarDatosHibridos(); }
+    if (!error) { alert('¡Stock guardado! ✨'); cargarDatosHibridos(); }
   }
 
   async function handleCreateGO(e: React.FormEvent) {
@@ -319,7 +305,7 @@ export default function AdminPanelPremium() {
     setLoadingForm(true);
     const { error } = await supabase.from('gos').insert([{ title: newGoTitle.toUpperCase(), group_name: newGoGroup.toLowerCase(), status: 'OPEN', imagen_general: newGoImage || null }]);
     setLoadingForm(false);
-    if (!error) { alert('¡GO creado! ✨'); setNewGoTitle(''); cargarDatosHibridos(); }
+    if (!error) { alert('¡GO creado! ✨'); setNewGoTitle(''); setNewGoImage(''); cargarDatosHibridos(); }
   }
 
   async function handleCrearProducto(e: React.FormEvent) {
@@ -332,10 +318,11 @@ export default function AdminPanelPremium() {
     const { error } = await supabase.from('productos').insert([{
       go_id: selectedGoId, nombre_producto: newProdName.toUpperCase(), precio: Number(newProdPrice),
       lista_slots: newProdSlots, imagen_producto: newProdImage || null, claims_integrantes: {},
-      cantidad_disponible: Number(newProdQty), stock_slots: jsonStockInicial, descripcion: newProdDesc || null,
+      cantidad_disponible: Number(newProdQty), stock_slots: jsonStockInicial,
+      due_date: newProdDueDate || null, descripcion: newProdDesc || null,
     }]);
     setLoadingForm(false);
-    if (!error) { alert('¡Artículo publicado! 📦'); setNewProdName(''); setNewProdPrice(''); setNewProdSlots(''); setNewProdDesc(''); cargarDatosHibridos(); }
+    if (!error) { alert('¡Artículo publicado! 📦'); setNewProdName(''); setNewProdPrice(''); setNewProdSlots(''); setNewProdImage(''); setNewProdDesc(''); cargarDatosHibridos(); }
   }
 
   async function handleCrearItemShop(e: React.FormEvent) {
@@ -377,7 +364,6 @@ export default function AdminPanelPremium() {
   }
 
   const categoriasDisponibles = Array.from(new Set(tarjetasJoiners.map((t) => t.categoriaTitulo)));
-
   const tarjetasFiltradas = tarjetasJoiners.filter((t) => {
     if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
     const estaPagado = t.items.every((i) => i.estadoPago === 'Pagado');
@@ -387,7 +373,7 @@ export default function AdminPanelPremium() {
     return true;
   });
 
-  if (loading) return <div className="min-h-screen bg-[#F6F7F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando órdenes por joiner...</div>;
+  if (loading) return <div className="min-h-screen bg-[#F6F7F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando atelier admin...</div>;
   if (usuarioEmail !== correoAdmin) {
     return (
       <div className="min-h-screen bg-[#F6F7F9] flex flex-col items-center justify-center p-4 gap-3">
@@ -398,6 +384,7 @@ export default function AdminPanelPremium() {
   }
 
   const todosLosProductosAdmin = [...productosAdmin, ...productosTiendaAdmin];
+  const productosStockFiltrados = goStockFiltro === 'TODOS' ? productosAdmin : productosAdmin.filter((p) => p.go_id === goStockFiltro);
   const coloresAvatar = ['bg-teal-700', 'bg-pink-600', 'bg-amber-600', 'bg-indigo-600', 'bg-emerald-700', 'bg-purple-700'];
   return (
     <div className="min-h-screen bg-[#F6F7F9] font-sans text-zinc-800 pb-16">
@@ -405,12 +392,12 @@ export default function AdminPanelPremium() {
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
           <div className="flex items-center gap-4">
             <span className="font-black text-base tracking-tight text-zinc-900">🎀 Atelier Admin</span>
-            <div className="flex gap-1 bg-zinc-100 p-1 rounded-xl">
+            <div className="flex flex-wrap gap-1 bg-zinc-100 p-1 rounded-xl">
               {[
                 { id: 'joiners', label: '📋 Órdenes por Joiner' },
+                { id: 'stock', label: '📦 Stock por GO' },
                 { id: 'lanzar', label: '➕ Crear GO / Tienda' },
-                { id: 'items', label: '🛠️ Ítems' },
-                { id: 'stock', label: '📦 Stock' },
+                { id: 'items', label: '🛠️ Editar Ítems' },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -433,7 +420,7 @@ export default function AdminPanelPremium() {
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
                 <h1 className="text-xl font-extrabold text-zinc-900">Órdenes por Joiner</h1>
-                <p className="text-xs text-zinc-500">Cada tarjeta muestra a una persona dentro de un GO específico</p>
+                <p className="text-xs text-zinc-500">Cada tarjeta es una persona dentro de un GO específico</p>
               </div>
               <input
                 type="text"
@@ -448,31 +435,18 @@ export default function AdminPanelPremium() {
               <button
                 type="button"
                 onClick={() => setFiltroCategoria('TODOS')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${filtroCategoria === 'TODOS' ? 'bg-teal-800 text-white' : 'bg-white text-zinc-600 border border-zinc-200'}`}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === 'TODOS' ? 'bg-teal-800 text-white' : 'bg-white text-zinc-600 border border-zinc-200'}`}
               >
-                Todos los GOs ({tarjetasJoiners.length})
+                Todos ({tarjetasJoiners.length})
               </button>
               {categoriasDisponibles.map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setFiltroCategoria(cat)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${filtroCategoria === cat ? 'bg-pink-600 text-white' : 'bg-white text-zinc-700 border border-zinc-200 hover:border-pink-300'}`}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === cat ? 'bg-pink-600 text-white' : 'bg-white text-zinc-700 border border-zinc-200'}`}
                 >
                   {cat === 'Tienda / Shop' ? '🛍️ ' : '🧸 '} {cat}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex gap-2">
-              {(['TODOS', 'PENDIENTES', 'PAGADOS'] as const).map((est) => (
-                <button
-                  key={est}
-                  type="button"
-                  onClick={() => setFiltroEstado(est)}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-bold ${filtroEstado === est ? 'bg-zinc-800 text-white' : 'bg-white text-zinc-500 border border-zinc-200'}`}
-                >
-                  {est === 'TODOS' ? 'Todas' : est === 'PENDIENTES' ? 'Por pagar / Confirmar' : 'Pagadas'}
                 </button>
               ))}
             </div>
@@ -494,34 +468,21 @@ export default function AdminPanelPremium() {
                           <div>
                             {editandoNombreCorreo === tarjeta.correo ? (
                               <div className="flex gap-1">
-                                <input
-                                  type="text"
-                                  value={inputNombreTemp}
-                                  onChange={(e) => setInputNombreTemp(e.target.value)}
-                                  placeholder="Nombre real..."
-                                  className="border rounded px-2 py-0.5 text-xs w-32"
-                                  autoFocus
-                                />
+                                <input type="text" value={inputNombreTemp} onChange={(e) => setInputNombreTemp(e.target.value)} className="border rounded px-2 py-0.5 text-xs w-32" autoFocus />
                                 <button type="button" onClick={() => guardarNombreJoiner(tarjeta.correo)} className="bg-emerald-600 text-white text-[10px] px-2 rounded font-bold">OK</button>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1.5">
                                 <h3 className="text-sm font-extrabold text-zinc-900 capitalize">{tarjeta.nombreReal}</h3>
-                                <button
-                                  type="button"
-                                  onClick={() => { setEditandoNombreCorreo(tarjeta.correo); setInputNombreTemp(tarjeta.nombreReal); }}
-                                  className="text-[11px] text-zinc-400 hover:text-pink-600"
-                                >
-                                  ✏️
-                                </button>
+                                <button type="button" onClick={() => { setEditandoNombreCorreo(tarjeta.correo); setInputNombreTemp(tarjeta.nombreReal); }} className="text-[11px] text-zinc-400 hover:text-pink-600">✏️</button>
                               </div>
                             )}
                             <p className="text-[11px] text-zinc-400">{tarjeta.correo}</p>
                           </div>
                         </div>
 
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${estadoConfirmActual === 'Confirmado' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {estadoConfirmActual === 'Confirmado' ? '✔ Confirmado' : '⏳ Pendiente'}
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${estadoConfirmActual === 'Confirmado' ? 'bg-emerald-50 text-emerald-700' : estadoConfirmActual === 'Cancelado' ? 'bg-rose-100 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
+                          {estadoConfirmActual === 'Confirmado' ? '✔ Confirmado' : estadoConfirmActual === 'Cancelado' ? '❌ Cancelado' : '⏳ Pendiente'}
                         </span>
                       </div>
 
@@ -534,46 +495,30 @@ export default function AdminPanelPremium() {
                         {tarjeta.items.map((it) => (
                           <div key={it.idUnico} className="flex justify-between items-center gap-2 text-xs">
                             <div className="flex items-center gap-2 min-w-0">
-                              {it.imagenUrl ? (
-                                <img src={it.imagenUrl} alt="" className="w-8 h-8 rounded-lg object-cover border shrink-0" />
-                              ) : (
-                                <span className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-xs shrink-0">🧸</span>
-                              )}
+                              {it.imagenUrl ? <img src={it.imagenUrl} alt="" className="w-8 h-8 rounded-lg object-cover border shrink-0" /> : <span className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-xs shrink-0">🧸</span>}
                               <div className="truncate">
                                 <p className="font-semibold text-zinc-800 truncate">{it.productoNombre}</p>
                                 <p className="text-[10px] text-pink-600 font-bold">{it.detalleSlot}</p>
                               </div>
                             </div>
-                            <span className="font-bold text-zinc-700 shrink-0">
-                              {it.cantidad} · ${it.precioTotal.toFixed(2)}
-                            </span>
+                            <span className="font-bold text-zinc-700 shrink-0">{it.cantidad} · ${it.precioTotal.toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
                     </div>
-
-                    <div className="pt-3 border-t border-zinc-100 space-y-3">
+                    <div className="pt-3 border-t border-zinc-100 space-y-2.5">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-zinc-500">Total en este GO</span>
                         <span className="text-base font-black text-zinc-900">${tarjeta.totalTarjeta.toFixed(2)} USD</span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
-                        <select
-                          value={estadoConfirmActual}
-                          onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', e.target.value)}
-                          className={`text-[11px] font-bold rounded-xl px-2.5 py-2 border cursor-pointer ${estadoConfirmActual === 'Confirmado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-zinc-50 text-zinc-700 border-zinc-200'}`}
-                        >
+                        <select value={estadoConfirmActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', e.target.value)} className="text-[11px] font-bold rounded-xl px-2.5 py-2 border bg-zinc-50">
                           <option value="Pendiente">⏳ Sin confirmar</option>
                           <option value="Confirmado">✅ Confirmado</option>
                           <option value="Cancelado">❌ Cancelado</option>
                         </select>
-
-                        <select
-                          value={estadoPagoActual}
-                          onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoPago', e.target.value)}
-                          className={`text-[11px] font-bold rounded-xl px-2.5 py-2 border cursor-pointer ${estadoPagoActual === 'Pagado' ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-amber-400 text-zinc-900 border-amber-500'}`}
-                        >
+                        <select value={estadoPagoActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoPago', e.target.value)} className={`text-[11px] font-bold rounded-xl px-2.5 py-2 border ${estadoPagoActual === 'Pagado' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-zinc-900'}`}>
                           <option value="Sin pagar">💸 Sin pagar</option>
                           <option value="Verificando">🔵 Verificando</option>
                           <option value="Pagado">💚 Pagado</option>
@@ -582,13 +527,18 @@ export default function AdminPanelPremium() {
 
                       <div className="flex items-center justify-between text-[11px] text-zinc-500">
                         <span>Fecha pago:</span>
-                        <input
-                          type="date"
-                          value={fechaPagoActual}
-                          onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'fechaPago', e.target.value)}
-                          className="border border-zinc-200 rounded-lg px-2 py-1 text-[11px]"
-                        />
+                        <input type="date" value={fechaPagoActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'fechaPago', e.target.value)} className="border border-zinc-200 rounded-lg px-2 py-1 text-[11px]" />
                       </div>
+
+                      {estadoPagoActual !== 'Pagado' && estadoConfirmActual !== 'Cancelado' && (
+                        <button
+                          type="button"
+                          onClick={() => notificarCancelacionFaltaPago(tarjeta)}
+                          className="w-full py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition-colors"
+                        >
+                          🚨 Notificar cancelación por falta de pago
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -596,42 +546,117 @@ export default function AdminPanelPremium() {
             </div>
           </div>
         )}
+        {pestanaAdmin === 'stock' && (
+          <div className="space-y-5">
+            <div className="bg-white border border-zinc-200/80 rounded-2xl p-4 space-y-3">
+              <h2 className="text-base font-extrabold text-zinc-900">📦 Gestor de Stock separado por GO</h2>
+              <p className="text-xs text-zinc-500">Elige un GO para ver y editar únicamente los productos de ese catálogo</p>
+              <div className="flex flex-wrap gap-2">
+                {gosAdmin.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setGoStockFiltro(g.id)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${goStockFiltro === g.id ? 'bg-pink-600 text-white shadow-2xs' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}
+                  >
+                    🧸 {g.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {productosStockFiltrados.map((prod) => (
+                <div key={prod.id} className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-4 shadow-2xs">
+                  <div className="flex items-center gap-3 border-b border-zinc-100 pb-3">
+                    <div className="w-14 h-14 rounded-xl bg-zinc-100 border overflow-hidden shrink-0 flex items-center justify-center">
+                      {prod.imagen_producto ? <img src={prod.imagen_producto} alt="" className="w-full h-full object-cover" /> : <span className="text-xl">🧸</span>}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-zinc-900">{prod.nombre_producto}</h3>
+                      <p className="text-xs text-zinc-500">${Number(prod.precio).toFixed(2)} USD</p>
+                    </div>
+                  </div>
+
+                  {inputsStock[prod.id] && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {Object.entries(inputsStock[prod.id]).map(([slot, val]) => (
+                        <div key={slot} className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-2 flex justify-between items-center text-xs">
+                          <span className="font-bold text-zinc-700 truncate pr-1">{slot}</span>
+                          <input
+                            type="number"
+                            value={val}
+                            onChange={(e) => handleEditInputLocal(prod.id, slot, e.target.value)}
+                            className="border border-zinc-300 bg-white rounded-lg w-12 px-1.5 py-1 text-center font-bold"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleGuardarStockBD(prod.id)}
+                    className="w-full bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors"
+                  >
+                    💾 Guardar stock de este producto
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {pestanaAdmin === 'lanzar' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <form onSubmit={handleCreateGO} className="bg-white border rounded-2xl p-5 space-y-3">
-              <h2 className="text-xs font-extrabold uppercase text-pink-600">1. Crear Nuevo GO</h2>
-              <input type="text" placeholder="Título del GO" value={newGoTitle} onChange={(e) => setNewGoTitle(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-full" />
-              <input type="text" placeholder="Grupo (ej: stray kids)" value={newGoGroup} onChange={(e) => setNewGoGroup(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-full" />
-              <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'go')} className="text-xs" />
-              <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-zinc-900 text-white font-bold text-xs py-2.5 rounded-xl">➕ Lanzar GO</button>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <form onSubmit={handleCreateGO} className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-3.5 shadow-2xs">
+              <h2 className="text-sm font-extrabold text-zinc-900">1. Nuevo Group Order</h2>
+              <input type="text" placeholder="Título del GO (ej: KARMA POB)" value={newGoTitle} onChange={(e) => setNewGoTitle(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+              <input type="text" placeholder="Grupo (ej: stray kids)" value={newGoGroup} onChange={(e) => setNewGoGroup(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+              <div className="border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center space-y-2">
+                {newGoImage ? <img src={newGoImage} alt="Preview" className="w-24 h-24 object-cover rounded-xl mx-auto border" /> : <p className="text-xs text-zinc-400">📸 Portada del GO</p>}
+                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'go')} className="text-xs w-full" />
+              </div>
+              <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-zinc-900 text-white font-bold text-xs py-3 rounded-xl">➕ Crear GO</button>
             </form>
 
-            <form onSubmit={handleCrearProducto} className="bg-white border rounded-2xl p-5 space-y-3">
-              <h2 className="text-xs font-extrabold uppercase text-pink-600">2. Agregar Artículo a GO</h2>
-              <select value={selectedGoId || ''} onChange={(e) => setSelectedGoId(Number(e.target.value))} className="border rounded-xl px-3 py-2 text-xs w-full">
+            <form onSubmit={handleCrearProducto} className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-3.5 shadow-2xs">
+              <div className="flex justify-between items-center">
+                <h2 className="text-sm font-extrabold text-pink-600">2. Nuevo Artículo en GO</h2>
+                {selectedGoId && <button type="button" onClick={() => handleEliminarGO(selectedGoId)} className="text-[11px] text-rose-500 underline">Borrar GO</button>}
+              </div>
+              <select value={selectedGoId || ''} onChange={(e) => setSelectedGoId(Number(e.target.value))} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full bg-zinc-50 font-bold">
                 {gosAdmin.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
               </select>
-              {selectedGoId && <button type="button" onClick={() => handleEliminarGO(selectedGoId)} className="text-[11px] text-rose-500 underline">Eliminar este GO</button>}
-              <input type="text" placeholder="Nombre del artículo" value={newProdName} onChange={(e) => setNewProdName(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-full" />
-              <div className="flex gap-2">
-                <input type="number" step="0.01" placeholder="Precio USD" value={newProdPrice} onChange={(e) => setNewProdPrice(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-1/2" />
-                <input type="number" placeholder="Stock por slot" value={newProdQty} onChange={(e) => setNewProdQty(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-1/2" />
+              <input type="text" placeholder="Nombre del artículo" value={newProdName} onChange={(e) => setNewProdName(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="number" step="0.01" placeholder="Precio USD" value={newProdPrice} onChange={(e) => setNewProdPrice(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
+                <input type="number" placeholder="Stock por integrante" value={newProdQty} onChange={(e) => setNewProdQty(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
               </div>
-              <input type="text" placeholder="Slots separados por coma" value={newProdSlots} onChange={(e) => setNewProdSlots(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-full" />
-              <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'prod')} className="text-xs" />
-              <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-pink-600 text-white font-bold text-xs py-2.5 rounded-xl">📦 Publicar en GO</button>
+              <input type="text" placeholder="Integrantes (Bang Chan, Lee Know...)" value={newProdSlots} onChange={(e) => setNewProdSlots(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+              <div>
+                <label className="text-[11px] font-bold text-zinc-500 block mb-1">Fecha límite de pago (alertas automáticas):</label>
+                <input type="date" value={newProdDueDate} onChange={(e) => setNewProdDueDate(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs w-full" />
+              </div>
+              <div className="border-2 border-dashed border-pink-200 rounded-2xl p-4 text-center space-y-2 bg-pink-50/20">
+                {newProdImage ? <img src={newProdImage} alt="Preview" className="w-24 h-24 object-cover rounded-xl mx-auto border" /> : <p className="text-xs text-zinc-400">📸 Foto del producto</p>}
+                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'prod')} className="text-xs w-full" />
+              </div>
+              <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-pink-600 text-white font-bold text-xs py-3 rounded-xl">📦 Publicar en GO</button>
             </form>
 
-            <form onSubmit={handleCrearItemShop} className="bg-white border rounded-2xl p-5 space-y-3">
-              <h2 className="text-xs font-extrabold uppercase text-indigo-600">3. Agregar a Tienda</h2>
-              <input type="text" placeholder="Nombre producto tienda" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-full" />
-              <div className="flex gap-2">
-                <input type="number" step="0.01" placeholder="Precio USD" value={newShopPrice} onChange={(e) => setNewShopPrice(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-1/2" />
-                <input type="number" placeholder="Cantidad" value={newShopQty} onChange={(e) => setNewShopQty(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-1/2" />
+            <form onSubmit={handleCrearItemShop} className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-3.5 shadow-2xs">
+              <h2 className="text-sm font-extrabold text-indigo-600">3. Nuevo Producto Tienda</h2>
+              <input type="text" placeholder="Nombre del producto" value={newShopName} onChange={(e) => setNewShopName(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="number" step="0.01" placeholder="Precio USD" value={newShopPrice} onChange={(e) => setNewShopPrice(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
+                <input type="number" placeholder="Cantidad disponible" value={newShopQty} onChange={(e) => setNewShopQty(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs" />
               </div>
-              <input type="text" placeholder="Descripción" value={newShopDesc} onChange={(e) => setNewShopDesc(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-full" />
-              <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'shop')} className="text-xs" />
-              <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl">🛍️ Publicar en Tienda</button>
+              <input type="text" placeholder="Descripción corta" value={newShopDesc} onChange={(e) => setNewShopDesc(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs w-full" />
+              <div className="border-2 border-dashed border-indigo-200 rounded-2xl p-4 text-center space-y-2 bg-indigo-50/20">
+                {newShopImage ? <img src={newShopImage} alt="Preview" className="w-24 h-24 object-cover rounded-xl mx-auto border" /> : <p className="text-xs text-zinc-400">📸 Foto de tienda</p>}
+                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'shop')} className="text-xs w-full" />
+              </div>
+              <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-indigo-600 text-white font-bold text-xs py-3 rounded-xl">🛍️ Publicar en Tienda</button>
             </form>
           </div>
         )}
@@ -661,29 +686,6 @@ export default function AdminPanelPremium() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {pestanaAdmin === 'stock' && (
-          <div className="bg-white border rounded-2xl p-5 space-y-4">
-            <h2 className="text-sm font-extrabold">Gestor de Stock por Slot</h2>
-            <select value={idProductoStockSelected || ''} onChange={(e) => setIdProductoStockSelected(Number(e.target.value))} className="border rounded-xl px-3 py-2 text-xs w-full">
-              <option value="">-- Elige un producto de GO --</option>
-              {productosAdmin.map((p) => <option key={p.id} value={p.id}>{p.nombre_producto}</option>)}
-            </select>
-            {idProductoStockSelected && inputsStock[idProductoStockSelected] && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {Object.entries(inputsStock[idProductoStockSelected]).map(([slot, val]) => (
-                    <div key={slot} className="border rounded-xl p-2.5 flex justify-between items-center text-xs">
-                      <span className="font-bold">{slot}</span>
-                      <input type="number" value={val} onChange={(e) => handleEditInputLocal(idProductoStockSelected, slot, e.target.value)} className="border rounded w-14 px-2 py-1 text-center" />
-                    </div>
-                  ))}
-                </div>
-                <button type="button" onClick={() => handleGuardarStockBD(idProductoStockSelected)} className="bg-zinc-900 text-white text-xs font-bold px-4 py-2 rounded-xl">💾 Guardar Stock</button>
-              </div>
-            )}
           </div>
         )}
       </div>
