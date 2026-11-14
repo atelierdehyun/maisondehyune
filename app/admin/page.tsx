@@ -292,6 +292,43 @@ export default function AdminPanelPremium() {
     await actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', 'Cancelado');
     alert('🚨 Listo: El pedido aparece como CANCELADO y al joiner le saldrá la alerta roja en su cuenta.');
   }
+    async function handleEliminarTarjetaPedido(tarjeta: TarjetaJoiner) {
+    if (!confirm(`⚠️ ¿Eliminar por completo el pedido de ${tarjeta.nombreReal} en ${tarjeta.categoriaTitulo} y liberar sus slots?`)) return;
+
+    for (const item of tarjeta.items) {
+      if (item.origen === 'GO' && item.claimKeyBase) {
+        const partes = item.claimKeyBase.split('-');
+        const prodId = Number(partes.at(0));
+        const slotNombre = partes.slice(1).join('-');
+
+        const { data: prodDb } = await supabase
+          .from('productos')
+          .select('claims_integrantes')
+          .eq('id', prodId)
+          .single();
+
+        if (prodDb?.claims_integrantes) {
+          const claimsCopia = { ...prodDb.claims_integrantes };
+          if (typeof claimsCopia[slotNombre] === 'string') {
+            delete claimsCopia[slotNombre];
+          } else if (typeof claimsCopia[slotNombre] === 'object' && claimsCopia[slotNombre] !== null) {
+            delete claimsCopia[slotNombre][tarjeta.correo];
+            if (Object.keys(claimsCopia[slotNombre]).length === 0) {
+              delete claimsCopia[slotNombre];
+            }
+          }
+          await supabase.from('productos').update({ claims_integrantes: claimsCopia }).eq('id', prodId);
+        }
+
+        await supabase.from('seguimiento_claims').delete().eq('claim_key', item.claimKeyBase);
+      } else if (item.pedidoId) {
+        await supabase.from('pedidos').delete().eq('id', item.pedidoId);
+      }
+    }
+
+    alert('🗑️ Pedido eliminado y slots liberados ✨');
+    cargarDatosHibridos();
+  }
   const handleEditInputLocal = (prodId: number, slot: string, valor: string) => {
     setInputsStock((prev) => ({ ...prev, [prodId]: { ...(prev[prodId] || {}), [slot]: valor } }));
   };
@@ -592,6 +629,14 @@ export default function AdminPanelPremium() {
                             🚨 Notificar cancelación por falta de pago
                           </button>
                         )}
+                                                <button
+                          type="button"
+                          onClick={() => handleEliminarTarjetaPedido(tarjeta)}
+                          className="w-full py-1.5 rounded-xl bg-zinc-100 hover:bg-rose-600 hover:text-white text-zinc-500 text-[11px] font-bold transition-colors"
+                        >
+                          🗑️ Eliminar pedido / Liberar slots
+                        </button>
+
                       </div>
                     </div>
                   );
