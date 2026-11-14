@@ -438,15 +438,16 @@ export default function Masterlist() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
               ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
             </div>
-            <a
-              href={datosUltimoClaim.urlWhatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setMostrarModuloPago(false)}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
-            >
-              💬 Enviar Comprobante a WhatsApp 🍰
-            </a>
+            <button
+  type="button"
+  onClick={() => {
+    window.location.href = datosUltimoClaim.urlWhatsapp;
+  }}
+  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
+>
+  💬 Enviar Comprobante a WhatsApp 🍰
+</button>
+
           </div>
         </div>
       )}
