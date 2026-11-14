@@ -1,4 +1,4 @@
-+'use client';
+'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import Link from 'next/link';
@@ -35,7 +35,6 @@ type ItemCarritoGo = {
   integrante: string;
   precioUnitario: number;
   cantidad: number;
-  maxStock: number;
 };
 export default function Masterlist() {
   const [bandaSeleccionada, setBandaSeleccionada] = useState<'stray kids' | 'enhypen' | 'otros'>('stray kids');
@@ -90,7 +89,6 @@ export default function Masterlist() {
   useEffect(() => {
     inicializarPagina();
   }, []);
-
   const gosFiltrados = gos.filter((g) => {
     const n = g.group_name.toLowerCase();
     return bandaSeleccionada === 'stray kids'
@@ -103,13 +101,14 @@ export default function Masterlist() {
   const activeGo = gos.find((g) => g.id === goSeleccionado);
   const productosDelGo = productos.filter((p) => p.go_id === goSeleccionado);
   const activeProducto = productos.find((p) => p.id === productoSeleccionado);
+
   function cambiarCantidadEnBolsa(prod: Producto, integrante: string, delta: number, stockDisp: number) {
     if (!usuarioEmail) {
       setMessage('Inicia sesión primero para apartar slots 🎀');
       return;
     }
     setMessage('');
-    const keyUnica = `${prod.id}-${integrante}`;
+    const keyUnica = prod.id + '-' + integrante;
     const goTitulo = gos.find((g) => g.id === prod.go_id)?.title || 'Group Order';
 
     setCarritoGlobal((prev) => {
@@ -132,7 +131,6 @@ export default function Masterlist() {
           integrante,
           precioUnitario: Number(prod.precio || 0),
           cantidad: 1,
-          maxStock: stockDisp,
         },
       ];
     });
@@ -159,12 +157,7 @@ export default function Masterlist() {
 
     for (const [prodIdStr, itemsProd] of Object.entries(porProducto)) {
       const prodId = Number(prodIdStr);
-      const { data: prodActual } = await supabase
-        .from('productos')
-        .select('claims_integrantes')
-        .eq('id', prodId)
-        .single();
-
+      const { data: prodActual } = await supabase.from('productos').select('claims_integrantes').eq('id', prodId).single();
       const claimsActuales = { ...(prodActual?.claims_integrantes || {}) };
 
       itemsProd.forEach((it) => {
@@ -175,31 +168,33 @@ export default function Masterlist() {
         claimsActuales[it.integrante] = slotActual;
       });
 
-      await supabase
-        .from('productos')
-        .update({ claims_integrantes: claimsActuales })
-        .eq('id', prodId);
+      await supabase.from('productos').update({ claims_integrantes: claimsActuales }).eq('id', prodId);
     }
 
     await supabase.from('perfiles_joiners').upsert({
       user_email: mailLimpio,
       nombre_completo: formNombre.trim(),
-      usuario_red: `@${formInstagram.replace('@', '')}`,
+      usuario_red: '@' + formInstagram.replace('@', ''),
     });
 
     const desgloseTexto = carritoGlobal
-      .map((i) => `• [${i.goTitulo}] ${i.productoNombre} — ${i.integrante} (${i.cantidad} und): $${(i.precioUnitario * i.cantidad).toFixed(2)}`)
+      .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — ' + i.integrante + ' (' + i.cantidad + ' und): $' + (i.precioUnitario * i.cantidad).toFixed(2))
       .join('\n');
 
+    const mensajeWsp =
+      '¡Holis, Hyune Atelier! Acabo de apartar slots en la web 🐻✨\n\n' +
+      '💌 *Joiner:* ' + formNombre + ' (@' + formInstagram.replace('@', '') + ')\n' +
+      '📱 *Contacto:* ' + formTelefono + '\n' +
+      '📍 *Destino:* ' + formCiudad + ' — ' + formDireccion + '\n' +
+      '🚚 *Método:* ' + formMetodoEnvio + '\n\n' +
+      '📋 *Desglose de slots:*\n' + desgloseTexto + '\n\n' +
+      '💰 *Total a pagar:* $' + totalDineroBolsa.toFixed(2) + ' USD\n\n' +
+      'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante por aquí. 💗';
+
     setDatosUltimoClaim({
-      nombre: formNombre,
-      ig: formInstagram.replace('@', ''),
-      tlf: formTelefono,
-      ciudad: formCiudad,
-      dir: formDireccion,
-      envio: formMetodoEnvio,
       desglose: desgloseTexto,
       total: totalDineroBolsa,
+      urlWhatsapp: 'https://wa.me' + encodeURIComponent(mensajeWsp),
     });
 
     setCarritoGlobal([]);
@@ -209,7 +204,7 @@ export default function Masterlist() {
     inicializarPagina();
   }
   async function handleCancelarClaimAdmin(prod: Producto, slotName: string, mail: string) {
-    if (!confirm(`¿Liberar el slot de ${slotName} (${mail})?`)) return;
+    if (!confirm('¿Liberar este slot?')) return;
     const claimsCopia = { ...(prod.claims_integrantes || {}) };
     if (claimsCopia[slotName]) {
       delete claimsCopia[slotName][mail];
@@ -225,35 +220,21 @@ export default function Masterlist() {
         ✧ cargando masterlists atelier... 🧸
       </div>
     );
-   }
-  
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-20">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3 sticky top-0 z-30">
         <div className="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-3">
-            <Link href="/shop" className="text-xs font-bold text-zinc-600 hover:text-pink-600">
-              🛍️ Ir a Tienda
-            </Link>
-            <Link href="/mi-escritorio" className="text-xs font-bold text-zinc-600 hover:text-pink-600">
-              👤 Mi Cuenta
-            </Link>
-            {usuarioEmail === correoAdmin && (
-              <Link href="/admin" className="text-xs font-bold text-purple-600">
-                👑 Admin
-              </Link>
-            )}
+            <Link href="/shop" className="text-xs font-bold text-zinc-600 hover:text-pink-600">🛍️ Ir a Tienda</Link>
+            <Link href="/mi-escritorio" className="text-xs font-bold text-zinc-600 hover:text-pink-600">👤 Mi Cuenta</Link>
+            {usuarioEmail === correoAdmin && <Link href="/admin" className="text-xs font-bold text-purple-600">👑 Admin</Link>}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setMostrarBolsa(true)}
-            className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-extrabold px-4 py-2 rounded-full flex items-center gap-2 shadow-2xs"
-          >
+          <button type="button" onClick={() => setMostrarBolsa(true)} className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-extrabold px-4 py-2 rounded-full flex items-center gap-2 shadow-2xs">
             <span>🧸 Mis Claims ({totalUnidadesBolsa})</span>
-            <span className="bg-white text-pink-600 px-2 py-0.5 rounded-full text-[11px]">
-              ${totalDineroBolsa.toFixed(2)}
-            </span>
+            <span className="bg-white text-pink-600 px-2 py-0.5 rounded-full text-[11px]">${totalDineroBolsa.toFixed(2)}</span>
           </button>
         </div>
       </div>
@@ -267,14 +248,7 @@ export default function Masterlist() {
               </div>
               <div className="flex gap-1.5 bg-zinc-100 p-1 rounded-xl">
                 {(['stray kids', 'enhypen', 'otros'] as const).map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => setBandaSeleccionada(b)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold uppercase ${
-                      bandaSeleccionada === b ? 'bg-zinc-950 text-white' : 'text-zinc-500'
-                    }`}
-                  >
+                  <button key={b} type="button" onClick={() => setBandaSeleccionada(b)} className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold uppercase ${bandaSeleccionada === b ? 'bg-zinc-950 text-white' : 'text-zinc-500'}`}>
                     {b}
                   </button>
                 ))}
@@ -294,11 +268,7 @@ export default function Masterlist() {
                   className="p-3 rounded-2xl border border-zinc-200/80 text-left bg-zinc-50/40 hover:border-pink-400 hover:shadow-sm transition-all flex flex-col justify-between"
                 >
                   <div className="w-full h-36 bg-white rounded-xl flex items-center justify-center overflow-hidden mb-2.5 border border-zinc-100">
-                    {g.imagen_general ? (
-                      <img src={g.imagen_general} alt="GO" className="max-h-full max-w-full object-contain" />
-                    ) : (
-                      <span className="text-xs text-zinc-300 font-bold">NO PHOTO</span>
-                    )}
+                    {g.imagen_general ? <img src={g.imagen_general} alt="GO" className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-zinc-300 font-bold">NO PHOTO</span>}
                   </div>
                   <p className="text-xs font-black uppercase text-zinc-900 line-clamp-2">{g.title}</p>
                 </button>
@@ -308,38 +278,20 @@ export default function Masterlist() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
             <div className="md:col-span-5 flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={() => { setGoSeleccionado(null); setProductoSeleccionado(null); }}
-                className="w-full py-2.5 bg-white text-zinc-700 font-bold text-xs uppercase rounded-xl border border-zinc-200 hover:border-pink-300"
-              >
+              <button type="button" onClick={() => { setGoSeleccionado(null); setProductoSeleccionado(null); }} className="w-full py-2.5 bg-white text-zinc-700 font-bold text-xs uppercase rounded-xl border border-zinc-200 hover:border-pink-300">
                 ⬅️ Ver otros catálogos (tu carrito se mantiene)
               </button>
               <div className="bg-white rounded-2xl p-4 border border-zinc-200/80 flex flex-col gap-3 shadow-2xs">
                 <div className="w-full h-52 bg-zinc-50 rounded-xl flex items-center justify-center p-2 border">
-                  <img
-                    src={activeProducto?.imagen_producto || activeGo?.imagen_general || ''}
-                    alt="Preview"
-                    className="max-h-full object-contain rounded-lg"
-                  />
+                  <img src={activeProducto?.imagen_producto || activeGo?.imagen_general || ''} alt="Preview" className="max-h-full object-contain rounded-lg" />
                 </div>
                 <div>
-                  <span className="bg-pink-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">
-                    {activeGo?.status || 'OPEN'}
-                  </span>
+                  <span className="bg-pink-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">{activeGo?.status || 'OPEN'}</span>
                   <h3 className="text-base font-black text-zinc-900 uppercase mt-1">{activeGo?.title}</h3>
-                  {activeProducto?.descripcion && (
-                    <p className="text-xs text-zinc-600 bg-zinc-50 p-3 rounded-xl border mt-2 whitespace-pre-line">
-                      {activeProducto.descripcion}
-                    </p>
-                  )}
+                  {activeProducto?.descripcion && <p className="text-xs text-zinc-600 bg-zinc-50 p-3 rounded-xl border mt-2 whitespace-pre-line">{activeProducto.descripcion}</p>}
                 </div>
               </div>
-              {message && (
-                <p className="text-xs font-bold text-center text-pink-600 bg-pink-50 py-2 rounded-xl border border-pink-200">
-                  {message}
-                </p>
-              )}
+              {message && <p className="text-xs font-bold text-center text-pink-600 bg-pink-50 py-2 rounded-xl border border-pink-200">{message}</p>}
             </div>
 
             <div className="md:col-span-7 flex flex-col gap-4">
@@ -347,16 +299,7 @@ export default function Masterlist() {
                 <p className="text-[11px] font-bold text-zinc-400 uppercase">Ítems en este GO</p>
                 <div className="flex flex-wrap gap-2">
                   {productosDelGo.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setProductoSeleccionado(p.id)}
-                      className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition-all ${
-                        productoSeleccionado === p.id
-                          ? 'bg-zinc-950 text-white border-zinc-950'
-                          : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:border-pink-400'
-                      }`}
-                    >
+                    <button key={p.id} type="button" onClick={() => setProductoSeleccionado(p.id)} className={`px-3 py-2 rounded-xl text-xs font-extrabold border ${productoSeleccionado === p.id ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-zinc-50 text-zinc-700 border-zinc-200'}`}>
                       {p.nombre_producto} (${p.precio})
                     </button>
                   ))}
@@ -366,49 +309,35 @@ export default function Masterlist() {
               {activeProducto && (
                 <div className="bg-white p-5 rounded-2xl border border-zinc-200/80 space-y-4 shadow-2xs">
                   <div className="flex justify-between items-center border-b pb-2">
-                    <span className="text-xs font-extrabold text-zinc-900 uppercase">
-                      Elige tus Slots — {activeProducto.nombre_producto}
-                    </span>
+                    <span className="text-xs font-extrabold text-zinc-900 uppercase">Elige tus Slots — {activeProducto.nombre_producto}</span>
                     <span className="text-xs font-black text-pink-600">${activeProducto.precio} USD c/u</span>
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
-                    {activeProducto.lista_slots
-                      ?.split(',')
-                      .map((s) => s.trim())
-                      .map((int) => {
-                        const totalC = activeProducto.claims_integrantes?.[int]
-                          ? Object.values(activeProducto.claims_integrantes[int]).reduce((a, b) => a + b, 0)
-                          : 0;
-                        const stockD = Math.max(0, (activeProducto.stock_slots?.[int] ?? 0) - totalC);
-                        const enCarrito = carritoGlobal.find((i) => i.keyUnica === `${activeProducto.id}-${int}`)?.cantidad || 0;
-
-                        return (
-                          <div key={int} className="bg-zinc-50/70 p-3 rounded-xl border border-zinc-200/80 flex justify-between items-center">
-                            <div>
-                              <p className="text-xs font-black uppercase text-zinc-800">{int}</p>
-                              <p className="text-[10px] font-mono text-zinc-400">Disp: {stockD}</p>
-                            </div>
-                            {stockD === 0 ? (
-                              <span className="text-[10px] text-zinc-400 font-bold bg-white border px-2.5 py-1 rounded-lg">🔒 OCUPADO</span>
-                            ) : (
-                              <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl border">
-                                <button type="button" onClick={() => cambiarCantidadEnBolsa(activeProducto, int, -1, stockD)} className="font-black text-zinc-500 px-1">-</button>
-                                <span className="font-bold font-mono text-pink-600 text-xs w-4 text-center">{enCarrito}</span>
-                                <button type="button" onClick={() => cambiarCantidadEnBolsa(activeProducto, int, 1, stockD)} className="font-black text-pink-600 px-1">+</button>
-                              </div>
-                            )}
+                    {activeProducto.lista_slots?.split(',').map((s) => s.trim()).map((int) => {
+                      const totalC = activeProducto.claims_integrantes?.[int] ? Object.values(activeProducto.claims_integrantes[int]).reduce((a, b) => a + b, 0) : 0;
+                      const stockD = Math.max(0, (activeProducto.stock_slots?.[int] ?? 0) - totalC);
+                      const enCarrito = carritoGlobal.find((i) => i.keyUnica === activeProducto.id + '-' + int)?.cantidad || 0;
+                      return (
+                        <div key={int} className="bg-zinc-50/70 p-3 rounded-xl border border-zinc-200/80 flex justify-between items-center">
+                          <div>
+                            <p className="text-xs font-black uppercase text-zinc-800">{int}</p>
+                            <p className="text-[10px] font-mono text-zinc-400">Disp: {stockD}</p>
                           </div>
-                        );
-                      })}
+                          {stockD === 0 ? (
+                            <span className="text-[10px] text-zinc-400 font-bold bg-white border px-2.5 py-1 rounded-lg">🔒 OCUPADO</span>
+                          ) : (
+                            <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl border">
+                              <button type="button" onClick={() => cambiarCantidadEnBolsa(activeProducto, int, -1, stockD)} className="font-black text-zinc-500 px-1">-</button>
+                              <span className="font-bold font-mono text-pink-600 text-xs w-4 text-center">{enCarrito}</span>
+                              <button type="button" onClick={() => cambiarCantidadEnBolsa(activeProducto, int, 1, stockD)} className="font-black text-pink-600 px-1">+</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-
                   {totalUnidadesBolsa > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setMostrarBolsa(true)}
-                      className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-2xs"
-                    >
+                    <button type="button" onClick={() => setMostrarBolsa(true)} className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-xs font-black uppercase">
                       🛒 Ver mis {totalUnidadesBolsa} claims y confirmar (${totalDineroBolsa.toFixed(2)} USD)
                     </button>
                   )}
@@ -420,14 +349,12 @@ export default function Masterlist() {
                   <h3 className="text-[11px] font-bold text-zinc-400 uppercase text-center">Panel Control Admin 👑</h3>
                   {Object.keys(activeProducto.claims_integrantes).map((sName) =>
                     Object.entries(activeProducto.claims_integrantes?.[sName] || {}).map(([mail, cant]) => (
-                      <div key={`${sName}-${mail}`} className="bg-zinc-50 border rounded-xl p-2.5 flex justify-between items-center text-xs">
+                      <div key={sName + '-' + mail} className="bg-zinc-50 border rounded-xl p-2.5 flex justify-between items-center text-xs">
                         <div>
                           <p className="font-bold uppercase text-zinc-800">Slot: {sName}</p>
                           <p className="text-zinc-500 font-mono text-[10px]">{mail} ({cant} und)</p>
                         </div>
-                        <button type="button" onClick={() => handleCancelarClaimAdmin(activeProducto, sName, mail)} className="text-[10px] bg-rose-100 text-rose-700 font-bold px-2.5 py-1 rounded-lg">
-                          Liberar
-                        </button>
+                        <button type="button" onClick={() => handleCancelarClaimAdmin(activeProducto, sName, mail)} className="text-[10px] bg-rose-100 text-rose-700 font-bold px-2.5 py-1 rounded-lg">Liberar</button>
                       </div>
                     ))
                   )}
@@ -447,7 +374,7 @@ export default function Masterlist() {
               </div>
 
               {carritoGlobal.length === 0 ? (
-                <p className="text-xs text-zinc-400 text-center py-12">Aún no has agregado ningún slot 🌸 Elige un integrante para sumarlo aquí.</p>
+                <p className="text-xs text-zinc-400 text-center py-12">Aún no has agregado ningún slot 🌸</p>
               ) : (
                 <>
                   <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
@@ -481,18 +408,15 @@ export default function Masterlist() {
                       <option value="Servientrega a Domicilio">🚚 Servientrega a Domicilio</option>
                       <option value="Retiro Físico en Cumbayá">🍰 Retiro Físico en Cumbayá</option>
                     </select>
-
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
                       ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para proofs.
                     </div>
-
                     <div className="bg-pink-50/80 border border-pink-200 rounded-2xl p-3.5 flex justify-between items-center text-sm font-black">
                       <span>Total a transferir:</span>
                       <span className="text-pink-600">${totalDineroBolsa.toFixed(2)} USD</span>
                     </div>
-
                     <button type="submit" disabled={procesando} className="w-full py-3 bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase rounded-xl">
-                      {procesando ? 'Guardando claims...' : `🔒 Confirmar Mis Claims ($${totalDineroBolsa.toFixed(2)})`}
+                      {procesando ? 'Guardando claims...' : '🔒 Confirmar Mis Claims ($' + totalDineroBolsa.toFixed(2) + ')'}
                     </button>
                   </form>
                 </>
@@ -501,7 +425,6 @@ export default function Masterlist() {
           </div>
         </div>
       )}
-
       {mostrarModuloPago && datosUltimoClaim && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
@@ -516,16 +439,7 @@ export default function Masterlist() {
               ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
             </div>
             <a
-              href={`https://wa.me{encodeURIComponent(
-                `¡Holis, Hyune Atelier! Acabo de apartar slots en la web 🐻✨\n\n` +
-                  `💌 *Joiner:* ${datosUltimoClaim.nombre} (@${datosUltimoClaim.ig})\n` +
-                  `📱 *Contacto:* ${datosUltimoClaim.tlf}\n` +
-                  `📍 *Destino:* ${datosUltimoClaim.ciudad} — ${datosUltimoClaim.dir}\n` +
-                  `🚚 *Método:* ${datosUltimoClaim.envio}\n\n` +
-                  `📋 *Desglose de slots:*\n${datosUltimoClaim.desglose}\n\n` +
-                  `💰 *Total a pagar:* $${datosUltimoClaim.total.toFixed(2)} USD\n\n` +
-                  `Confirmo que sigo a @atelierdehyun y adjunto mi comprobante por aquí. 💗`
-              )}`}
+              href={datosUltimoClaim.urlWhatsapp}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setMostrarModuloPago(false)}
