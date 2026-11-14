@@ -440,7 +440,7 @@ export default function Masterlist() {
             </div>
                          <a
                             href={'https://wa.me/593999530327?text=' + encodeURIComponent(
-                '¡Holis, Hyune Atelier! Acabo de apartar slots en la web 🐻✨\n\n💌 Joiner: ' + formNombre + ' (@' + formInstagram + ')\n📱 Contacto: ' + formTelefono + '\n📍 Destino: ' + formCiudad + ' — ' + formDireccion + '\n\n📋 Desglose:\n' + datosUltimoClaim.desglose + '\n\n💰 Total a pagar: $' + Number(datosUltimoClaim.total).toFixed(2) + ' USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante por aquí. 💗'
+                '¡Hola, Lia! Acabo de apartar slots en la web \n\n Joiner: ' + formNombre + ' (@' + formInstagram + ')\n Contacto: ' + formTelefono + '\n Destino: ' + formCiudad + ' — ' + formDireccion + '\n\n Desglose:\n' + datosUltimoClaim.desglose + '\n\n Total a pagar: $' + Number(datosUltimoClaim.total).toFixed(2) + ' USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante por aquí. '
               )}
               rel="noopener noreferrer"
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
