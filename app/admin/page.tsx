@@ -88,6 +88,7 @@ export default function AdminPanelPremium() {
   const [newShopCategoria, setNewShopCategoria] = useState('Photocards');
   const [newShopQty, setNewShopQty] = useState('1');
   const [newShopDesc, setNewShopDesc] = useState('');
+  const [newShopVariantes, setNewShopVariantes] = useState<{ nombre: string; precio: string; stock: string }[]>([]);
 
   const [editandoProducto, setEditandoProducto] = useState<ProductoAdmin | null>(null);
   const [editName, setEditName] = useState('');
@@ -329,30 +330,57 @@ export default function AdminPanelPremium() {
     if (!error) { alert('¡Artículo publicado! 📦'); setNewProdName(''); setNewProdPrice(''); setNewProdSlots(''); setNewProdImage(''); setNewProdDesc(''); cargarDatosHibridos(); }
   }
 
-  async function handleCrearItemShop(e: React.FormEvent) {
+    async function handleCrearItemShop(e: React.FormEvent) {
     e.preventDefault();
-    if (!newShopName || !newShopPrice) return alert('Llena el nombre y el precio 🛍️');
+    const variantesLimpias = newShopVariantes
+      .filter((v) => v.nombre.trim() !== '' && v.precio !== '')
+      .map((v) => ({
+        nombre: v.nombre.trim(),
+        precio: Number(v.precio),
+        stock: Math.max(0, Number(v.stock || 0)),
+      }));
+
+    const tieneVariantes = variantesLimpias.length > 0;
+    if (!newShopName || (!tieneVariantes && !newShopPrice)) {
+      return alert('Pon el nombre del producto y al menos un precio o variante 🛍️');
+    }
+
+    const precioBase = tieneVariantes
+      ? Math.min(...variantesLimpias.map((v) => v.precio))
+      : Number(newShopPrice);
+
+    const stockTotal = tieneVariantes
+      ? variantesLimpias.reduce((acc, v) => acc + v.stock, 0)
+      : Number(newShopQty);
+
     setLoadingForm(true);
     const { error } = await supabase.from('tienda_productos').insert([{
       nombre_producto: newShopName.toUpperCase(),
-      precio: Number(newShopPrice),
-      cantidad_disponible: Number(newShopQty),
+      precio: precioBase,
+      cantidad_disponible: stockTotal,
       descripcion: newShopDesc || null,
-      estado_pago: newShopStatus,
+      estado_pago: stockTotal > 0 ? newShopStatus : 'SOLD OUT',
       due_date: newShopGroup.toLowerCase(),
       grupo: newShopGroup,
       integrante: newShopIntegrante,
       categoria: newShopCategoria,
       imagen_producto: newShopImage || null,
       fotos_extra: newShopExtraImages,
+      variantes: variantesLimpias,
     }]);
     setLoadingForm(false);
     if (!error) {
       alert('¡Producto publicado en la Tienda! 🛍️✨');
-      setNewShopName(''); setNewShopPrice(''); setNewShopDesc(''); setNewShopImage(''); setNewShopExtraImages([]);
+      setNewShopName('');
+      setNewShopPrice('');
+      setNewShopDesc('');
+      setNewShopImage('');
+      setNewShopExtraImages([]);
+      setNewShopVariantes([]);
       cargarDatosHibridos();
     } else alert('Error: ' + error.message);
   }
+
   async function handleEliminarGO(idGo: number) {
     if (!confirm('⚠️ ¿Borrar másterlist entera?')) return;
     const { error } = await supabase.from('gos').delete().eq('id', idGo);
@@ -674,6 +702,69 @@ export default function AdminPanelPremium() {
                   <div className="grid grid-cols-2 gap-3">
                     <input type="number" step="0.01" placeholder="Precio USD *" value={newShopPrice} onChange={(e) => setNewShopPrice(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs font-bold" />
                     <input type="number" min="0" placeholder="Stock *" value={newShopQty} onChange={(e) => setNewShopQty(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs font-bold" />
+                  </div>
+                                    {/* VARIANTES / PHOTOCARDS DENTRO DE LA MISMA FOTO */}
+                  <div className="bg-indigo-50/50 border border-indigo-200/80 rounded-2xl p-3.5 space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-xs font-extrabold text-indigo-900">🃏 Opciones / Photocards en esta foto (Opcional)</p>
+                        <p className="text-[10px] text-indigo-700">Úsalo si subiste una foto grupal o set con precios/stocks distintos</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNewShopVariantes((prev) => [...prev, { nombre: '', precio: '', stock: '1' }])}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700"
+                      >
+                        + Agregar opción
+                      </button>
+                    </div>
+
+                    {newShopVariantes.map((v, idx) => (
+                      <div key={idx} className="grid grid-cols-12 gap-1.5 items-center bg-white p-2 rounded-xl border border-indigo-100">
+                        <input
+                          type="text"
+                          placeholder="Ej: #1 Hyunjin"
+                          value={v.nombre}
+                          onChange={(e) => {
+                            const copia = [...newShopVariantes];
+                            copia[idx].nombre = e.target.value;
+                            setNewShopVariantes(copia);
+                          }}
+                          className="col-span-5 border rounded-lg px-2 py-1.5 text-xs"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Precio $"
+                          value={v.precio}
+                          onChange={(e) => {
+                            const copia = [...newShopVariantes];
+                            copia[idx].precio = e.target.value;
+                            setNewShopVariantes(copia);
+                          }}
+                          className="col-span-3 border rounded-lg px-2 py-1.5 text-xs font-bold"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Stock"
+                          value={v.stock}
+                          onChange={(e) => {
+                            const copia = [...newShopVariantes];
+                            copia[idx].stock = e.target.value;
+                            setNewShopVariantes(copia);
+                          }}
+                          className="col-span-3 border rounded-lg px-2 py-1.5 text-xs text-center font-bold"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNewShopVariantes((prev) => prev.filter((_, i) => i !== idx))}
+                          className="col-span-1 text-rose-500 font-bold text-xs text-center"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
                   </div>
                   <textarea rows={2} placeholder="Descripción..." value={newShopDesc} onChange={(e) => setNewShopDesc(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs w-full bg-zinc-50/50" />
                 </div>
