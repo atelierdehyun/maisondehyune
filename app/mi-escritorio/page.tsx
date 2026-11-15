@@ -237,6 +237,7 @@ export default function MiEscritorioJoiner() {
       setSeleccionadosEnvio({});
       await cargarMisPedidos();
       window.open('https://wa.me' + encodeURIComponent(msgWsp), '_blank');
+
     } else {
       alert('Error: ' + error.message);
     }
@@ -273,6 +274,11 @@ export default function MiEscritorioJoiner() {
   });
 
   const inicialAvatar = (nombreJoiner || usuarioEmail).slice(0, 2).toUpperCase();
+  const itemsSinPagar = todosLosItems.filter(
+  (i) => i.estadoPago !== 'Pagado' && i.estadoConfirmacion !== 'Cancelado'
+);
+const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal, 0);
+
   return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3">
@@ -364,6 +370,47 @@ export default function MiEscritorioJoiner() {
                   📦 Ir a mi bodega para pedir envío ➔
                 </button>
               </div>
+                            {itemsSinPagar.length > 0 && (
+                <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-pink-50 border-2 border-emerald-300 rounded-3xl p-5 shadow-2xs space-y-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase bg-emerald-600 text-white px-2.5 py-0.5 rounded-full">
+                      💳 Resumen listo para pagar
+                    </span>
+                    <h2 className="text-base font-black text-zinc-900 mt-1">
+                      Total pendiente: ${totalPendientePagar.toFixed(2)} USD ({itemsSinPagar.length} artículo(s))
+                    </h2>
+                  </div>
+
+                  <p className="text-xs text-zinc-700">
+                    1. Verifica que tu <strong>Nombre</strong> e <strong>Instagram</strong> estén guardados en tu perfil (a la izquierda).<br />
+                    2. Transfiere al <strong>Banco Pichincha (#2213367970 — Isabel Revollar)</strong> y envíame el comprobante por WhatsApp:
+                  </p>
+
+                  <a
+                    href={
+                      'https://wa.me' +
+                      encodeURIComponent(
+                        '¡Hola, Lia! Quiero reportar el pago de mis pedidos en Atelier:\n\n' +
+                          '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + '\n' +
+                          '• *Instagram:* ' + (instagramJoiner || 'No registrado') + '\n' +
+                          '• *Correo:* ' + usuarioEmail + '\n\n' +
+                          '*Artículos a pagar:*\n' +
+                          itemsSinPagar
+                            .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2))
+                            .join('\n') +
+                          '\n\n• *Total Transferido:* $' + totalPendientePagar.toFixed(2) + ' USD\n\n' +
+                          'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
+                      )
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase rounded-2xl flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    💬 Enviar Resumen de Pago y Comprobante por WhatsApp (${totalPendientePagar.toFixed(2)})
+                  </a>
+                </div>
+              )}
+
 
               {grupos.length === 0 ? (
                 <div className="bg-white border border-zinc-200/80 rounded-3xl p-10 text-center space-y-3">
