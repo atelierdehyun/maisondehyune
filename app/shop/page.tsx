@@ -23,6 +23,8 @@ interface ProductoShop {
   categoria?: string | null;
   era?: string | null;
   tipo_pc?: string | null;
+  destacado?: boolean;
+  badge_especial?: string | null;
   imagen_producto: string | null;
   fotos_extra?: string[] | null;
   cantidad_disponible: number;
@@ -115,6 +117,10 @@ export default function AtelierShop() {
     if (busqueda && !p.nombre_producto.toLowerCase().includes(busqueda.toLowerCase())) return false;
     return true;
   });
+
+  const productosDestacados = productos.filter(
+    (p) => p.destacado && p.estado_pago !== 'SOLD OUT' && p.cantidad_disponible > 0
+  );
 
   const relacionadosMismaEra = productoDetalle
     ? productos.filter((otro) => {
@@ -286,6 +292,49 @@ export default function AtelierShop() {
           </div>
         </div>
 
+        {productosDestacados.length > 0 && (
+          <div className="bg-gradient-to-r from-amber-50 via-pink-50 to-indigo-50 border-2 border-amber-200/80 rounded-3xl p-5 space-y-3 shadow-2xs">
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <span className="text-[10px] font-black uppercase bg-amber-400 text-zinc-950 px-2.5 py-0.5 rounded-full">
+                  ✨ Vitrina Especial
+                </span>
+                <h2 className="text-base font-black text-zinc-900 mt-1">Picks del Atelier & Piezas Recomendadas</h2>
+              </div>
+              <span className="text-[11px] font-semibold text-zinc-500">¡Agrégalos a tu bodega sin pagar envío extra!</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {productosDestacados.slice(0, 4).map((dest) => {
+                const tieneVarsDest = Array.isArray(dest.variantes) && dest.variantes.length > 0;
+                return (
+                  <div key={dest.id} className="bg-white border border-amber-200 rounded-2xl p-2.5 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all">
+                    <div>
+                      <div onClick={() => abrirModalProducto(dest)} className="w-full h-32 bg-zinc-50 rounded-xl overflow-hidden relative cursor-pointer mb-2">
+                        {dest.imagen_producto && <img src={dest.imagen_producto} alt="" className="w-full h-full object-cover" />}
+                        <span className="absolute top-1.5 left-1.5 bg-amber-400 text-zinc-950 text-[9px] font-black px-2 py-0.5 rounded-full shadow-2xs">
+                          {dest.badge_especial || '✨ Destacado'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] font-bold text-pink-600 uppercase truncate">{dest.grupo} {dest.integrante ? `· ${dest.integrante}` : ''}</p>
+                      <h3 onClick={() => abrirModalProducto(dest)} className="text-xs font-extrabold text-zinc-900 line-clamp-1 cursor-pointer">{dest.nombre_producto}</h3>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-zinc-100">
+                      <span className="text-xs font-black text-zinc-900">${Number(dest.precio).toFixed(2)}</span>
+                      <button
+                        type="button"
+                        onClick={() => (tieneVarsDest ? abrirModalProducto(dest) : agregarAlCarrito(dest, null))}
+                        className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-pink-600 text-white text-[10px] font-bold"
+                      >
+                        {tieneVarsDest ? 'Ver' : '+ Llevar'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {productosFiltrados.length === 0 ? (
             <div className="col-span-full bg-white border border-dashed border-zinc-300 rounded-3xl p-12 text-center text-xs text-zinc-400">
@@ -300,7 +349,7 @@ export default function AtelierShop() {
                     <div onClick={() => abrirModalProducto(p)} className="w-full h-44 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100 relative cursor-pointer flex items-center justify-center">
                       {p.imagen_producto ? <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <span className="text-2xl">🛍️</span>}
                       <span className="absolute top-2 left-2 bg-white/95 text-[10px] font-extrabold px-2 py-0.5 rounded-full text-zinc-700 border border-zinc-200">
-                        {p.tipo_pc || p.categoria || 'Álbum PC'}
+                        {p.badge_especial || p.tipo_pc || p.categoria || 'Álbum PC'}
                       </span>
                       {tieneVars && (
                         <span className="absolute top-2 right-2 bg-indigo-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
@@ -309,6 +358,8 @@ export default function AtelierShop() {
                       )}
                       {p.estado_pago === 'SOLD OUT' || p.cantidad_disponible <= 0 ? (
                         <span className="absolute inset-0 bg-zinc-950/60 text-white text-xs font-black flex items-center justify-center uppercase">SOLD OUT</span>
+                      ) : p.cantidad_disponible === 1 ? (
+                        <span className="absolute bottom-2 right-2 bg-rose-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-2xs">🔥 Última unidad</span>
                       ) : (
                         <span className="absolute bottom-2 right-2 bg-zinc-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">Stock: {p.cantidad_disponible}</span>
                       )}
@@ -345,6 +396,7 @@ export default function AtelierShop() {
           )}
         </div>
       </div>
+
       {productoDetalle && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -437,7 +489,7 @@ export default function AtelierShop() {
                 <p className="text-xs text-zinc-400 text-center py-12">Tu carrito está vacío 🌸</p>
               ) : (
                 <>
-                  <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1">
                     {carrito.map((item) => (
                       <div key={item.keyUnica} className="flex items-center justify-between gap-2 bg-zinc-50 border p-2.5 rounded-2xl text-xs">
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -456,6 +508,36 @@ export default function AtelierShop() {
                       </div>
                     ))}
                   </div>
+
+                  {productosDestacados.filter((d) => !carrito.some((c) => c.producto.id === d.id)).length > 0 && (
+                    <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-2.5 space-y-2">
+                      <p className="text-[10px] font-extrabold text-amber-900">✨ ¿Aprovechas tu envío acumulado? Mira esto:</p>
+                      <div className="space-y-1.5">
+                        {productosDestacados
+                          .filter((d) => !carrito.some((c) => c.producto.id === d.id))
+                          .slice(0, 2)
+                          .map((sug) => (
+                            <div key={sug.id} className="bg-white border rounded-xl p-1.5 flex items-center justify-between gap-2 text-[11px]">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {sug.imagen_producto && <img src={sug.imagen_producto} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />}
+                                <div className="truncate">
+                                  <p className="font-bold text-zinc-800 truncate">{sug.nombre_producto}</p>
+                                  <p className="text-[10px] text-pink-600 font-extrabold">${Number(sug.precio).toFixed(2)} · {sug.badge_especial || '✨ Recomendado'}</p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => (Array.isArray(sug.variantes) && sug.variantes.length > 0 ? abrirModalProducto(sug) : agregarAlCarrito(sug, null))}
+                                className="px-2.5 py-1 rounded-lg bg-pink-600 text-white text-[10px] font-bold shrink-0"
+                              >
+                                + Añadir
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
                   <form onSubmit={procesarPedidoCarrito} className="space-y-2.5 border-t pt-3">
                     <div className="grid grid-cols-2 gap-2">
                       <input type="text" required placeholder="Nombre Completo" value={formNombre} onChange={(e) => setFormNombre(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50" />
@@ -491,7 +573,7 @@ export default function AtelierShop() {
               <p className="text-sm font-black text-pink-600 pt-1 border-t">Total a transferir: ${datosExito.total.toFixed(2)} USD</p>
             </div>
             <a
-              href={'https://wa.me/593999530327?text=' + encodeURIComponent(
+              href={'https://wa.me593999530327?text=' + encodeURIComponent(
                 '¡Hola, Lia! Hice una compra en la tienda:\n\n• *Nombre:* ' + formNombre + ' (@' + formInstagram + ')\n• *Teléfono:* ' + formTelefono + '\n• *Productos:* ' + datosExito.resumen + '\n• *Total Artículos:* $' + Number(datosExito.total).toFixed(2) + ' USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
               )}
               target="_blank"
