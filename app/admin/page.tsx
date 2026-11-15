@@ -48,6 +48,7 @@ type ProductoAdmin = {
   due_date?: string;
   era?: string | null;
   tipo_pc?: string | null;
+  grupo?: string | null; e integrante?: string | null;
   variantes?: { nombre: string; precio: number; stock: number }[] | null;
 };
 export default function AdminPanelPremium() {
@@ -106,6 +107,9 @@ export default function AdminPanelPremium() {
   const [editQty, setEditQty] = useState('');
   const [editEra, setEditEra] = useState('');
   const [editTipoPc, setEditTipoPc] = useState('Álbum PC');
+  const [editGrupo, setEditGrupo] = useState('');
+const [editIntegrante, setEditIntegrante] = useState('');
+
   const [editDesc, setEditDesc] = useState('');
   const [editVariantes, setEditVariantes] = useState<{ nombre: string; precio: number; stock: number }[]>([]);
   const [filtroItemsEditar, setFiltroItemsEditar] = useState<string>('TIENDA');
@@ -230,7 +234,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
          id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
          cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
          imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date,
-         era: p.era, tipo_pc: p.tipo_pc, variantes: p.variantes,
+         era: p.era, tipo_pc: p.tipo_pc, grupo: p.grupo, integrante: p.integrante, variantes: p.variantes,
          destacado: p.destacado, badge_especial: p.badge_especial, isShop: true,
        })));
      }
@@ -368,6 +372,27 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
   };
 
   async function handleGuardarStockBD(prodId: number) {
+      async function handleRenombrarSlotGO(prod: ProductoAdmin, slotViejo: string) {
+    const slotNuevo = prompt('Escribe el nombre correcto para "' + slotViejo + '":', slotViejo);
+    if (!slotNuevo || !slotNuevo.trim() || slotNuevo.trim() === slotViejo) return;
+    const limpio = slotNuevo.trim();
+
+    const listaActual = (prod.lista_slots || '').split(',').map((s) => s.trim());
+    const nuevaLista = listaActual.map((s) => (s === slotViejo ? limpio : s)).join(', ');
+
+    const stockActual = { ...(prod.stock_slots || {}) };
+    const cantSlot = stockActual[slotViejo] ?? 1;
+    delete stockActual[slotViejo];
+    stockActual[limpio] = cantSlot;
+
+    await supabase
+      .from('productos')
+      .update({ lista_slots: nuevaLista, stock_slots: stockActual })
+      .eq('id', prod.id);
+
+    cargarDatosHibridos();
+  }
+
     const inputsProd = inputsStock[prodId] || {};
     const jsonNuevo: { [key: string]: number } = {};
     Object.entries(inputsProd).forEach(([slot, val]) => { jsonNuevo[slot] = Math.max(0, parseInt(val) || 0); });
@@ -501,9 +526,37 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
         .from('tienda_productos')
         .update({
           nombre_producto: editName.toUpperCase(),
+          precio: precioMin,  const iniciarEdicion = (p: ProductoAdmin) => {
+    setEditandoProducto(p);
+    setEditName(p.nombre_producto);
+    setEditPrice(String(p.precio));
+    setEditQty(String(p.cantidad_disponible));
+    setEditGrupo(p.grupo || '');
+    setEditIntegrante(p.integrante || '');
+    setEditEra(p.era || '');
+    setEditTipoPc(p.tipo_pc || 'Álbum PC');
+    setEditDesc(p.descripcion || '');
+    setEditVariantes(Array.isArray(p.variantes) ? p.variantes.map((v) => ({ ...v })) : []);
+  };
+
+  async function handleGuardarEdicion(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editandoProducto) return;
+    setLoadingForm(true);
+
+    if (editandoProducto.isShop && editVariantes.length > 0) {
+      const stockTotal = editVariantes.reduce((s, v) => s + Math.max(0, Number(v.stock || 0)), 0);
+      const precioMin = Math.min(...editVariantes.map((v) => Number(v.precio || 0)));
+      await supabase
+        .from('tienda_productos')
+        .update({
+          nombre_producto: editName.toUpperCase(),
           precio: precioMin,
           cantidad_disponible: stockTotal,
           estado_pago: stockTotal > 0 ? 'INSTOCK' : 'SOLD OUT',
+          grupo: editGrupo.trim() || editandoProducto.grupo,
+          due_date: (editGrupo.trim() || editandoProducto.due_date || '').toLowerCase(),
+          integrante: editIntegrante.trim() || 'Grupal / Todos',
           era: editEra.trim().toUpperCase() || null,
           tipo_pc: editTipoPc,
           variantes: editVariantes.map((v) => ({
@@ -524,6 +577,9 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
       };
       if (editandoProducto.isShop) {
         payload.estado_pago = nuevoStock > 0 ? 'INSTOCK' : 'SOLD OUT';
+        payload.grupo = editGrupo.trim() || editandoProducto.grupo;
+        payload.due_date = (editGrupo.trim() || editandoProducto.due_date || '').toLowerCase();
+        payload.integrante = editIntegrante.trim() || 'Grupal / Todos';
         payload.era = editEra.trim().toUpperCase() || null;
         payload.tipo_pc = editTipoPc;
       }
@@ -537,6 +593,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
     setEditandoProducto(null);
     cargarDatosHibridos();
   }
+
   const categoriasGos = Array.from(new Set(tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo)));
   const tarjetasFiltradas = tarjetasJoiners.filter((t) => {
     if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
@@ -812,7 +869,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {Object.entries(inputsStock[prod.id]).map(([slot, val]) => (
                         <div key={slot} className="bg-zinc-50 border rounded-xl p-2 flex justify-between items-center text-xs">
-                          <span className="font-bold truncate pr-1">{slot}</span>
+                          <button   type="button"   onClick={() => handleRenombrarSlotGO(prod, slot)}   className="font-bold truncate pr-1 text-left hover:text-pink-600 flex items-center gap-1"   title="Toca para corregir el nombre" >   <span>{slot}</span>   <span className="text-[10px]">✏️</span> </button>
                           <input type="number" value={val} onChange={(e) => handleEditInputLocal(prod.id, slot, e.target.value)} className="border bg-white rounded-lg w-12 px-1.5 py-1 text-center font-bold" />
                         </div>
                       ))}
@@ -1036,19 +1093,24 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
 
                 <div className="flex flex-wrap gap-2 items-center">
                   <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-white font-bold flex-1 min-w-[200px]" />
+                                  <div className="flex flex-wrap gap-2 items-center">
+                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-white font-bold flex-1 min-w-[200px]" />
                   {editandoProducto.isShop && (
                     <>
+                      <input type="text" placeholder="Grupo (Stray Kids)" value={editGrupo} onChange={(e) => setEditGrupo(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-32 bg-white font-bold" />
+                      <input type="text" placeholder="Integrante (Hyunjin)" value={editIntegrante} onChange={(e) => setEditIntegrante(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-32 bg-white font-bold" />
                       <input type="text" placeholder="Era (ej: ATE, HOP)" value={editEra} onChange={(e) => setEditEra(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-32 bg-white uppercase font-bold" />
                       <select value={editTipoPc} onChange={(e) => setEditTipoPc(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-white font-bold">
                         <option value="Álbum PC">Álbum PC</option>
                         <option value="POB">POB</option>
                         <option value="Lucky Draw">Lucky Draw</option>
-                        <option value="Pop-Up / MD">Pop-Up / MD</option>
+                        <option value="Pop-Up / MD">Pop-Up / Merch</option>
                         <option value="Concierto / Fanmeeting">Concierto / Fanmeeting</option>
                         <option value="Otro">Otro</option>
                       </select>
                     </>
                   )}
+
                   {editVariantes.length === 0 && (
                     <>
                       <input type="number" step="0.01" placeholder="Precio $" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-28 bg-white font-bold" />
