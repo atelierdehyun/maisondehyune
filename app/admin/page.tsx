@@ -46,10 +46,12 @@ type ProductoAdmin = {
   isShop?: boolean;
   estado_pago?: string;
   due_date?: string;
-  era?: string | null;
-  tipo_pc?: string | null;
   grupo?: string | null;
   integrante?: string | null;
+  era?: string | null;
+  tipo_pc?: string | null;
+  destacado?: boolean;
+  badge_especial?: string | null;
   variantes?: { nombre: string; precio: number; stock: number }[] | null;
 };
 export default function AdminPanelPremium() {
@@ -106,19 +108,18 @@ export default function AdminPanelPremium() {
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
   const [editQty, setEditQty] = useState('');
+  const [editGrupo, setEditGrupo] = useState('');
+  const [editIntegrante, setEditIntegrante] = useState('');
   const [editEra, setEditEra] = useState('');
   const [editTipoPc, setEditTipoPc] = useState('Álbum PC');
-  const [editGrupo, setEditGrupo] = useState('');
-const [editIntegrante, setEditIntegrante] = useState('');
-
   const [editDesc, setEditDesc] = useState('');
   const [editVariantes, setEditVariantes] = useState<{ nombre: string; precio: number; stock: number }[]>([]);
   const [filtroItemsEditar, setFiltroItemsEditar] = useState<string>('TIENDA');
   const [busquedaItemsEditar, setBusquedaItemsEditar] = useState('');
-  const [fotoIntegGrupo, setFotoIntegGrupo] = useState('STRAY KIDS');
-const [fotoIntegNombre, setFotoIntegNombre] = useState('');
-const [fotoIntegUrl, setFotoIntegUrl] = useState('');
 
+  const [fotoIntegGrupo, setFotoIntegGrupo] = useState('STRAY KIDS');
+  const [fotoIntegNombre, setFotoIntegNombre] = useState('');
+  const [fotoIntegUrl, setFotoIntegUrl] = useState('');
   async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra' | 'integ') {
     const file = e.target.files ? Array.from(e.target.files).at(0) : null;
     if (!file) return;
@@ -230,16 +231,15 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
           setInputsStock(estructura);
         }
 
-             if (dataTiendaProds) {
-       setProductosTiendaAdmin(dataTiendaProds.map((p: any) => ({
-         id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
-         cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
-         imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date,
-         era: p.era, tipo_pc: p.tipo_pc, grupo: p.grupo, integrante: p.integrante, variantes: p.variantes,
-         destacado: p.destacado, badge_especial: p.badge_especial, isShop: true,
-       })));
-     }
-
+        if (dataTiendaProds) {
+          setProductosTiendaAdmin(dataTiendaProds.map((p: any) => ({
+            id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
+            cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
+            imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date,
+            grupo: p.grupo, integrante: p.integrante, era: p.era, tipo_pc: p.tipo_pc,
+            destacado: p.destacado, badge_especial: p.badge_especial, variantes: p.variantes, isShop: true,
+          })));
+        }
 
         if (dataPedidos) {
           dataPedidos.forEach((ped: any) => {
@@ -373,7 +373,14 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
   };
 
   async function handleGuardarStockBD(prodId: number) {
-      async function handleRenombrarSlotGO(prod: ProductoAdmin, slotViejo: string) {
+    const inputsProd = inputsStock[prodId] || {};
+    const jsonNuevo: { [key: string]: number } = {};
+    Object.entries(inputsProd).forEach(([slot, val]) => { jsonNuevo[slot] = Math.max(0, parseInt(val) || 0); });
+    const { error } = await supabase.from('productos').update({ stock_slots: jsonNuevo }).eq('id', prodId);
+    if (!error) { alert('¡Stock guardado! ✨'); cargarDatosHibridos(); }
+  }
+
+  async function handleRenombrarSlotGO(prod: ProductoAdmin, slotViejo: string) {
     const slotNuevo = prompt('Escribe el nombre correcto para "' + slotViejo + '":', slotViejo);
     if (!slotNuevo || !slotNuevo.trim() || slotNuevo.trim() === slotViejo) return;
     const limpio = slotNuevo.trim();
@@ -392,13 +399,6 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
       .eq('id', prod.id);
 
     cargarDatosHibridos();
-  }
-
-    const inputsProd = inputsStock[prodId] || {};
-    const jsonNuevo: { [key: string]: number } = {};
-    Object.entries(inputsProd).forEach(([slot, val]) => { jsonNuevo[slot] = Math.max(0, parseInt(val) || 0); });
-    const { error } = await supabase.from('productos').update({ stock_slots: jsonNuevo }).eq('id', prodId);
-    if (!error) { alert('¡Stock guardado! ✨'); cargarDatosHibridos(); }
   }
 
   async function handleCreateGO(e: React.FormEvent) {
@@ -461,7 +461,6 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
       cargarDatosHibridos();
     } else alert('Error: ' + error.message);
   }
-
   async function handleEliminarGO(idGo: number) {
     if (!confirm('⚠️ ¿Borrar másterlist entera?')) return;
     const { error } = await supabase.from('gos').delete().eq('id', idGo);
@@ -473,6 +472,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
     const { error } = await supabase.from(isShop ? 'tienda_productos' : 'productos').delete().eq('id', idProd);
     if (!error) cargarDatosHibridos();
   }
+
   async function toggleDestacarShop(prodId: number, actual: boolean, nuevoBadge?: string) {
     const payload: any = { destacado: !actual };
     if (nuevoBadge !== undefined) {
@@ -482,6 +482,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
     await supabase.from('tienda_productos').update(payload).eq('id', prodId);
     cargarDatosHibridos();
   }
+
   async function guardarFotoIntegrante(e: React.FormEvent) {
     e.preventDefault();
     if (!fotoIntegNombre.trim() || !fotoIntegUrl) return alert('Escribe el nombre y sube su foto 📸');
@@ -504,19 +505,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
     }
   }
 
-    const iniciarEdicion = (p: ProductoAdmin) => {
-    setEditandoProducto(p);
-    setEditName(p.nombre_producto);
-    setEditPrice(String(p.precio));
-    setEditQty(String(p.cantidad_disponible));
-    setEditGrupo(p.grupo || '');
-    setEditIntegrante(p.integrante || '');
-    setEditEra(p.era || '');
-    setEditTipoPc(p.tipo_pc || 'Álbum PC');
-    setEditDesc(p.descripcion || '');
-    setEditVariantes(Array.isArray(p.variantes) ? p.variantes.map((v) => ({ ...v })) : []);
-  };
-
+  const iniciarEdicion = (p: ProductoAdmin) => {
     setEditandoProducto(p);
     setEditName(p.nombre_producto);
     setEditPrice(String(p.precio));
@@ -583,7 +572,6 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
     setEditandoProducto(null);
     cargarDatosHibridos();
   }
-
   const categoriasGos = Array.from(new Set(tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo)));
   const tarjetasFiltradas = tarjetasJoiners.filter((t) => {
     if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
@@ -836,7 +824,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
         {pestanaAdmin === 'stock' && (
           <div className="space-y-5">
             <div className="bg-white border rounded-2xl p-4 space-y-3">
-              <h2 className="text-base font-extrabold text-zinc-900">📦 Gestor de Stock separado por GO</h2>
+              <h2 className="text-base font-extrabold text-zinc-900">📦 Gestor de Stock separado por GO (Toca el lápiz para corregir un nombre)</h2>
               <div className="flex flex-wrap gap-2">
                 {gosAdmin.map((g) => (
                   <button key={g.id} type="button" onClick={() => setGoStockFiltro(g.id)} className={`px-3.5 py-2 rounded-xl text-xs font-bold ${goStockFiltro === g.id ? 'bg-pink-600 text-white' : 'bg-zinc-100 text-zinc-700'}`}>
@@ -859,7 +847,10 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {Object.entries(inputsStock[prod.id]).map(([slot, val]) => (
                         <div key={slot} className="bg-zinc-50 border rounded-xl p-2 flex justify-between items-center text-xs">
-                          <button   type="button"   onClick={() => handleRenombrarSlotGO(prod, slot)}   className="font-bold truncate pr-1 text-left hover:text-pink-600 flex items-center gap-1"   title="Toca para corregir el nombre" >   <span>{slot}</span>   <span className="text-[10px]">✏️</span> </button>
+                          <button type="button" onClick={() => handleRenombrarSlotGO(prod, slot)} className="font-bold truncate pr-1 text-left hover:text-pink-600 flex items-center gap-1">
+                            <span>{slot}</span>
+                            <span className="text-[10px]">✏️</span>
+                          </button>
                           <input type="number" value={val} onChange={(e) => handleEditInputLocal(prod.id, slot, e.target.value)} className="border bg-white rounded-lg w-12 px-1.5 py-1 text-center font-bold" />
                         </div>
                       ))}
@@ -923,7 +914,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
                     <input type="text" placeholder="Integrante (ej: Hyunjin)" value={newShopIntegrante} onChange={(e) => setNewShopIntegrante(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <input type="text" placeholder="Era / Álbum (ej: ATE, HOP, NOEASY, ROMANCE)" value={newShopEra} onChange={(e) => setNewShopEra(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs uppercase" />
+                    <input type="text" placeholder="Era / Serie (ej: ATE, HOP, APPLE MUSIC)" value={newShopEra} onChange={(e) => setNewShopEra(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs uppercase" />
                     <select value={newShopTipoPc} onChange={(e) => setNewShopTipoPc(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold">
                       <option value="Álbum PC">💿 Álbum PC</option>
                       <option value="POB">🎁 POB (Pre-Order Benefit)</option>
@@ -983,42 +974,17 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
                 <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'prod')} className="text-xs w-full" />
                 <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-pink-600 text-white font-bold text-xs py-3 rounded-xl">📦 Publicar en GO</button>
               </form>
-                          <form onSubmit={guardarFotoIntegrante} className="bg-white border rounded-2xl p-5 space-y-3">
-              <h2 className="text-sm font-extrabold text-indigo-700">
-                🪞 3. Subir Foto de Perfil de Integrante (Burbujas de Tienda)
-              </h2>
+            </div>
+
+            <form onSubmit={guardarFotoIntegrante} className="bg-white border rounded-2xl p-5 space-y-3">
+              <h2 className="text-sm font-extrabold text-indigo-700">🪞 3. Subir Foto de Perfil de Integrante (Burbujas de Tienda)</h2>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-center">
-                <input
-                  type="text"
-                  placeholder="Grupo (STRAY KIDS)"
-                  value={fotoIntegGrupo}
-                  onChange={(e) => setFotoIntegGrupo(e.target.value)}
-                  className="border rounded-xl px-3 py-2 text-xs uppercase"
-                />
-                <input
-                  type="text"
-                  placeholder="Nombre exacto (ej: Hyunjin)"
-                  value={fotoIntegNombre}
-                  onChange={(e) => setFotoIntegNombre(e.target.value)}
-                  className="border rounded-xl px-3 py-2 text-xs"
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => uploadImageHandler(e, 'integ')}
-                  className="text-xs"
-                />
-                <button
-                  type="submit"
-                  disabled={loadingForm || subiendoImagen}
-                  className="bg-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl"
-                >
-                  💾 Guardar Foto
-                </button>
+                <input type="text" placeholder="Grupo (STRAY KIDS)" value={fotoIntegGrupo} onChange={(e) => setFotoIntegGrupo(e.target.value)} className="border rounded-xl px-3 py-2 text-xs uppercase" />
+                <input type="text" placeholder="Nombre exacto (ej: Hyunjin)" value={fotoIntegNombre} onChange={(e) => setFotoIntegNombre(e.target.value)} className="border rounded-xl px-3 py-2 text-xs" />
+                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'integ')} className="text-xs" />
+                <button type="submit" disabled={loadingForm || subiendoImagen} className="bg-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl">💾 Guardar Foto</button>
               </div>
             </form>
-
-            </div>
           </div>
         )}
         {pestanaAdmin === 'items' && (
@@ -1026,7 +992,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
                 <h2 className="text-xl font-extrabold text-zinc-900">🛠️ Editar Ítems Publicados</h2>
-                <p className="text-xs text-zinc-500">Filtra por Tienda o por GO y edita sus eras, precios o stocks</p>
+                <p className="text-xs text-zinc-500">Filtra por Tienda o por GO y edita sus datos sin volver a subir nada</p>
               </div>
               <input
                 type="text"
@@ -1083,8 +1049,6 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
 
                 <div className="flex flex-wrap gap-2 items-center">
                   <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-white font-bold flex-1 min-w-[200px]" />
-                                  <div className="flex flex-wrap gap-2 items-center">
-                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-white font-bold flex-1 min-w-[200px]" />
                   {editandoProducto.isShop && (
                     <>
                       <input type="text" placeholder="Grupo (Stray Kids)" value={editGrupo} onChange={(e) => setEditGrupo(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-32 bg-white font-bold" />
@@ -1094,13 +1058,12 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
                         <option value="Álbum PC">Álbum PC</option>
                         <option value="POB">POB</option>
                         <option value="Lucky Draw">Lucky Draw</option>
-                        <option value="Pop-Up / MD">Pop-Up / Merch</option>
+                        <option value="Pop-Up / MD">Pop-Up / MD</option>
                         <option value="Concierto / Fanmeeting">Concierto / Fanmeeting</option>
                         <option value="Otro">Otro</option>
                       </select>
                     </>
                   )}
-
                   {editVariantes.length === 0 && (
                     <>
                       <input type="number" step="0.01" placeholder="Precio $" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="border rounded-xl px-3 py-2 text-xs w-28 bg-white font-bold" />
@@ -1187,32 +1150,32 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
                         {goPadre && (
                           <p className="text-[10px] font-bold text-pink-600 uppercase truncate">{goPadre}</p>
                         )}
-                        {p.isShop && (p.era || p.tipo_pc) && (
+                        {p.isShop && (p.integrante || p.era) && (
                           <p className="text-[10px] font-bold text-indigo-600 uppercase truncate">
-                            {[p.era, p.tipo_pc].filter(Boolean).join(' · ')}
+                            {[p.integrante, p.era].filter(Boolean).join(' · ')}
                           </p>
                         )}
                         <h3 className="text-xs font-extrabold text-zinc-900 line-clamp-2 leading-snug">
                           {p.nombre_producto}
                         </h3>
                         <p className="text-xs font-black text-zinc-700 mt-1">${Number(p.precio).toFixed(2)} USD</p>
-                      </div>
+
                         {p.isShop && (
                           <div className="pt-2 space-y-1">
                             <button
                               type="button"
-                              onClick={() => toggleDestacarShop(p.id, !!(p as any).destacado)}
+                              onClick={() => toggleDestacarShop(p.id, !!p.destacado)}
                               className={`w-full py-1 rounded-lg text-[10px] font-extrabold border transition-all ${
-                                (p as any).destacado
+                                p.destacado
                                   ? 'bg-amber-400 text-zinc-950 border-amber-500'
                                   : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:border-amber-400'
                               }`}
                             >
-                              {(p as any).destacado ? '⭐ Destacado en Vitrina' : '☆ Destacar en Vitrina'}
+                              {p.destacado ? '⭐ Destacado en Vitrina' : '☆ Destacar en Vitrina'}
                             </button>
-                            {(p as any).destacado && (
+                            {p.destacado && (
                               <select
-                                value={(p as any).badge_especial || ''}
+                                value={p.badge_especial || ''}
                                 onChange={(e) => toggleDestacarShop(p.id, false, e.target.value)}
                                 className="w-full border border-amber-300 bg-amber-50 rounded-lg px-1.5 py-1 text-[10px] font-bold text-amber-900"
                               >
@@ -1224,6 +1187,7 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
                             )}
                           </div>
                         )}
+                      </div>
 
                       <div className="grid grid-cols-2 gap-1.5 pt-3 mt-3 border-t border-zinc-100">
                         <button
