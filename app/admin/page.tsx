@@ -48,7 +48,8 @@ type ProductoAdmin = {
   due_date?: string;
   era?: string | null;
   tipo_pc?: string | null;
-  grupo?: string | null; e integrante?: string | null;
+  grupo?: string | null;
+  integrante?: string | null;
   variantes?: { nombre: string; precio: number; stock: number }[] | null;
 };
 export default function AdminPanelPremium() {
