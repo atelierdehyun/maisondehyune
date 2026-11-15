@@ -220,14 +220,16 @@ export default function AdminPanelPremium() {
           setInputsStock(estructura);
         }
 
-        if (dataTiendaProds) {
-          setProductosTiendaAdmin(dataTiendaProds.map((p: any) => ({
-            id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
-            cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
-            imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date,
-            era: p.era, tipo_pc: p.tipo_pc, variantes: p.variantes, isShop: true,
-          })));
-        }
+             if (dataTiendaProds) {
+       setProductosTiendaAdmin(dataTiendaProds.map((p: any) => ({
+         id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
+         cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
+         imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date,
+         era: p.era, tipo_pc: p.tipo_pc, variantes: p.variantes,
+         destacado: p.destacado, badge_especial: p.badge_especial, isShop: true,
+       })));
+     }
+
 
         if (dataPedidos) {
           dataPedidos.forEach((ped: any) => {
@@ -439,6 +441,15 @@ export default function AdminPanelPremium() {
     if (!confirm('¿Borrar este ítem?')) return;
     const { error } = await supabase.from(isShop ? 'tienda_productos' : 'productos').delete().eq('id', idProd);
     if (!error) cargarDatosHibridos();
+  }
+  async function toggleDestacarShop(prodId: number, actual: boolean, nuevoBadge?: string) {
+    const payload: any = { destacado: !actual };
+    if (nuevoBadge !== undefined) {
+      payload.destacado = true;
+      payload.badge_especial = nuevoBadge || null;
+    }
+    await supabase.from('tienda_productos').update(payload).eq('id', prodId);
+    cargarDatosHibridos();
   }
 
   const iniciarEdicion = (p: ProductoAdmin) => {
@@ -1073,6 +1084,33 @@ export default function AdminPanelPremium() {
                         </h3>
                         <p className="text-xs font-black text-zinc-700 mt-1">${Number(p.precio).toFixed(2)} USD</p>
                       </div>
+                        {p.isShop && (
+                          <div className="pt-2 space-y-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleDestacarShop(p.id, !!(p as any).destacado)}
+                              className={`w-full py-1 rounded-lg text-[10px] font-extrabold border transition-all ${
+                                (p as any).destacado
+                                  ? 'bg-amber-400 text-zinc-950 border-amber-500'
+                                  : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:border-amber-400'
+                              }`}
+                            >
+                              {(p as any).destacado ? '⭐ Destacado en Vitrina' : '☆ Destacar en Vitrina'}
+                            </button>
+                            {(p as any).destacado && (
+                              <select
+                                value={(p as any).badge_especial || ''}
+                                onChange={(e) => toggleDestacarShop(p.id, false, e.target.value)}
+                                className="w-full border border-amber-300 bg-amber-50 rounded-lg px-1.5 py-1 text-[10px] font-bold text-amber-900"
+                              >
+                                <option value="">✨ Pick del Atelier</option>
+                                <option value="🎁 Freebie Extra">🎁 Freebie Extra</option>
+                                <option value="💎 Pieza Única">💎 Pieza Única</option>
+                                <option value="🎀 Favorito de Lia">🎀 Favorito de Lia</option>
+                              </select>
+                            )}
+                          </div>
+                        )}
 
                       <div className="grid grid-cols-2 gap-1.5 pt-3 mt-3 border-t border-zinc-100">
                         <button
