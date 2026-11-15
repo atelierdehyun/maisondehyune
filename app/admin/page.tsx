@@ -110,7 +110,11 @@ export default function AdminPanelPremium() {
   const [editVariantes, setEditVariantes] = useState<{ nombre: string; precio: number; stock: number }[]>([]);
   const [filtroItemsEditar, setFiltroItemsEditar] = useState<string>('TIENDA');
   const [busquedaItemsEditar, setBusquedaItemsEditar] = useState('');
-  async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra') {
+  const [fotoIntegGrupo, setFotoIntegGrupo] = useState('STRAY KIDS');
+const [fotoIntegNombre, setFotoIntegNombre] = useState('');
+const [fotoIntegUrl, setFotoIntegUrl] = useState('');
+
+  async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra' | 'integ') {
     const file = e.target.files ? Array.from(e.target.files).at(0) : null;
     if (!file) return;
     setSubiendoImagen(true);
@@ -122,6 +126,7 @@ export default function AdminPanelPremium() {
     if (targetForm === 'go') setNewGoImage(publicUrl);
     else if (targetForm === 'prod') setNewProdImage(publicUrl);
     else if (targetForm === 'shop') setNewShopImage(publicUrl);
+    else if (targetForm === 'integ') setFotoIntegUrl(publicUrl);
     else setNewShopExtraImages((prev) => [...prev, publicUrl]);
     setSubiendoImagen(false);
   }
@@ -450,6 +455,27 @@ export default function AdminPanelPremium() {
     }
     await supabase.from('tienda_productos').update(payload).eq('id', prodId);
     cargarDatosHibridos();
+  }
+  async function guardarFotoIntegrante(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fotoIntegNombre.trim() || !fotoIntegUrl) return alert('Escribe el nombre y sube su foto 📸');
+    setLoadingForm(true);
+    const { error } = await supabase.from('integrantes_fotos').upsert(
+      {
+        grupo: fotoIntegGrupo.toUpperCase().trim(),
+        nombre: fotoIntegNombre.trim(),
+        imagen_url: fotoIntegUrl,
+      },
+      { onConflict: 'nombre' }
+    );
+    setLoadingForm(false);
+    if (!error) {
+      setFotoIntegNombre('');
+      setFotoIntegUrl('');
+      alert('🪞 ¡Foto de integrante guardada!');
+    } else {
+      alert('Error: ' + error.message);
+    }
   }
 
   const iniciarEdicion = (p: ProductoAdmin) => {
@@ -910,6 +936,41 @@ export default function AdminPanelPremium() {
                 <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'prod')} className="text-xs w-full" />
                 <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-pink-600 text-white font-bold text-xs py-3 rounded-xl">📦 Publicar en GO</button>
               </form>
+                          <form onSubmit={guardarFotoIntegrante} className="bg-white border rounded-2xl p-5 space-y-3">
+              <h2 className="text-sm font-extrabold text-indigo-700">
+                🪞 3. Subir Foto de Perfil de Integrante (Burbujas de Tienda)
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-center">
+                <input
+                  type="text"
+                  placeholder="Grupo (STRAY KIDS)"
+                  value={fotoIntegGrupo}
+                  onChange={(e) => setFotoIntegGrupo(e.target.value)}
+                  className="border rounded-xl px-3 py-2 text-xs uppercase"
+                />
+                <input
+                  type="text"
+                  placeholder="Nombre exacto (ej: Hyunjin)"
+                  value={fotoIntegNombre}
+                  onChange={(e) => setFotoIntegNombre(e.target.value)}
+                  className="border rounded-xl px-3 py-2 text-xs"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => uploadImageHandler(e, 'integ')}
+                  className="text-xs"
+                />
+                <button
+                  type="submit"
+                  disabled={loadingForm || subiendoImagen}
+                  className="bg-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl"
+                >
+                  💾 Guardar Foto
+                </button>
+              </div>
+            </form>
+
             </div>
           </div>
         )}
