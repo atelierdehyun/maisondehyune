@@ -504,30 +504,19 @@ const [fotoIntegUrl, setFotoIntegUrl] = useState('');
     }
   }
 
-  const iniciarEdicion = (p: ProductoAdmin) => {
+    const iniciarEdicion = (p: ProductoAdmin) => {
     setEditandoProducto(p);
     setEditName(p.nombre_producto);
     setEditPrice(String(p.precio));
     setEditQty(String(p.cantidad_disponible));
+    setEditGrupo(p.grupo || '');
+    setEditIntegrante(p.integrante || '');
     setEditEra(p.era || '');
     setEditTipoPc(p.tipo_pc || 'Álbum PC');
     setEditDesc(p.descripcion || '');
     setEditVariantes(Array.isArray(p.variantes) ? p.variantes.map((v) => ({ ...v })) : []);
   };
 
-  async function handleGuardarEdicion(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editandoProducto) return;
-    setLoadingForm(true);
-
-    if (editandoProducto.isShop && editVariantes.length > 0) {
-      const stockTotal = editVariantes.reduce((s, v) => s + Math.max(0, Number(v.stock || 0)), 0);
-      const precioMin = Math.min(...editVariantes.map((v) => Number(v.precio || 0)));
-      await supabase
-        .from('tienda_productos')
-        .update({
-          nombre_producto: editName.toUpperCase(),
-          precio: precioMin,  const iniciarEdicion = (p: ProductoAdmin) => {
     setEditandoProducto(p);
     setEditName(p.nombre_producto);
     setEditPrice(String(p.precio));
