@@ -5,7 +5,7 @@ import VerificarPerfilModal from "./VerificarPerfilModal";
 
 
 export const metadata: Metadata = {
-  title: "Hyune Atelier — K-Pop Store & GOs",
+  title: "Hyuneatelier",
   description: "Tienda de photocards, merch oficial y Group Orders",
   manifest: "/manifest.json",
   themeColor: "#DB2777",
