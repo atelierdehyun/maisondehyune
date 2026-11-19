@@ -58,6 +58,7 @@ export default function Masterlist() {
   const [formDireccion, setFormDireccion] = useState('');
   const [formMetodoEnvio, setFormMetodoEnvio] = useState('Servientrega a Domicilio');
   const [procesando, setProcesando] = useState(false);
+
   async function inicializarPagina() {
     try {
       setLoading(true);
@@ -73,7 +74,6 @@ export default function Masterlist() {
         if (perfil?.nombre_completo) setFormNombre(perfil.nombre_completo);
         if (perfil?.usuario_red) setFormInstagram(perfil.usuario_red.replace('@', ''));
         if (perfil?.telefono) setFormTelefono(perfil.telefono);
-
       }
       const [{ data: dGos }, { data: dProds }] = await Promise.all([
         supabase.from('gos').select('*'),
@@ -151,7 +151,7 @@ export default function Masterlist() {
     setProcesando(true);
     const mailLimpio = usuarioEmail.toLowerCase().trim();
 
-        const porProducto: Record<number, ItemCarritoGo[]> = {};
+    const porProducto: Record<number, ItemCarritoGo[]> = {};
     carritoGlobal.forEach((item) => {
       if (!porProducto[item.productoId]) porProducto[item.productoId] = [];
       porProducto[item.productoId].push(item);
@@ -193,25 +193,6 @@ export default function Masterlist() {
       telefono: formTelefono.trim(),
     });
 
-      const claimsActuales = { ...(prodActual?.claims_integrantes || {}) };
-
-      itemsProd.forEach((it) => {
-        const slotActual = typeof claimsActuales[it.integrante] === 'object' && claimsActuales[it.integrante] !== null
-          ? { ...claimsActuales[it.integrante] }
-          : {};
-        slotActual[mailLimpio] = (Number(slotActual[mailLimpio]) || 0) + it.cantidad;
-        claimsActuales[it.integrante] = slotActual;
-      });
-
-      await supabase.from('productos').update({ claims_integrantes: claimsActuales }).eq('id', prodId);
-    }
-
-    await supabase.from('perfiles_joiners').upsert({
-      user_email: mailLimpio,
-      nombre_completo: formNombre.trim(),
-      usuario_red: '@' + formInstagram.replace('@', ''),
-    });
-
     const desgloseTexto = carritoGlobal
       .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — ' + i.integrante + ' (' + i.cantidad + ' und): $' + (i.precioUnitario * i.cantidad).toFixed(2))
       .join('\n');
@@ -238,6 +219,7 @@ export default function Masterlist() {
     setProcesando(false);
     inicializarPagina();
   }
+
   async function handleCancelarClaimAdmin(prod: Producto, slotName: string, mail: string) {
     if (!confirm('¿Liberar este slot?')) return;
     const claimsCopia = { ...(prod.claims_integrantes || {}) };
@@ -248,7 +230,6 @@ export default function Masterlist() {
     await supabase.from('productos').update({ claims_integrantes: claimsCopia }).eq('id', prod.id);
     inicializarPagina();
   }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">
@@ -273,6 +254,7 @@ export default function Masterlist() {
           </button>
         </div>
       </div>
+
       <div className="max-w-5xl mx-auto px-4 pt-6">
         {!goSeleccionado ? (
           <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-2xs space-y-5">
@@ -460,6 +442,7 @@ export default function Masterlist() {
           </div>
         </div>
       )}
+
       {mostrarModuloPago && datosUltimoClaim && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
@@ -473,16 +456,14 @@ export default function Masterlist() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
               ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
             </div>
-                         <a
-                            href={'https://wa.me/593999530327?text=' + encodeURIComponent(
-                '¡Hola, Lia! Acabo de apartar slots en la web \n\n Joiner: ' + formNombre + ' (@' + formInstagram + ')\n Contacto: ' + formTelefono + '\n Destino: ' + formCiudad + ' — ' + formDireccion + '\n\n Desglose:\n' + datosUltimoClaim.desglose + '\n\n Total a pagar: $' + Number(datosUltimoClaim.total).toFixed(2) + ' USD\n\nConfirmo que sigo a @atelierdehyun y adjunto mi comprobante por aquí. '
-              )}
+            <a
+              href={datosUltimoClaim.urlWhatsapp}
+              target="_blank"
               rel="noopener noreferrer"
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
             >
               💬 Enviar Comprobante a WhatsApp 🍰
             </a>
-
             <button
               type="button"
               onClick={() => setMostrarModuloPago(false)}
