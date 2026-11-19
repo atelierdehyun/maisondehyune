@@ -58,6 +58,9 @@ export default function AtelierShop() {
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [mostrarCarrito, setMostrarCarrito] = useState(false);
   const [mostrarGuia, setMostrarGuia] = useState(false);
+  const [wishlistIds, setWishlistIds] = useState<number[]>([]);
+const [soloWishlist, setSoloWishlist] = useState(false);
+
   const [productoDetalle, setProductoDetalle] = useState<ProductoShop | null>(null);
   const [varianteSeleccionada, setVarianteSeleccionada] = useState<VarianteShop | null>(null);
   const [fotoActivaDetalle, setFotoActivaDetalle] = useState<string>('');
@@ -74,6 +77,11 @@ export default function AtelierShop() {
           .eq('user_email', mail)
           .maybeSingle();
         setPerfilCliente({
+               const { data: dataWish } = await supabase
+       .from('wishlist_joiners')
+       .select('producto_id')
+       .eq('user_email', mail);
+     setWishlistIds((dataWish || []).map((w: any) => Number(w.producto_id)));
           nombre: perfil?.nombre_completo || mail.split('@').at(0) || 'Joiner',
           ig: perfil?.usuario_red || '',
         });
@@ -123,7 +131,10 @@ export default function AtelierShop() {
     if (filtroEra !== 'TODOS' && eraProd !== filtroEra) return false;
     if (filtroTipoPc !== 'TODOS' && tipoProd !== filtroTipoPc) return false;
     if (busqueda && !p.nombre_producto.toLowerCase().includes(busqueda.toLowerCase())) return false;
+        if (soloWishlist && !wishlistIds.includes(p.id)) return false;
+
     return true;
+    
   });
 
   const productosDestacados = productos.filter(
@@ -146,6 +157,24 @@ export default function AtelierShop() {
         return palabrasBase.some((w) => otro.nombre_producto.toUpperCase().includes(w));
       }).slice(0, 8)
     : [];
+  async function toggleWishlist(prodId: number) {
+    if (!usuarioEmail) return alert('Inicia sesión para guardar en tu Wishlist 🩷');
+    const yaEsta = wishlistIds.includes(prodId);
+    if (yaEsta) {
+      setWishlistIds((prev) => prev.filter((id) => id !== prodId));
+      await supabase
+        .from('wishlist_joiners')
+        .delete()
+        .eq('user_email', usuarioEmail)
+        .eq('producto_id', prodId);
+    } else {
+      setWishlistIds((prev) => [...prev, prodId]);
+      await supabase
+        .from('wishlist_joiners')
+        .insert([{ user_email: usuarioEmail, producto_id: prodId }]);
+    }
+  }
+
   function abrirModalProducto(prod: ProductoShop) {
     setProductoDetalle(prod);
     setFotoActivaDetalle(prod.imagen_producto || '');
