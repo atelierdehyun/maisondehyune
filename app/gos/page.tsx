@@ -72,6 +72,8 @@ export default function Masterlist() {
           .maybeSingle();
         if (perfil?.nombre_completo) setFormNombre(perfil.nombre_completo);
         if (perfil?.usuario_red) setFormInstagram(perfil.usuario_red.replace('@', ''));
+        if (perfil?.telefono) setFormTelefono(perfil.telefono);
+
       }
       const [{ data: dGos }, { data: dProds }] = await Promise.all([
         supabase.from('gos').select('*'),
@@ -149,15 +151,48 @@ export default function Masterlist() {
     setProcesando(true);
     const mailLimpio = usuarioEmail.toLowerCase().trim();
 
-    const porProducto: Record<number, ItemCarritoGo[]> = {};
+        const porProducto: Record<number, ItemCarritoGo[]> = {};
     carritoGlobal.forEach((item) => {
       if (!porProducto[item.productoId]) porProducto[item.productoId] = [];
       porProducto[item.productoId].push(item);
     });
 
+    const ahoraIso = new Date().toISOString();
+
     for (const [prodIdStr, itemsProd] of Object.entries(porProducto)) {
       const prodId = Number(prodIdStr);
       const { data: prodActual } = await supabase.from('productos').select('claims_integrantes').eq('id', prodId).single();
+      const claimsActuales = { ...(prodActual?.claims_integrantes || {}) };
+
+      for (const it of itemsProd) {
+        const slotActual = typeof claimsActuales[it.integrante] === 'object' && claimsActuales[it.integrante] !== null
+          ? { ...claimsActuales[it.integrante] }
+          : {};
+        slotActual[mailLimpio] = (Number(slotActual[mailLimpio]) || 0) + it.cantidad;
+        claimsActuales[it.integrante] = slotActual;
+
+        await supabase.from('seguimiento_claims').upsert({
+          claim_key: prodId + '-' + it.integrante,
+          user_email: mailLimpio,
+          go_title: it.goTitulo,
+          producto_nombre: it.productoNombre,
+          integrante: it.integrante,
+          estado_confirmacion: 'Pendiente',
+          estado_pago: 'Sin pagar',
+          created_at: ahoraIso,
+        });
+      }
+
+      await supabase.from('productos').update({ claims_integrantes: claimsActuales }).eq('id', prodId);
+    }
+
+    await supabase.from('perfiles_joiners').upsert({
+      user_email: mailLimpio,
+      nombre_completo: formNombre.trim(),
+      usuario_red: '@' + formInstagram.replace('@', ''),
+      telefono: formTelefono.trim(),
+    });
+
       const claimsActuales = { ...(prodActual?.claims_integrantes || {}) };
 
       itemsProd.forEach((it) => {
