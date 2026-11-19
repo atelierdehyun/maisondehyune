@@ -278,6 +278,12 @@ export default function MiEscritorioJoiner() {
   (i) => i.estadoPago !== 'Pagado' && i.estadoConfirmacion !== 'Cancelado'
 );
 const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal, 0);
+    const estampitasGanadas = todosLosItems.filter(
+    (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.precioTotal >= 20
+  ).length;
+  const estampitasActuales = estampitasGanadas % 10;
+  const premiosDisponibles = Math.floor(estampitasGanadas / 10);
+
 
   return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
@@ -337,10 +343,67 @@ const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal
             <p><strong>Banco Pichincha (Ahorros):</strong> #2213367970</p>
             <p><strong>Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
             <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-lg mt-1 font-semibold">
-              ⚠️ Recuerda seguir a <strong>@atelierdehyun</strong> en Instagram para poder enviarte tus proofs.
+              ⚠️ Recuerda seguir a <strong>@hyuneatelier</strong> en Instagram para poder subir tus proofs, si no lo haces, se te bloqueará.
             </p>
           </div>
         </div>
+                  <div className="bg-gradient-to-br from-pink-50 via-rose-50 to-amber-50 border-2 border-pink-200 rounded-3xl p-4 space-y-3 shadow-2xs">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="text-[10px] font-black uppercase bg-pink-600 text-white px-2.5 py-0.5 rounded-full">
+                  🎀 Loyalty Card
+                </span>
+                <h3 className="text-sm font-black text-zinc-900 mt-1">Pasaporte de Estampitas</h3>
+              </div>
+              <span className="text-xs font-black text-pink-600 bg-white border border-pink-200 px-2.5 py-1 rounded-xl">
+                {premiosDisponibles > 0 ? '10 / 10 🎉' : `${estampitasActuales} / 10`}
+              </span>
+            </div>
+
+            <p className="text-[11px] text-zinc-600 leading-snug">
+              Ganas <strong>1 estampita</strong> por cada compra pagada de <strong>$20+ USD</strong>. ¡Al juntar 10 te llevas <strong>1 PC de tu Wishlist o sorpresa extra</strong>! ✨
+            </p>
+
+            <div className="grid grid-cols-5 gap-2 py-1">
+              {Array.from({ length: 10 }).map((_, idx) => {
+                const llena = premiosDisponibles > 0 || idx < estampitasActuales;
+                return (
+                  <div
+                    key={idx}
+                    className={`h-10 rounded-2xl flex items-center justify-center text-sm font-black border-2 transition-all ${
+                      llena
+                        ? 'bg-pink-600 border-pink-600 text-white shadow-2xs scale-105'
+                        : 'bg-white/80 border-dashed border-pink-300 text-pink-300'
+                    }`}
+                  >
+                    {llena ? '🧸' : idx + 1}
+                  </div>
+                );
+              })}
+            </div>
+
+            {premiosDisponibles > 0 && (
+              <a
+                href={
+                  'https://wa.me' +
+                  encodeURIComponent(
+                    '¡Holis, Lia! 🎉 Completé mis 10 estampitas en Hyune Atelier y quiero reclamar mi PC de Wishlist / sorpresa extra:\n\n' +
+                      '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + ' (' + (instagramJoiner || usuarioEmail) + ')\n' +
+                      '• *Mi Wishlist guardada:* ' +
+                      (wishlistProds.length > 0
+                        ? wishlistProds.map((w) => w.nombre_producto).join(', ')
+                        : 'Sorpresa del Atelier ✨')
+                  )
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-zinc-950 font-black text-[11px] uppercase rounded-xl flex items-center justify-center gap-1.5 shadow-2xs"
+              >
+                🎁 ¡Reclamar mi PC de Wishlist por WhatsApp!
+              </a>
+            )}
+          </div>
+
         <div className="lg:col-span-8 space-y-4">
           {itemsCancelados.length > 0 && (
             <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 flex items-start gap-3">
