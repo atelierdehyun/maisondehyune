@@ -91,14 +91,15 @@ export default function Masterlist() {
   useEffect(() => {
     inicializarPagina();
   }, []);
-  const gosFiltrados = gos.filter((g) => {
-    const n = g.group_name.toLowerCase();
+    const gosFiltrados = gos.filter((g) => {
+    const n = (g.group_name || '').toLowerCase().replace(/\s+/g, '');
     return bandaSeleccionada === 'stray kids'
-      ? n === 'stray kids'
+      ? n.includes('straykids') || n.includes('skz')
       : bandaSeleccionada === 'enhypen'
-      ? n === 'enhypen'
-      : n !== 'stray kids' && n !== 'enhypen';
+      ? n.includes('enhypen')
+      : !n.includes('straykids') && !n.includes('skz') && !n.includes('enhypen');
   });
+
 
   const activeGo = gos.find((g) => g.id === goSeleccionado);
   const productosDelGo = productos.filter((p) => p.go_id === goSeleccionado);
