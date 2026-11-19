@@ -81,7 +81,6 @@ export default function AdminPanelPremium() {
   const [inputsStock, setInputsStock] = useState<{ [prodId: number]: { [slot: string]: string } }>({});
   const [goStockFiltro, setGoStockFiltro] = useState<number | 'TODOS'>('TODOS');
   const correoAdmin = 'liahwang1852@gmail.com';
-
   const [newGoTitle, setNewGoTitle] = useState('');
   const [newGoGroup, setNewGoGroup] = useState('stray kids');
   const [newGoImage, setNewGoImage] = useState('');
@@ -163,7 +162,6 @@ export default function AdminPanelPremium() {
 
         if (dataGos) {
           setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name, estado_logistica: g.estado_logistica || 'Esperando cierre' })));
-
           const primerGo = dataGos.at(0);
           if (primerGo && !selectedGoId) setSelectedGoId(primerGo.id);
           if (primerGo && goStockFiltro === 'TODOS') setGoStockFiltro(primerGo.id);
@@ -284,7 +282,7 @@ export default function AdminPanelPremium() {
     await supabase.from('perfiles_joiners').upsert({
       user_email: correo.toLowerCase().trim(),
       nombre_completo: inputNombreTemp.trim(),
-    });
+    }, { onConflict: 'user_email' });
     setTarjetasJoiners((prev) =>
       prev.map((t) => (t.correo === correo ? { ...t, nombreReal: inputNombreTemp.trim() } : t))
     );
@@ -304,11 +302,6 @@ export default function AdminPanelPremium() {
     if (valStr === undefined) return;
     const monto = Math.max(0, Number(valStr) || 0);
     const llegoAlTotal = monto >= tarjeta.totalTarjeta && tarjeta.totalTarjeta > 0;
-    async function actualizarEstadoLogisticaGO(goId: number, nuevoEstado: string) {
-  await supabase.from('gos').update({ estado_logistica: nuevoEstado }).eq('id', goId);
-  setGosAdmin((prev) => prev.map((g) => (g.id === goId ? { ...g, estado_logistica: nuevoEstado } : g)));
-}
-
 
     for (let i = 0; i < tarjeta.items.length; i++) {
       const it = tarjeta.items[i];
@@ -333,6 +326,11 @@ export default function AdminPanelPremium() {
     }
     alert(llegoAlTotal ? '💚 ¡Pago completado al 100%!' : '💰 ¡Abono guardado!');
     cargarDatosHibridos();
+  }
+
+  async function actualizarEstadoLogisticaGO(goId: number, nuevoEstado: string) {
+    await supabase.from('gos').update({ estado_logistica: nuevoEstado }).eq('id', goId);
+    setGosAdmin((prev) => prev.map((g) => (g.id === goId ? { ...g, estado_logistica: nuevoEstado } : g)));
   }
 
   async function actualizarTarjetaCompleta(tarjeta: TarjetaJoiner, campo: 'estadoConfirmacion' | 'estadoPago' | 'fechaPago', valor: string) {
@@ -377,9 +375,7 @@ export default function AdminPanelPremium() {
         }).eq('id', item.pedidoId);
       }
     }
-  }
-
-  async function handleMarcarEnviado(solId: number) {
+  }  async function handleMarcarEnviado(solId: number) {
     const guia = (guiasTemp[solId] || '').trim();
     const { error } = await supabase
       .from('solicitudes_envio')
@@ -395,6 +391,7 @@ export default function AdminPanelPremium() {
     if (!confirm('¿Marcar el pedido de ' + tarjeta.nombreReal + ' como CANCELADO por falta de pago?')) return;
     await actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', 'Cancelado');
   }
+
   async function handleEliminarUnSoloItem(tarjeta: TarjetaJoiner, item: ItemTarjeta) {
     if (!confirm('¿Quitar "' + item.productoNombre + '" (' + item.detalleSlot + ') del pedido de ' + tarjeta.nombreReal + '?')) return;
 
@@ -445,7 +442,6 @@ export default function AdminPanelPremium() {
     alert('🗑️ Pedido eliminado y slots liberados ✨');
     cargarDatosHibridos();
   }
-
   const handleEditInputLocal = (prodId: number, slot: string, valor: string) => {
     setInputsStock((prev) => ({ ...prev, [prodId]: { ...(prev[prodId] || {}), [slot]: valor } }));
   };
@@ -478,6 +474,7 @@ export default function AdminPanelPremium() {
 
     cargarDatosHibridos();
   }
+
   async function handleCreateGO(e: React.FormEvent) {
     e.preventDefault();
     if (!newGoTitle) return alert('Pon el título 🎀');
@@ -503,7 +500,6 @@ export default function AdminPanelPremium() {
     setLoadingForm(false);
     if (!error) { alert('¡Artículo publicado! 📦'); setNewProdName(''); setNewProdPrice(''); setNewProdSlots(''); setNewProdImage(''); setNewProdDesc(''); cargarDatosHibridos(); }
   }
-
   async function handleCrearItemShop(e: React.FormEvent) {
     e.preventDefault();
     const variantesLimpias = newShopVariantes
@@ -550,6 +546,7 @@ export default function AdminPanelPremium() {
     const { error } = await supabase.from(isShop ? 'tienda_productos' : 'productos').delete().eq('id', idProd);
     if (!error) cargarDatosHibridos();
   }
+
   async function toggleDestacarShop(prodId: number, actual: boolean, nuevoBadge?: string) {
     const payload: any = { destacado: !actual };
     if (nuevoBadge !== undefined) {
@@ -581,7 +578,6 @@ export default function AdminPanelPremium() {
       alert('Error: ' + error.message);
     }
   }
-
   const iniciarEdicion = (p: ProductoAdmin) => {
     setEditandoProducto(p);
     setEditName(p.nombre_producto);
@@ -649,26 +645,13 @@ export default function AdminPanelPremium() {
     setEditandoProducto(null);
     cargarDatosHibridos();
   }
-  const categoriasGos = Array.from(
-  new Set([
-    ...gosAdmin.map((g) => g.title),
-    ...tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo),
-    
-        onChange={(e) => actualizarEstadoLogisticaGO(goSel.id, e.target.value)}
-        className="border border-pink-300 bg-white rounded-xl px-3 py-1.5 font-extrabold text-zinc-900"
-      >
-        <option value="Esperando cierre">⏳ Esperando cierre (Not secured)</option>
-        <option value="Pedido realizado">🟡 Pedido realizado (Secured)</option>
-        <option value="En bodega Corea / Japón">🇰🇷 En bodega Corea / Japón</option>
-        <option value="En camino a Ecuador">✈️ En camino a Ecuador</option>
-        <option value="Llegó a hyuneatelier">📦 ¡Llegó a hyuneatelier! (Listo para envío)</option>
-      </select>
-    </div>
-  );
-})()}
 
-  ])
-);
+  const categoriasGos = Array.from(
+    new Set([
+      ...gosAdmin.map((g) => g.title),
+      ...tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo),
+    ])
+  );
 
   const tarjetasFiltradas = tarjetasJoiners
     .filter((t) => {
@@ -686,7 +669,7 @@ export default function AdminPanelPremium() {
   if (usuarioEmail !== correoAdmin) {
     return (
       <div className="min-h-screen bg-[#F6F7F9] flex flex-col items-center justify-center p-4 gap-3">
-        <p className="text-sm font-bold text-rose-600 bg-white border border-rose-100 px-6 py-3 rounded-full">✕ Acceso exclusivo de Atelier de Hyun 🎀</p>
+        <p className="text-sm font-bold text-rose-600 bg-white border border-rose-100 px-6 py-3 rounded-full">✕ Acceso exclusivo de hyuneatelier 🎀</p>
         <Link href="/gos" className="text-xs underline text-zinc-500">Volver al catálogo ➔</Link>
       </div>
     );
@@ -701,7 +684,7 @@ export default function AdminPanelPremium() {
       <div className="bg-white border-b border-zinc-200 px-5 py-3.5">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
           <div className="flex items-center gap-4">
-            <span className="font-black text-base tracking-tight text-zinc-900">🎀 Atelier Admin</span>
+            <span className="font-black text-base tracking-tight text-zinc-900">🎀 hyuneatelier Admin</span>
             <div className="flex flex-wrap gap-1 bg-zinc-100 p-1 rounded-xl">
               {[
                 { id: 'joiners', label: '📋 Órdenes por Joiner' },
@@ -726,7 +709,7 @@ export default function AdminPanelPremium() {
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
                 <h1 className="text-xl font-extrabold text-zinc-900">Órdenes por Joiner</h1>
-                <p className="text-xs text-zinc-500">Toca un GO para ver la Tabla de Prioridad (#1, #2, #3...) y registrar abonos</p>
+                <p className="text-xs text-zinc-500">Toca un GO para ver la Tabla de Prioridad (#1, #2, #3...) y cobrar por WhatsApp</p>
               </div>
               <input type="text" placeholder="Buscar por nombre o correo..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="bg-white border border-zinc-200 rounded-xl px-4 py-2 text-xs w-full sm:w-72 shadow-2xs" />
             </div>
@@ -818,38 +801,37 @@ export default function AdminPanelPremium() {
                             )}
                             <p className="text-[11px] text-zinc-400 break-all">{tarjeta.correo}</p>
                             {tarjeta.telefono ? (
-  <div className="pt-1 space-y-1">
-    <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
-    {estadoPagoActual !== 'Pagado' && estadoConfirmActual !== 'Cancelado' && (() => {
-      const soloDigitos = tarjeta.telefono!.replace(/\D/g, '');
-      const numeroWsp = soloDigitos.startsWith('0')
-        ? '593' + soloDigitos.slice(1)
-        : soloDigitos.startsWith('593')
-        ? soloDigitos
-        : '593' + soloDigitos;
-      const faltaPagar = Math.max(0, tarjeta.totalTarjeta - (tarjeta.abonadoTarjeta || 0));
-      const resumenItems = tarjeta.items.map((it) => it.productoNombre + ' (' + it.detalleSlot + ')').join(', ');
-      const textoCobro =
-        '¡Holis, ' + tarjeta.nombreReal + '! 🎀 Te escribo de *Hyune Atelier* para recordarte que tienes un saldo pendiente de *$' +
-        faltaPagar.toFixed(2) + ' USD* por tu pedido en *' + tarjeta.categoriaTitulo + '* (' + resumenItems + ').\n\n' +
-        'Quedo atenta a tu comprobante por aquí para mantener tus apartados ✨';
+                              <div className="pt-1 space-y-1">
+                                <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
+                                {estadoPagoActual !== 'Pagado' && estadoConfirmActual !== 'Cancelado' && (() => {
+                                  const soloDigitos = tarjeta.telefono!.replace(/\D/g, '');
+                                  const numeroWsp = soloDigitos.startsWith('0')
+                                    ? '593' + soloDigitos.slice(1)
+                                    : soloDigitos.startsWith('593')
+                                    ? soloDigitos
+                                    : '593' + soloDigitos;
+                                  const faltaPagar = Math.max(0, tarjeta.totalTarjeta - (tarjeta.abonadoTarjeta || 0));
+                                  const resumenItems = tarjeta.items.map((it) => it.productoNombre + ' (' + it.detalleSlot + ')').join(', ');
+                                  const textoCobro =
+                                    '¡Holis, ' + tarjeta.nombreReal + '! 🎀 Te escribo de *hyuneatelier* para recordarte que tienes un saldo pendiente de *$' +
+                                    faltaPagar.toFixed(2) + ' USD* por tu pedido en *' + tarjeta.categoriaTitulo + '* (' + resumenItems + ').\n\n' +
+                                    'Quedo atenta a tu comprobante por aquí para mantener tus apartados ✨';
 
-      return (
-        <a
-          href={'https://wa.me' + numeroWsp + '?text=' + encodeURIComponent(textoCobro)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-2xs"
-        >
-          💬 Cobrar por WhatsApp (${faltaPagar.toFixed(2)})
-        </a>
-      );
-    })()}
-  </div>
-) : (
-  <p className="text-[10px] font-semibold text-rose-500">⚠️ Sin teléfono registrado</p>
-)}
-
+                                  return (
+                                    <a
+                                      href={'https://wa.me' + numeroWsp + '?text=' + encodeURIComponent(textoCobro)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-2xs"
+                                    >
+                                      💬 Cobrar por WhatsApp (${faltaPagar.toFixed(2)})
+                                    </a>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] font-semibold text-rose-500">⚠️ Sin teléfono registrado</p>
+                            )}
                           </div>
                         </div>
                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${estadoConfirmActual === 'Confirmado' ? 'bg-emerald-50 text-emerald-700' : estadoConfirmActual === 'Cancelado' ? 'bg-rose-100 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
@@ -863,7 +845,6 @@ export default function AdminPanelPremium() {
                         </span>
                         <span>{tarjeta.items.length} orden(es)</span>
                       </div>
-
                       <div className="space-y-3">
                         {tarjeta.items.map((it) => {
                           const partesRaw = it.origen === 'SHOP' ? it.productoNombre.split(' + ').map((s) => s.trim()).filter(Boolean) : [it.productoNombre];
@@ -1042,7 +1023,7 @@ export default function AdminPanelPremium() {
         {pestanaAdmin === 'stock' && (
           <div className="space-y-5">
             <div className="bg-white border rounded-2xl p-4 space-y-3">
-              <h2 className="text-base font-extrabold text-zinc-900">📦 Gestor de Stock separado por GO (Toca el lápiz para corregir un nombre)</h2>
+              <h2 className="text-base font-extrabold text-zinc-900">📦 Gestor de Stock y Estado Logístico por GO</h2>
               <div className="flex flex-wrap gap-2">
                 {gosAdmin.map((g) => (
                   <button key={g.id} type="button" onClick={() => setGoStockFiltro(g.id)} className={`px-3.5 py-2 rounded-xl text-xs font-bold ${goStockFiltro === g.id ? 'bg-pink-600 text-white' : 'bg-zinc-100 text-zinc-700'}`}>
@@ -1050,28 +1031,29 @@ export default function AdminPanelPremium() {
                   </button>
                 ))}
               </div>
-              {typeof goStockFiltro === 'number' && (() => {
-  const goSel = gosAdmin.find((g) => g.id === goStockFiltro);
-  if (!goSel) return null;
-  return (
-    <div className="bg-pink-50/80 border border-pink-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-      <span className="font-extrabold text-pink-800">✈️ Estado logístico de este GO (visible para joiners):</span>
-      <select
-        value={goSel.estado_logistica || 'Esperando cierre'}
-        onChange={(e) => actualizarEstadoLogisticaGO(goSel.id, e.target.value)}
-        className="border border-pink-300 bg-white rounded-xl px-3 py-1.5 font-extrabold text-zinc-900"
-      >
-        <option value="Esperando cierre">⏳ Esperando cierre (Not secured)</option>
-        <option value="Pedido realizado">🟡 Pedido realizado (Secured)</option>
-        <option value="En bodega Corea / Japón">🇰🇷 En bodega Corea / Japón</option>
-        <option value="En camino a Ecuador">✈️ En camino a Ecuador</option>
-        <option value="Llegó a hyuneatelier">📦 ¡Llegó a hyuneatelier! (Listo para envío)</option>
-      </select>
-    </div>
-  );
-})()}
 
+              {typeof goStockFiltro === 'number' && (() => {
+                const goSel = gosAdmin.find((g) => g.id === goStockFiltro);
+                if (!goSel) return null;
+                return (
+                  <div className="bg-pink-50/80 border border-pink-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="font-extrabold text-pink-800">✈️ Estado logístico de este GO:</span>
+                    <select
+                      value={goSel.estado_logistica || 'Esperando cierre'}
+                      onChange={(e) => actualizarEstadoLogisticaGO(goSel.id, e.target.value)}
+                      className="border border-pink-300 bg-white rounded-xl px-3 py-1.5 font-extrabold text-zinc-900"
+                    >
+                      <option value="Esperando cierre">⏳ Esperando cierre (Not secured)</option>
+                      <option value="Pedido realizado">🟡 Pedido realizado (Secured)</option>
+                      <option value="En bodega Corea / Japón">🇰🇷 En bodega Corea / Japón</option>
+                      <option value="En camino a Ecuador">✈️ En camino a Ecuador</option>
+                      <option value="Llegó a hyuneatelier">📦 ¡Llegó a hyuneatelier! (Listo para envío)</option>
+                    </select>
+                  </div>
+                );
+              })()}
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {productosStockFiltrados.map((prod) => (
                 <div key={prod.id} className="bg-white border rounded-2xl p-5 space-y-4 shadow-2xs">
@@ -1142,7 +1124,7 @@ export default function AdminPanelPremium() {
                     <input type="text" placeholder="Grupo (Stray Kids, Enhypen...)" value={newShopGroup} onChange={(e) => setNewShopGroup(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <select value={newShopCategoria} onChange={(e) => setNewShopCategoria(e.target.value)} className="border rounded-xl px-3 py-2.5 text-xs font-bold">
+                    <select value={newShopCategoria} onChange={(e) => setNewShopCategoria(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold">
                       <option value="Photocards">🃏 Photocards</option>
                       <option value="Álbumes">💿 Álbumes</option>
                       <option value="Plushies">🧸 Plushies</option>
@@ -1153,8 +1135,8 @@ export default function AdminPanelPremium() {
                     <input type="text" placeholder="Integrante (ej: Hyunjin)" value={newShopIntegrante} onChange={(e) => setNewShopIntegrante(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <input type="text" placeholder="Era / Serie (ej: ATE, HOP, APPLE MUSIC)" value={newShopEra} onChange={(e) => setNewShopEra(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs uppercase" />
-                    <select value={newShopTipoPc} onChange={(e) => setNewShopTipoPc(e.target.value)} className="border rounded-xl px-3 py-2.5 text-xs font-bold">
+                    <input type="text" placeholder="Era / Serie (ej: ATE, HOP)" value={newShopEra} onChange={(e) => setNewShopEra(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs uppercase" />
+                    <select value={newShopTipoPc} onChange={(e) => setNewShopTipoPc(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold">
                       <option value="Álbum PC">💿 Álbum PC</option>
                       <option value="POB">🎁 POB (Pre-Order Benefit)</option>
                       <option value="Lucky Draw">🎰 Lucky Draw</option>
