@@ -22,7 +22,6 @@ type ItemTarjeta = {
   estadoPago: string;
   fechaPago: string;
   creadoEn?: string;
-
 };
 
 type TarjetaJoiner = {
@@ -34,6 +33,7 @@ type TarjetaJoiner = {
   origen: 'GO' | 'SHOP';
   items: ItemTarjeta[];
   totalTarjeta: number;
+  abonadoTarjeta: number;
 };
 
 type ProductoAdmin = {
@@ -73,6 +73,7 @@ export default function AdminPanelPremium() {
   const [inputNombreTemp, setInputNombreTemp] = useState('');
   const [editandoTotalId, setEditandoTotalId] = useState<number | null>(null);
   const [inputTotalTemp, setInputTotalTemp] = useState('');
+  const [inputsAbono, setInputsAbono] = useState<Record<string, string>>({});
 
   const [gosAdmin, setGosAdmin] = useState<Go[]>([]);
   const [productosAdmin, setProductosAdmin] = useState<ProductoAdmin[]>([]);
@@ -171,17 +172,17 @@ export default function AdminPanelPremium() {
         if (dataSeg) dataSeg.forEach((s: any) => { mapaSeg[s.claim_key] = s; });
 
         const mapaNombres: Record<string, string> = {};
-const mapaTelefonos: Record<string, string> = {};
-if (dataPerfiles) {
-  dataPerfiles.forEach((pf: any) => {
-    const m = pf.user_email.toLowerCase();
-    if (pf.nombre_completo) mapaNombres[m] = pf.nombre_completo;
-    if (pf.telefono) mapaTelefonos[m] = pf.telefono;
-  });
-}
+        const mapaTelefonos: Record<string, string> = {};
+        if (dataPerfiles) {
+          dataPerfiles.forEach((pf: any) => {
+            const m = pf.user_email.toLowerCase();
+            if (pf.nombre_completo) mapaNombres[m] = pf.nombre_completo;
+            if (pf.telefono) mapaTelefonos[m] = pf.telefono;
+          });
+        }
 
         const agrupadoPorGoYJoiner: Record<string, TarjetaJoiner> = {};
-        const agregarATarjeta = (correoRaw: string, categoria: string, origen: 'GO' | 'SHOP', item: ItemTarjeta) => {
+        const agregarATarjeta = (correoRaw: string, categoria: string, origen: 'GO' | 'SHOP', item: ItemTarjeta, abonoItem = 0) => {
           const correo = correoRaw.toLowerCase().trim();
           const keyTarjeta = categoria + '__' + correo;
           if (!agrupadoPorGoYJoiner[keyTarjeta]) {
@@ -195,12 +196,13 @@ if (dataPerfiles) {
               origen,
               items: [],
               totalTarjeta: 0,
+              abonadoTarjeta: 0,
             };
           }
           agrupadoPorGoYJoiner[keyTarjeta].items.push(item);
           agrupadoPorGoYJoiner[keyTarjeta].totalTarjeta += item.precioTotal;
+          agrupadoPorGoYJoiner[keyTarjeta].abonadoTarjeta += Number(abonoItem || 0);
         };
-
         if (dataAllProds) {
           setProductosAdmin(dataAllProds);
           const estructura: typeof inputsStock = {};
@@ -223,8 +225,9 @@ if (dataPerfiles) {
                   productoNombre: p.nombre_producto, imagenUrl: p.imagen_producto || null,
                   detalleSlot: integrante, cantidad: 1, precioTotal: Number(p.precio || 0),
                   estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                  estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '', creadoEn: seg?.created_at || '',
-                });
+                  estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
+                  creadoEn: seg?.created_at || '',
+                }, Number(seg?.monto_abonado || 0));
               } else if (typeof dataClaim === 'object') {
                 Object.entries(dataClaim).forEach(([correoCliente, cant]: [string, any]) => {
                   if (!correoCliente || !cant) return;
@@ -233,8 +236,9 @@ if (dataPerfiles) {
                     productoNombre: p.nombre_producto, imagenUrl: p.imagen_producto || null,
                     detalleSlot: integrante, cantidad: Number(cant), precioTotal: Number(p.precio || 0) * Number(cant),
                     estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                    estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '', creadoEn: seg?.created_at || '',
-                  });
+                    estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
+                    creadoEn: seg?.created_at || '',
+                  }, Number(seg?.monto_abonado || 0));
                 });
               }
             });
@@ -262,7 +266,8 @@ if (dataPerfiles) {
                 cantidad: 1, precioTotal: Number(ped.total_pagar || 0),
                 estadoConfirmacion: ped.estado_confirmacion || 'Pendiente',
                 estadoPago: ped.estado_pago || 'Sin pagar', fechaPago: ped.fecha_pago || '',
-              });
+                creadoEn: ped.created_at || '',
+              }, Number(ped.monto_abonado || 0));
             }
           });
         }
@@ -290,6 +295,37 @@ if (dataPerfiles) {
     if (isNaN(val) || val < 0) { setEditandoTotalId(null); return; }
     await supabase.from('pedidos').update({ total_pagar: val }).eq('id', pedidoId);
     setEditandoTotalId(null);
+    cargarDatosHibridos();
+  }
+
+  async function guardarAbonoTarjeta(tarjeta: TarjetaJoiner) {
+    const valStr = inputsAbono[tarjeta.tarjetaId];
+    if (valStr === undefined) return;
+    const monto = Math.max(0, Number(valStr) || 0);
+    const llegoAlTotal = monto >= tarjeta.totalTarjeta && tarjeta.totalTarjeta > 0;
+
+    for (let i = 0; i < tarjeta.items.length; i++) {
+      const it = tarjeta.items[i];
+      const abonoItem = i === 0 ? monto : 0;
+      if (it.origen === 'GO' && it.claimKeyBase) {
+        await supabase.from('seguimiento_claims').upsert({
+          claim_key: it.claimKeyBase,
+          user_email: tarjeta.correo,
+          go_title: tarjeta.categoriaTitulo,
+          producto_nombre: it.productoNombre,
+          integrante: it.detalleSlot,
+          estado_confirmacion: it.estadoConfirmacion,
+          estado_pago: llegoAlTotal ? 'Pagado' : it.estadoPago,
+          monto_abonado: abonoItem,
+        });
+      } else if (it.pedidoId) {
+        await supabase.from('pedidos').update({
+          monto_abonado: abonoItem,
+          estado_pago: llegoAlTotal ? 'Pagado' : it.estadoPago,
+        }).eq('id', it.pedidoId);
+      }
+    }
+    alert(llegoAlTotal ? '💚 ¡Pago completado al 100%!' : '💰 ¡Abono guardado!');
     cargarDatosHibridos();
   }
 
@@ -353,9 +389,7 @@ if (dataPerfiles) {
     if (!confirm('¿Marcar el pedido de ' + tarjeta.nombreReal + ' como CANCELADO por falta de pago?')) return;
     await actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', 'Cancelado');
   }
-
-  async function handleEliminarTarjetaPedido(tarjeta: TarjetaJoiner) {
-      async function handleEliminarUnSoloItem(tarjeta: TarjetaJoiner, item: ItemTarjeta) {
+  async function handleEliminarUnSoloItem(tarjeta: TarjetaJoiner, item: ItemTarjeta) {
     if (!confirm('¿Quitar "' + item.productoNombre + '" (' + item.detalleSlot + ') del pedido de ' + tarjeta.nombreReal + '?')) return;
 
     if (item.origen === 'GO' && item.claimKeyBase) {
@@ -379,7 +413,9 @@ if (dataPerfiles) {
 
     cargarDatosHibridos();
   }
-    if (!confirm('⚠️ ¿Eliminar el pedido de ' + tarjeta.nombreReal + ' y liberar sus slots?')) return;
+
+  async function handleEliminarTarjetaPedido(tarjeta: TarjetaJoiner) {
+    if (!confirm('⚠️ ¿Eliminar todo el pedido de ' + tarjeta.nombreReal + ' y liberar sus slots?')) return;
     for (const item of tarjeta.items) {
       if (item.origen === 'GO' && item.claimKeyBase) {
         const partes = item.claimKeyBase.split('-');
@@ -403,6 +439,7 @@ if (dataPerfiles) {
     alert('🗑️ Pedido eliminado y slots liberados ✨');
     cargarDatosHibridos();
   }
+
   const handleEditInputLocal = (prodId: number, slot: string, valor: string) => {
     setInputsStock((prev) => ({ ...prev, [prodId]: { ...(prev[prodId] || {}), [slot]: valor } }));
   };
@@ -435,7 +472,6 @@ if (dataPerfiles) {
 
     cargarDatosHibridos();
   }
-
   async function handleCreateGO(e: React.FormEvent) {
     e.preventDefault();
     if (!newGoTitle) return alert('Pon el título 🎀');
@@ -496,6 +532,7 @@ if (dataPerfiles) {
       cargarDatosHibridos();
     } else alert('Error: ' + error.message);
   }
+
   async function handleEliminarGO(idGo: number) {
     if (!confirm('⚠️ ¿Borrar másterlist entera?')) return;
     const { error } = await supabase.from('gos').delete().eq('id', idGo);
@@ -507,7 +544,6 @@ if (dataPerfiles) {
     const { error } = await supabase.from(isShop ? 'tienda_productos' : 'productos').delete().eq('id', idProd);
     if (!error) cargarDatosHibridos();
   }
-
   async function toggleDestacarShop(prodId: number, actual: boolean, nuevoBadge?: string) {
     const payload: any = { destacado: !actual };
     if (nuevoBadge !== undefined) {
@@ -608,11 +644,17 @@ if (dataPerfiles) {
     cargarDatosHibridos();
   }
   const categoriasGos = Array.from(new Set(tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo)));
-  const tarjetasFiltradas = tarjetasJoiners.filter((t) => {
-    if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
-    if (busqueda && !t.nombreReal.toLowerCase().includes(busqueda.toLowerCase()) && !t.correo.toLowerCase().includes(busqueda.toLowerCase())) return false;
-    return true;
-  });
+  const tarjetasFiltradas = tarjetasJoiners
+    .filter((t) => {
+      if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
+      if (busqueda && !t.nombreReal.toLowerCase().includes(busqueda.toLowerCase()) && !t.correo.toLowerCase().includes(busqueda.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const fechaA = a.items.at(0)?.creadoEn || '9999-12-31';
+      const fechaB = b.items.at(0)?.creadoEn || '9999-12-31';
+      return fechaA.localeCompare(fechaB);
+    });
 
   if (loading) return <div className="min-h-screen bg-[#F6F7F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando atelier admin...</div>;
   if (usuarioEmail !== correoAdmin) {
@@ -658,7 +700,7 @@ if (dataPerfiles) {
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
                 <h1 className="text-xl font-extrabold text-zinc-900">Órdenes por Joiner</h1>
-                <p className="text-xs text-zinc-500">Artículos agrupados por publicación y persona</p>
+                <p className="text-xs text-zinc-500">Toca un GO para ver la Tabla de Prioridad (#1, #2, #3...) y registrar abonos</p>
               </div>
               <input type="text" placeholder="Buscar por nombre o correo..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="bg-white border border-zinc-200 rounded-xl px-4 py-2 text-xs w-full sm:w-72 shadow-2xs" />
             </div>
@@ -676,6 +718,51 @@ if (dataPerfiles) {
                 🛍️ Tienda / Shop ({tarjetasJoiners.filter((t) => t.origen === 'SHOP').length})
               </button>
             </div>
+
+            {filtroCategoria !== 'TODOS' && filtroCategoria !== 'Tienda / Shop' && tarjetasFiltradas.length > 0 && (
+              <div className="bg-white border border-pink-200 rounded-2xl overflow-hidden shadow-2xs">
+                <div className="bg-pink-50/80 px-4 py-2.5 border-b border-pink-100 flex justify-between items-center">
+                  <span className="text-xs font-black text-pink-700 uppercase">⏱️ Tabla de Prioridad — {filtroCategoria}</span>
+                  <span className="text-[11px] font-bold text-zinc-500">{tarjetasFiltradas.length} joiner(s)</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-zinc-50 text-[10px] font-extrabold uppercase text-zinc-500 border-b">
+                      <tr>
+                        <th className="px-3 py-2">#</th>
+                        <th className="px-3 py-2">Joiner</th>
+                        <th className="px-3 py-2">WhatsApp</th>
+                        <th className="px-3 py-2">Slots</th>
+                        <th className="px-3 py-2">Hora</th>
+                        <th className="px-3 py-2">Pago / Abono</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {tarjetasFiltradas.map((t, i) => (
+                        <tr key={t.tarjetaId} className="hover:bg-pink-50/30">
+                          <td className="px-3 py-2 font-black text-pink-600">#{i + 1}</td>
+                          <td className="px-3 py-2 font-bold text-zinc-900 capitalize">{t.nombreReal}</td>
+                          <td className="px-3 py-2 font-mono text-[11px] text-emerald-700">{t.telefono || '—'}</td>
+                          <td className="px-3 py-2 font-semibold text-zinc-700">{t.items.map((it) => it.detalleSlot).join(', ')}</td>
+                          <td className="px-3 py-2 font-mono text-[10px] text-zinc-500">
+                            {t.items.at(0)?.creadoEn
+                              ? new Date(t.items.at(0)!.creadoEn!).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                              : 'Antiguo'}
+                          </td>
+                          <td className="px-3 py-2 font-bold text-[11px]">
+                            {t.items.at(0)?.estadoPago === 'Pagado'
+                              ? '💚 Pagado'
+                              : t.abonadoTarjeta > 0
+                              ? `💰 Abonó $${t.abonadoTarjeta.toFixed(2)}`
+                              : '💸 Pendiente'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {tarjetasFiltradas.map((tarjeta, idx) => {
                 const primerItem = tarjeta.items.at(0);
@@ -705,9 +792,8 @@ if (dataPerfiles) {
                             )}
                             <p className="text-[11px] text-zinc-400 break-all">{tarjeta.correo}</p>
                             {tarjeta.telefono && (
-  <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
-)}
-
+                              <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
+                            )}
                           </div>
                         </div>
                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${estadoConfirmActual === 'Confirmado' ? 'bg-emerald-50 text-emerald-700' : estadoConfirmActual === 'Cancelado' ? 'bg-rose-100 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
@@ -716,7 +802,9 @@ if (dataPerfiles) {
                       </div>
 
                       <div className="flex justify-between items-center text-[11px] text-zinc-500 border-b border-zinc-100 pb-2">
-                        <span className="font-bold text-pink-600">{tarjeta.categoriaTitulo}</span>
+                        <span className="font-bold text-pink-600">
+                          {filtroCategoria !== 'TODOS' ? `#${idx + 1} · ` : ''}{tarjeta.categoriaTitulo}
+                        </span>
                         <span>{tarjeta.items.length} orden(es)</span>
                       </div>
 
@@ -739,7 +827,7 @@ if (dataPerfiles) {
                             <div key={it.idUnico} className="bg-zinc-50/90 border border-zinc-200/80 rounded-2xl p-3 space-y-2.5 text-xs">
                               <div className="flex items-start gap-2.5">
                                 {it.imagenUrl ? <img src={it.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" /> : <span className="w-11 h-11 rounded-xl bg-white border flex items-center justify-center text-sm shrink-0">🧸</span>}
-                                <div className="flex-1 min-w-0 space-y-2">
+                                <div className="flex-1 min-w-0 space-y-1.5">
                                   {Object.entries(gruposPorPost).map(([tituloPost, subItems], idxPost) => (
                                     <div key={idxPost} className="space-y-1">
                                       <p className="font-extrabold text-zinc-900 leading-snug break-words">
@@ -758,6 +846,18 @@ if (dataPerfiles) {
                                         </div>
                                       )}
                                       {it.origen === 'GO' && <p className="text-[11px] font-bold text-pink-600">Slot: {it.detalleSlot}</p>}
+                                      {it.creadoEn && (
+                                        <p className="text-[10px] font-mono text-zinc-500">
+                                          ⏱️ Pedido: {new Date(it.creadoEn).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                        </p>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEliminarUnSoloItem(tarjeta, it)}
+                                        className="text-[10px] font-bold text-rose-600 hover:underline pt-0.5 block"
+                                      >
+                                        ✕ Quitar solo este ítem
+                                      </button>
                                     </div>
                                   ))}
                                 </div>
@@ -792,6 +892,29 @@ if (dataPerfiles) {
                         <span className="text-base font-black text-zinc-900">${tarjeta.totalTarjeta.toFixed(2)} USD</span>
                       </div>
 
+                      <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-zinc-600">Abonado: $</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={inputsAbono[tarjeta.tarjetaId] ?? String(tarjeta.abonadoTarjeta || 0)}
+                            onChange={(e) => setInputsAbono((prev) => ({ ...prev, [tarjeta.tarjetaId]: e.target.value }))}
+                            className="border bg-white rounded-lg px-2 py-1 w-20 text-xs font-extrabold text-emerald-700"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => guardarAbonoTarjeta(tarjeta)}
+                            className="bg-zinc-900 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold"
+                          >
+                            💾
+                          </button>
+                        </div>
+                        <span className="font-extrabold text-amber-700">
+                          Falta: ${Math.max(0, tarjeta.totalTarjeta - Number(inputsAbono[tarjeta.tarjetaId] ?? tarjeta.abonadoTarjeta ?? 0)).toFixed(2)}
+                        </span>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-2">
                         <select value={estadoConfirmActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', e.target.value)} className="text-[11px] font-bold rounded-xl px-2.5 py-2 border bg-zinc-50">
                           <option value="Pendiente">⏳ Sin confirmar</option>
@@ -817,7 +940,7 @@ if (dataPerfiles) {
                       )}
 
                       <button type="button" onClick={() => handleEliminarTarjetaPedido(tarjeta)} className="w-full py-1.5 rounded-xl bg-zinc-100 hover:bg-rose-600 hover:text-white text-zinc-500 text-[11px] font-bold transition-colors">
-                        🗑️ Eliminar pedido / Liberar slots
+                        🗑️ Eliminar pedido completo / Liberar slots
                       </button>
                     </div>
                   </div>
@@ -954,7 +1077,7 @@ if (dataPerfiles) {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <input type="text" placeholder="Era / Serie (ej: ATE, HOP, APPLE MUSIC)" value={newShopEra} onChange={(e) => setNewShopEra(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs uppercase" />
-                    <select value={newShopTipoPc} onChange={(e) => setNewShopTipoPc(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold">
+                    <select value={newShopTipoPc} onChange={(e) => setNewShopTipoPc(e.target.value)} className="border rounded-xl px-3 py-2.5 text-xs font-bold">
                       <option value="Álbum PC">💿 Álbum PC</option>
                       <option value="POB">🎁 POB (Pre-Order Benefit)</option>
                       <option value="Lucky Draw">🎰 Lucky Draw</option>
@@ -967,6 +1090,7 @@ if (dataPerfiles) {
                     <input type="number" step="0.01" placeholder="Precio único USD" value={newShopPrice} onChange={(e) => setNewShopPrice(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold" />
                     <input type="number" min="0" placeholder="Stock único" value={newShopQty} onChange={(e) => setNewShopQty(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold" />
                   </div>
+
                   <div className="bg-indigo-50/50 border border-indigo-200 rounded-2xl p-3 space-y-2">
                     <div className="flex justify-between items-center">
                       <p className="text-xs font-extrabold text-indigo-900">🃏 Opciones / Photocards en esta foto</p>
@@ -985,7 +1109,6 @@ if (dataPerfiles) {
                 </div>
               </div>
             </form>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <form onSubmit={handleCreateGO} className="bg-white border rounded-2xl p-5 space-y-3">
                 <h2 className="text-sm font-extrabold">1. Nuevo Group Order (GO)</h2>
