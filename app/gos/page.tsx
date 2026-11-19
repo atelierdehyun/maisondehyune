@@ -198,19 +198,19 @@ export default function Masterlist() {
       .join('\n');
 
     const mensajeWsp =
-      '¡Holis, Hyune Atelier! Acabo de apartar slots en la web 🐻✨\n\n' +
+      '¡Holis, Lia! Acabo de apartar slots en la web 🐻✨\n\n' +
       '💌 *Joiner:* ' + formNombre + ' (@' + formInstagram.replace('@', '') + ')\n' +
       '📱 *Contacto:* ' + formTelefono + '\n' +
       '📍 *Destino:* ' + formCiudad + ' — ' + formDireccion + '\n' +
       '🚚 *Método:* ' + formMetodoEnvio + '\n\n' +
       '📋 *Desglose de slots:*\n' + desgloseTexto + '\n\n' +
       '💰 *Total a pagar:* $' + totalDineroBolsa.toFixed(2) + ' USD\n\n' +
-      'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante por aquí. 💗';
+      'Confirmo que sigo a @hyuneatelier y adjunto mi comprobante por aquí. 💗';
 
     setDatosUltimoClaim({
       desglose: desgloseTexto,
       total: totalDineroBolsa,
-      urlWhatsapp: 'https://wa.me' + encodeURIComponent(mensajeWsp),
+      urlWhatsapp: 'https://wa.me/593999530327?text=' + encodeURIComponent(mensajeWsp),
     });
 
     setCarritoGlobal([]);
@@ -233,7 +233,7 @@ export default function Masterlist() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">
-        ✧ cargando masterlists atelier... 🧸
+        ✧ cargando masterlists ... 🧸
       </div>
     );
   }
@@ -426,7 +426,7 @@ export default function Masterlist() {
                       <option value="Retiro Físico en Cumbayá">🍰 Retiro Físico en Cumbayá</option>
                     </select>
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
-                      ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para proofs.
+                      ⚠️ Importante: Si no me sigues en Instagram <strong>@hyuneatelier</strong>, no tomaré en cuenta el pedido, ya que es necesario para proofs.
                     </div>
                     <div className="bg-pink-50/80 border border-pink-200 rounded-2xl p-3.5 flex justify-between items-center text-sm font-black">
                       <span>Total a transferir:</span>
@@ -454,7 +454,7 @@ export default function Masterlist() {
               <p className="text-sm font-black text-pink-600 pt-1">Total a transferir: ${datosUltimoClaim.total.toFixed(2)} USD</p>
             </div>
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
-              ⚠️ Importante: Si no me sigues en Instagram <strong>@atelierdehyun</strong>, no tomaré en cuenta el pedido, ya que es necesario para enviarte tus proofs.
+              ⚠️ Importante: Si no me sigues en Instagram <strong>@hyuneatelier</strong>, no tomaré en cuenta el pedido, ya que es una regla obligatoria.
             </div>
             <a
               href={datosUltimoClaim.urlWhatsapp}
