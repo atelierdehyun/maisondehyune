@@ -7,6 +7,18 @@ export const metadata: Metadata = {
   description: "Group Orders & K-Pop Shop",
 };
 
+export const metadata = {
+  title: 'Hyune Atelier — K-Pop Store & GOs',
+  description: 'Tienda de photocards, merch oficial y Group Orders estilo Pocamarket',
+  manifest: '/manifest.json',
+  themeColor: '#DB2777',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Hyune Atelier',
+  },
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
