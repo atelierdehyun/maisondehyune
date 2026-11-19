@@ -653,14 +653,7 @@ export default function AdminPanelPremium() {
   new Set([
     ...gosAdmin.map((g) => g.title),
     ...tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo),
-    {typeof goStockFiltro === 'number' && (() => {
-  const goSel = gosAdmin.find((g) => g.id === goStockFiltro);
-  if (!goSel) return null;
-  return (
-    <div className="bg-pink-50/80 border border-pink-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-      <span className="font-extrabold text-pink-800">✈️ Estado logístico de este GO (visible para joiners):</span>
-      <select
-        value={goSel.estado_logistica || 'Esperando cierre'}
+    
         onChange={(e) => actualizarEstadoLogisticaGO(goSel.id, e.target.value)}
         className="border border-pink-300 bg-white rounded-xl px-3 py-1.5 font-extrabold text-zinc-900"
       >
@@ -1057,6 +1050,27 @@ export default function AdminPanelPremium() {
                   </button>
                 ))}
               </div>
+              {typeof goStockFiltro === 'number' && (() => {
+  const goSel = gosAdmin.find((g) => g.id === goStockFiltro);
+  if (!goSel) return null;
+  return (
+    <div className="bg-pink-50/80 border border-pink-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+      <span className="font-extrabold text-pink-800">✈️ Estado logístico de este GO (visible para joiners):</span>
+      <select
+        value={goSel.estado_logistica || 'Esperando cierre'}
+        onChange={(e) => actualizarEstadoLogisticaGO(goSel.id, e.target.value)}
+        className="border border-pink-300 bg-white rounded-xl px-3 py-1.5 font-extrabold text-zinc-900"
+      >
+        <option value="Esperando cierre">⏳ Esperando cierre (Not secured)</option>
+        <option value="Pedido realizado">🟡 Pedido realizado (Secured)</option>
+        <option value="En bodega Corea / Japón">🇰🇷 En bodega Corea / Japón</option>
+        <option value="En camino a Ecuador">✈️ En camino a Ecuador</option>
+        <option value="Llegó a hyuneatelier">📦 ¡Llegó a hyuneatelier! (Listo para envío)</option>
+      </select>
+    </div>
+  );
+})()}
+
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {productosStockFiltrados.map((prod) => (
