@@ -264,7 +264,6 @@ export default function AtelierShop() {
 
   if (loading) return <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando Hyune Atelier Shop... 🛍️</div>;
   return (
-      return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-2">
