@@ -801,34 +801,51 @@ export default function AdminPanelPremium() {
                             )}
                             <p className="text-[11px] text-zinc-400 break-all">{tarjeta.correo}</p>
                             {tarjeta.telefono ? (
-                              <div className="pt-1 space-y-1">
-                                <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
-                                {estadoPagoActual !== 'Pagado' && estadoConfirmActual !== 'Cancelado' && (() => {
-                                  const soloDigitos = tarjeta.telefono!.replace(/\D/g, '');
-                                  const numeroWsp = soloDigitos.startsWith('0')
-                                    ? '593' + soloDigitos.slice(1)
-                                    : soloDigitos.startsWith('593')
-                                    ? soloDigitos
-                                    : '593' + soloDigitos;
-                                  const faltaPagar = Math.max(0, tarjeta.totalTarjeta - (tarjeta.abonadoTarjeta || 0));
-                                  const resumenItems = tarjeta.items.map((it) => it.productoNombre + ' (' + it.detalleSlot + ')').join(', ');
-                                  const textoCobro =
-                                    '¡Holis, ' + tarjeta.nombreReal + '! 🎀 Te escribo de *hyuneatelier* para recordarte que tienes un saldo pendiente de *$' +
-                                    faltaPagar.toFixed(2) + ' USD* por tu pedido en *' + tarjeta.categoriaTitulo + '* (' + resumenItems + ').\n\n' +
-                                    'Quedo atenta a tu comprobante por aquí para mantener tus apartados ✨';
+  <div className="pt-1 space-y-1">
+    <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
+    {estadoPagoActual !== 'Pagado' && estadoConfirmActual !== 'Cancelado' && (() => {
+      const soloDigitos = tarjeta.telefono!.replace(/\D/g, '');
+      const numeroWsp = soloDigitos.startsWith('0')
+        ? '593' + soloDigitos.slice(1)
+        : soloDigitos.startsWith('593')
+        ? soloDigitos
+        : '593' + soloDigitos;
+      const faltaPagar = Math.max(0, tarjeta.totalTarjeta - (tarjeta.abonadoTarjeta || 0));
+      const resumenItems = tarjeta.items.map((it) => it.productoNombre + ' (' + it.detalleSlot + ')').join(', ');
+      const textoCobro =
+        '¡Holis, ' + tarjeta.nombreReal + '! 🎀 Te escribo de *hyuneatelier* para recordarte que tienes un saldo pendiente de *$' +
+        faltaPagar.toFixed(2) + ' USD* por tu pedido en *' + tarjeta.categoriaTitulo + '* (' + resumenItems + ').\n\n' +
+        'Quedo atenta a tu comprobante por aquí para mantener tus apartados ✨';
+      const datosCobro = new URLSearchParams({ phone: numeroWsp, text: textoCobro });
 
-                                  return (
-                                    <a
-                                      <a
-  href={'https://whatsapp.com' + numeroWsp + '&text=' + encodeURIComponent(textoCobro)}
-  className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-2xs"
->
-  💬 Cobrar por WhatsApp (${faltaPagar.toFixed(2)})
-</a>
+      return (
+        <a
+          href={'https://whatsapp.com?' + datosCobro.toString()}
+          className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-2xs"
+        >
+          💬 Cobrar por WhatsApp (${faltaPagar.toFixed(2)})
+        </a>
+      );
+    })()}
+  </div>
+) : (
+  <button
+    type="button"
+    onClick={async () => {
+      const telNuevo = prompt('Escribe el WhatsApp de ' + tarjeta.nombreReal + ' (ej: 0991234567):');
+      if (!telNuevo || !telNuevo.trim()) return;
+      await supabase.from('perfiles_joiners').upsert(
+        { user_email: tarjeta.correo, nombre_completo: tarjeta.nombreReal, telefono: telNuevo.trim() },
+        { onConflict: 'user_email' }
+      );
+      cargarDatosHibridos();
+    }}
+    className="mt-1 inline-flex items-center gap-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-extrabold px-2.5 py-1 rounded-lg"
+  >
+    📱 + Agregar WhatsApp para cobrar
+  </button>
+)}
 
-                                  );
-                                })()}
-                              </div>
                             ) : (
                               <p className="text-[10px] font-semibold text-rose-500">⚠️ Sin teléfono registrado</p>
                             )}
