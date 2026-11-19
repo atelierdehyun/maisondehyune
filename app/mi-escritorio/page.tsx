@@ -27,6 +27,7 @@ type ItemEscritorio = {
   fechaPago: string;
   estadoEnvio?: string;
   montoAbonado?: number;
+  estadoLogistica?: string;
 };
 
 type GrupoGoEscritorio = {
@@ -47,6 +48,9 @@ export default function MiEscritorioJoiner() {
   const [wishlistProds, setWishlistProds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [seleccionadosPago, setSeleccionadosPago] = useState<Record<string, boolean>>({});
+  const [titularTransferencia, setTitularTransferencia] = useState('');
+
   const [seleccionadosEnvio, setSeleccionadosEnvio] = useState<Record<string, boolean>>({});
   const [envioNombre, setEnvioNombre] = useState('');
   const [envioTelefono, setEnvioTelefono] = useState('');
@@ -64,7 +68,7 @@ export default function MiEscritorioJoiner() {
       if (email) {
         const [{ data: perfil }, { data: prods }, { data: segs }, { data: peds }, { data: sols }, { data: wishRows }] = await Promise.all([
           supabase.from('perfiles_joiners').select('*').eq('user_email', email).maybeSingle(),
-          supabase.from('productos').select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title)'),
+          supabase.from('productos').select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title, estado_logistica)'),
           supabase.from('seguimiento_claims').select('*').eq('user_email', email),
           supabase.from('pedidos').select('*').eq('user_email', email).order('id', { ascending: false }),
           supabase.from('solicitudes_envio').select('*').eq('user_email', email).order('id', { ascending: false }),
@@ -99,11 +103,11 @@ export default function MiEscritorioJoiner() {
           mapaGrupos[tituloGrupo].items.push(item);
           mapaGrupos[tituloGrupo].totalGrupo += item.precioTotal;
         };
-
         if (prods) {
           prods.forEach((p: any) => {
             const claims = p.claims_integrantes || {};
             const goTitle = p.gos?.title || 'Group Order';
+            const goEstadoLog = p.gos?.estado_logistica || 'Esperando cierre';
 
             Object.entries(claims).forEach(([integrante, dataClaim]: [string, any]) => {
               if (!dataClaim) return;
@@ -125,6 +129,7 @@ export default function MiEscritorioJoiner() {
                   estadoPago: seg?.estado_pago || 'Sin pagar',
                   fechaPago: seg?.fecha_pago || '',
                   montoAbonado: Number(seg?.monto_abonado || 0),
+                  estadoLogistica: goEstadoLog,
                 });
               } else if (typeof dataClaim === 'object') {
                 Object.entries(dataClaim).forEach(([mailC, cant]: [string, any]) => {
@@ -143,6 +148,7 @@ export default function MiEscritorioJoiner() {
                       estadoPago: seg?.estado_pago || 'Sin pagar',
                       fechaPago: seg?.fecha_pago || '',
                       montoAbonado: Number(seg?.monto_abonado || 0),
+                      estadoLogistica: goEstadoLog,
                     });
                   }
                 });
@@ -184,7 +190,7 @@ export default function MiEscritorioJoiner() {
   useEffect(() => {
     cargarMisPedidos();
   }, []);
-    async function handleGuardarMiPerfil(e: React.FormEvent) {
+  async function handleGuardarMiPerfil(e: React.FormEvent) {
     e.preventDefault();
     if (!usuarioEmail || !nombreJoiner.trim()) return;
     setGuardandoNombre(true);
@@ -207,7 +213,6 @@ export default function MiEscritorioJoiner() {
       cargarMisPedidos();
     }
   }
-
 
   const todosLosItems = grupos.flatMap((g) => g.items);
   const itemsPagadosEnBodega = todosLosItems.filter(
@@ -302,10 +307,15 @@ export default function MiEscritorioJoiner() {
   const itemsSinPagar = todosLosItems.filter(
     (i) => i.estadoPago !== 'Pagado' && i.estadoConfirmacion !== 'Cancelado'
   );
-  const totalAbonadoPendientes = itemsSinPagar.reduce((acc, i) => acc + Number(i.montoAbonado || 0), 0);
+  const haySeleccionManualPago = Object.values(seleccionadosPago).some(Boolean);
+  const itemsAPagarHoy = haySeleccionManualPago
+    ? itemsSinPagar.filter((i) => seleccionadosPago[i.idUnico])
+    : itemsSinPagar;
+
+  const totalAbonadoPendientes = itemsAPagarHoy.reduce((acc, i) => acc + Number(i.montoAbonado || 0), 0);
   const totalPendientePagar = Math.max(
     0,
-    itemsSinPagar.reduce((acc, i) => acc + i.precioTotal, 0) - totalAbonadoPendientes
+    itemsAPagarHoy.reduce((acc, i) => acc + i.precioTotal, 0) - totalAbonadoPendientes
   );
 
   const estampitasGanadas = todosLosItems.filter(
@@ -353,12 +363,12 @@ export default function MiEscritorioJoiner() {
                 {inicialAvatar}
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-extrabold text-zinc-900 truncate">{nombreJoiner || 'Joiner Atelier'}</h2>
+                <h2 className="text-base font-extrabold text-zinc-900 truncate">{nombreJoiner || 'Joiner hyuneatelier'}</h2>
                 <p className="text-xs text-zinc-400 truncate">{usuarioEmail}</p>
               </div>
             </div>
 
-                        <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5 pt-2 border-t border-zinc-100">
+            <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5 pt-2 border-t border-zinc-100">
               <label className="text-[11px] font-bold text-zinc-500 block">Tus datos de contacto (obligatorio)</label>
               <input type="text" placeholder="Tu Nombre y Apellido" value={nombreJoiner} onChange={(e) => setNombreJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
               <input type="text" placeholder="Tu Instagram (ej: @cami_skz)" value={instagramJoiner} onChange={(e) => setInstagramJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
@@ -368,13 +378,12 @@ export default function MiEscritorioJoiner() {
               </button>
             </form>
 
-
             <div className="bg-pink-5/70 border border-pink-200 rounded-2xl p-4 text-[11px] text-zinc-700 space-y-1.5">
               <p className="font-extrabold text-pink-700">🏦 Datos de Transferencia</p>
               <p><strong>Banco Pichincha (Ahorros):</strong> #2213367970</p>
               <p><strong>Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
               <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-lg mt-1 font-semibold">
-                ⚠️ Recuerda seguir a <strong>@hyuneatelier</strong> en Instagram para poder subir tus proofs, si no lo haces, se te bloqueará.
+                ⚠️ Recuerda seguir a <strong>@atelierdehyun</strong> en Instagram para poder subir tus proofs, si no lo haces, se te bloqueará.
               </p>
             </div>
           </div>
@@ -419,7 +428,7 @@ export default function MiEscritorioJoiner() {
                 href={
                   'https://wa.me' +
                   encodeURIComponent(
-                    '¡Holis, Lia! 🎉 Completé mis 10 estampitas en Hyune Atelier y quiero reclamar mi PC de Wishlist / sorpresa extra:\n\n' +
+                    '¡Holis, Lia! 🎉 Completé mis 10 estampitas en hyuneatelier y quiero reclamar mi PC de Wishlist / sorpresa extra:\n\n' +
                       '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + ' (' + (instagramJoiner || usuarioEmail) + ')\n' +
                       '• *Mi Wishlist guardada:* ' +
                       (wishlistProds.length > 0
@@ -434,6 +443,17 @@ export default function MiEscritorioJoiner() {
                 🎁 ¡Reclamar mi PC de Wishlist por WhatsApp!
               </a>
             )}
+          </div>
+
+          <div className="bg-white border border-zinc-200/80 rounded-3xl p-4 space-y-2.5 shadow-2xs text-xs">
+            <p className="font-black text-zinc-900 text-xs">✈️ Guía de Estados de tu GO</p>
+            <div className="space-y-1.5 text-[11px] text-zinc-600">
+              <p><strong className="text-zinc-800">⏳ Esperando cierre:</strong> El GO sigue abierto juntando slots.</p>
+              <p><strong className="text-amber-700">🟡 Pedido realizado:</strong> Ya fue comprado en Corea / Japón.</p>
+              <p><strong className="text-indigo-700">🇰🇷 En bodega Corea / Japón:</strong> Llegó a bodega internacional.</p>
+              <p><strong className="text-purple-700">✈️ En camino a Ecuador:</strong> En tránsito hacia hyuneatelier.</p>
+              <p><strong className="text-emerald-700">📦 ¡Llegó a hyuneatelier!:</strong> Ya está aquí, listo para pedir despacho en Mi Bodega.</p>
+            </div>
           </div>
         </div>
         <div className="lg:col-span-8 space-y-4">
@@ -473,7 +493,7 @@ export default function MiEscritorioJoiner() {
                       💳 Resumen listo para pagar
                     </span>
                     <h2 className="text-base font-black text-zinc-900 mt-1">
-                      Saldo pendiente: ${totalPendientePagar.toFixed(2)} USD ({itemsSinPagar.length} artículo(s))
+                      Total a transferir hoy: ${totalPendientePagar.toFixed(2)} USD ({itemsAPagarHoy.length} artículo(s))
                     </h2>
                     {totalAbonadoPendientes > 0 && (
                       <p className="text-xs font-bold text-emerald-700">
@@ -482,21 +502,56 @@ export default function MiEscritorioJoiner() {
                     )}
                   </div>
 
+                  <div className="space-y-1.5 bg-white/85 border border-emerald-200 rounded-2xl p-3">
+                    <p className="text-[11px] font-extrabold text-zinc-700">☑️ Marca los artículos que vas a pagar hoy:</p>
+                    {itemsSinPagar.map((it) => {
+                      const marcado = haySeleccionManualPago ? !!seleccionadosPago[it.idUnico] : true;
+                      return (
+                        <label key={it.idUnico} className="flex items-center justify-between gap-2 text-xs cursor-pointer py-0.5">
+                          <span className="flex items-center gap-2 truncate">
+                            <input
+                              type="checkbox"
+                              checked={marcado}
+                              onChange={(e) => {
+                                const base: Record<string, boolean> = {};
+                                itemsSinPagar.forEach((x) => {
+                                  base[x.idUnico] = haySeleccionManualPago ? !!seleccionadosPago[x.idUnico] : true;
+                                });
+                                base[it.idUnico] = e.target.checked;
+                                setSeleccionadosPago(base);
+                              }}
+                              className="accent-emerald-600 w-3.5 h-3.5"
+                            />
+                            <span className="truncate font-semibold text-zinc-800">[{it.goTitulo}] {it.productoNombre} ({it.detalleSlot})</span>
+                          </span>
+                          <span className="font-extrabold text-zinc-900 shrink-0">${it.precioTotal.toFixed(2)}</span>
+                        </label>
+                      );
+                    })}
+                    <input
+                      type="text"
+                      placeholder="👤 Nombre del titular de la cuenta bancaria que transfiere *"
+                      value={titularTransferencia}
+                      onChange={(e) => setTitularTransferencia(e.target.value)}
+                      className="mt-2 border border-emerald-300 bg-white rounded-xl px-3 py-2 text-xs w-full font-semibold"
+                    />
+                  </div>
+
                   <p className="text-xs text-zinc-700">
-                    1. Verifica que tu <strong>Nombre</strong> e <strong>Instagram</strong> estén guardados en tu perfil (a la izquierda).<br />
-                    2. Transfiere al <strong>Banco Pichincha (#2213367970 — Isabel Revollar)</strong> y envíame el comprobante por WhatsApp:
+                    Transfiere al <strong>Banco Pichincha (#2213367970 — Isabel Revollar)</strong> y envíame el comprobante por WhatsApp:
                   </p>
 
                   <a
                     href={
                       'https://wa.me' +
                       encodeURIComponent(
-                        '¡Hola, Lia! Quiero reportar el pago de mis pedidos en Atelier:\n\n' +
+                        '¡Hola, Lia! Quiero reportar el pago de mis pedidos en hyuneatelier:\n\n' +
                           '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + '\n' +
+                          '• *Titular transferencia:* ' + (titularTransferencia || nombreJoiner || usuarioEmail) + '\n' +
                           '• *Instagram:* ' + (instagramJoiner || 'No registrado') + '\n' +
                           '• *Correo:* ' + usuarioEmail + '\n\n' +
                           '*Artículos a pagar:*\n' +
-                          itemsSinPagar
+                          itemsAPagarHoy
                             .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2))
                             .join('\n') +
                           (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
@@ -512,7 +567,6 @@ export default function MiEscritorioJoiner() {
                   </a>
                 </div>
               )}
-
               {grupos.length === 0 ? (
                 <div className="bg-white border border-zinc-200/80 rounded-3xl p-10 text-center space-y-3">
                   <p className="text-sm font-bold text-zinc-500">Aún no tienes apartados registrados 🌸</p>
@@ -546,6 +600,11 @@ export default function MiEscritorioJoiner() {
                                 {Number(item.montoAbonado || 0) > 0 && item.estadoPago !== 'Pagado' && (
                                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     💰 Abonado: ${Number(item.montoAbonado).toFixed(2)}
+                                  </span>
+                                )}
+                                {item.origen === 'GO' && item.estadoLogistica && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                                    ✈️ {item.estadoLogistica}
                                   </span>
                                 )}
                               </div>
