@@ -21,12 +21,15 @@ type ItemTarjeta = {
   estadoConfirmacion: string;
   estadoPago: string;
   fechaPago: string;
+  creadoEn?: string;
+
 };
 
 type TarjetaJoiner = {
   tarjetaId: string;
   correo: string;
   nombreReal: string;
+  telefono?: string;
   categoriaTitulo: string;
   origen: 'GO' | 'SHOP';
   items: ItemTarjeta[];
@@ -168,7 +171,14 @@ export default function AdminPanelPremium() {
         if (dataSeg) dataSeg.forEach((s: any) => { mapaSeg[s.claim_key] = s; });
 
         const mapaNombres: Record<string, string> = {};
-        if (dataPerfiles) dataPerfiles.forEach((pf: any) => { if (pf.nombre_completo) mapaNombres[pf.user_email.toLowerCase()] = pf.nombre_completo; });
+const mapaTelefonos: Record<string, string> = {};
+if (dataPerfiles) {
+  dataPerfiles.forEach((pf: any) => {
+    const m = pf.user_email.toLowerCase();
+    if (pf.nombre_completo) mapaNombres[m] = pf.nombre_completo;
+    if (pf.telefono) mapaTelefonos[m] = pf.telefono;
+  });
+}
 
         const agrupadoPorGoYJoiner: Record<string, TarjetaJoiner> = {};
         const agregarATarjeta = (correoRaw: string, categoria: string, origen: 'GO' | 'SHOP', item: ItemTarjeta) => {
@@ -180,6 +190,7 @@ export default function AdminPanelPremium() {
               tarjetaId: keyTarjeta,
               correo,
               nombreReal: mapaNombres[correo] || aliasCorreo,
+              telefono: mapaTelefonos[correo] || '',
               categoriaTitulo: categoria,
               origen,
               items: [],
@@ -212,7 +223,7 @@ export default function AdminPanelPremium() {
                   productoNombre: p.nombre_producto, imagenUrl: p.imagen_producto || null,
                   detalleSlot: integrante, cantidad: 1, precioTotal: Number(p.precio || 0),
                   estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                  estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
+                  estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '', creadoEn: seg?.created_at || '',
                 });
               } else if (typeof dataClaim === 'object') {
                 Object.entries(dataClaim).forEach(([correoCliente, cant]: [string, any]) => {
@@ -222,7 +233,7 @@ export default function AdminPanelPremium() {
                     productoNombre: p.nombre_producto, imagenUrl: p.imagen_producto || null,
                     detalleSlot: integrante, cantidad: Number(cant), precioTotal: Number(p.precio || 0) * Number(cant),
                     estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                    estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
+                    estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '', creadoEn: seg?.created_at || '',
                   });
                 });
               }
@@ -344,6 +355,30 @@ export default function AdminPanelPremium() {
   }
 
   async function handleEliminarTarjetaPedido(tarjeta: TarjetaJoiner) {
+      async function handleEliminarUnSoloItem(tarjeta: TarjetaJoiner, item: ItemTarjeta) {
+    if (!confirm('¿Quitar "' + item.productoNombre + '" (' + item.detalleSlot + ') del pedido de ' + tarjeta.nombreReal + '?')) return;
+
+    if (item.origen === 'GO' && item.claimKeyBase) {
+      const partes = item.claimKeyBase.split('-');
+      const prodId = Number(partes.at(0));
+      const slotNombre = partes.slice(1).join('-');
+      const { data: prodDb } = await supabase.from('productos').select('claims_integrantes').eq('id', prodId).single();
+      if (prodDb?.claims_integrantes) {
+        const claimsCopia = { ...prodDb.claims_integrantes };
+        if (typeof claimsCopia[slotNombre] === 'string') delete claimsCopia[slotNombre];
+        else if (typeof claimsCopia[slotNombre] === 'object' && claimsCopia[slotNombre] !== null) {
+          delete claimsCopia[slotNombre][tarjeta.correo];
+          if (Object.keys(claimsCopia[slotNombre]).length === 0) delete claimsCopia[slotNombre];
+        }
+        await supabase.from('productos').update({ claims_integrantes: claimsCopia }).eq('id', prodId);
+      }
+      await supabase.from('seguimiento_claims').delete().eq('claim_key', item.claimKeyBase);
+    } else if (item.pedidoId) {
+      await supabase.from('pedidos').delete().eq('id', item.pedidoId);
+    }
+
+    cargarDatosHibridos();
+  }
     if (!confirm('⚠️ ¿Eliminar el pedido de ' + tarjeta.nombreReal + ' y liberar sus slots?')) return;
     for (const item of tarjeta.items) {
       if (item.origen === 'GO' && item.claimKeyBase) {
@@ -669,6 +704,10 @@ export default function AdminPanelPremium() {
                               </div>
                             )}
                             <p className="text-[11px] text-zinc-400 break-all">{tarjeta.correo}</p>
+                            {tarjeta.telefono && (
+  <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
+)}
+
                           </div>
                         </div>
                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${estadoConfirmActual === 'Confirmado' ? 'bg-emerald-50 text-emerald-700' : estadoConfirmActual === 'Cancelado' ? 'bg-rose-100 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
