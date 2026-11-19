@@ -184,7 +184,7 @@ export default function MiEscritorioJoiner() {
   useEffect(() => {
     cargarMisPedidos();
   }, []);
-  async function handleGuardarMiPerfil(e: React.FormEvent) {
+    async function handleGuardarMiPerfil(e: React.FormEvent) {
     e.preventDefault();
     if (!usuarioEmail || !nombreJoiner.trim()) return;
     setGuardandoNombre(true);
@@ -195,6 +195,7 @@ export default function MiEscritorioJoiner() {
         usuario_red: instagramJoiner.trim()
           ? '@' + instagramJoiner.replace('@', '').trim()
           : '',
+        telefono: envioTelefono.trim(),
       },
       { onConflict: 'user_email' }
     );
@@ -206,6 +207,7 @@ export default function MiEscritorioJoiner() {
       cargarMisPedidos();
     }
   }
+
 
   const todosLosItems = grupos.flatMap((g) => g.items);
   const itemsPagadosEnBodega = todosLosItems.filter(
@@ -356,14 +358,16 @@ export default function MiEscritorioJoiner() {
               </div>
             </div>
 
-            <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5 pt-2 border-t border-zinc-100">
-              <label className="text-[11px] font-bold text-zinc-500 block">Tu nombre real (para tus envíos)</label>
-              <input type="text" placeholder="Ej: Camila López" value={nombreJoiner} onChange={(e) => setNombreJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
+                        <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5 pt-2 border-t border-zinc-100">
+              <label className="text-[11px] font-bold text-zinc-500 block">Tus datos de contacto (obligatorio)</label>
+              <input type="text" placeholder="Tu Nombre y Apellido" value={nombreJoiner} onChange={(e) => setNombreJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
               <input type="text" placeholder="Tu Instagram (ej: @cami_skz)" value={instagramJoiner} onChange={(e) => setInstagramJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
+              <input type="tel" placeholder="Tu WhatsApp (ej: 0991234567)" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70 font-bold" />
               <button type="submit" disabled={guardandoNombre} className="w-full py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold">
                 {guardandoNombre ? 'Guardando...' : '💾 Guardar mis datos'}
               </button>
             </form>
+
 
             <div className="bg-pink-5/70 border border-pink-200 rounded-2xl p-4 text-[11px] text-zinc-700 space-y-1.5">
               <p className="font-extrabold text-pink-700">🏦 Datos de Transferencia</p>
