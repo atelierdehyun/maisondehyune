@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-type Go = { id: number; title: string; group_name: string };
+type Go = { id: number; title: string; group_name: string; estado_logistica?: string };
 
 type ItemTarjeta = {
   idUnico: string;
@@ -162,7 +162,8 @@ export default function AdminPanelPremium() {
         if (dataEnvios) setSolicitudesEnvio(dataEnvios);
 
         if (dataGos) {
-          setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name })));
+          setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name, estado_logistica: g.estado_logistica || 'Esperando cierre' })));
+
           const primerGo = dataGos.at(0);
           if (primerGo && !selectedGoId) setSelectedGoId(primerGo.id);
           if (primerGo && goStockFiltro === 'TODOS') setGoStockFiltro(primerGo.id);
@@ -303,6 +304,11 @@ export default function AdminPanelPremium() {
     if (valStr === undefined) return;
     const monto = Math.max(0, Number(valStr) || 0);
     const llegoAlTotal = monto >= tarjeta.totalTarjeta && tarjeta.totalTarjeta > 0;
+    async function actualizarEstadoLogisticaGO(goId: number, nuevoEstado: string) {
+  await supabase.from('gos').update({ estado_logistica: nuevoEstado }).eq('id', goId);
+  setGosAdmin((prev) => prev.map((g) => (g.id === goId ? { ...g, estado_logistica: nuevoEstado } : g)));
+}
+
 
     for (let i = 0; i < tarjeta.items.length; i++) {
       const it = tarjeta.items[i];
@@ -647,6 +653,27 @@ export default function AdminPanelPremium() {
   new Set([
     ...gosAdmin.map((g) => g.title),
     ...tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo),
+    {typeof goStockFiltro === 'number' && (() => {
+  const goSel = gosAdmin.find((g) => g.id === goStockFiltro);
+  if (!goSel) return null;
+  return (
+    <div className="bg-pink-50/80 border border-pink-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+      <span className="font-extrabold text-pink-800">✈️ Estado logístico de este GO (visible para joiners):</span>
+      <select
+        value={goSel.estado_logistica || 'Esperando cierre'}
+        onChange={(e) => actualizarEstadoLogisticaGO(goSel.id, e.target.value)}
+        className="border border-pink-300 bg-white rounded-xl px-3 py-1.5 font-extrabold text-zinc-900"
+      >
+        <option value="Esperando cierre">⏳ Esperando cierre (Not secured)</option>
+        <option value="Pedido realizado">🟡 Pedido realizado (Secured)</option>
+        <option value="En bodega Corea / Japón">🇰🇷 En bodega Corea / Japón</option>
+        <option value="En camino a Ecuador">✈️ En camino a Ecuador</option>
+        <option value="Llegó a hyuneatelier">📦 ¡Llegó a hyuneatelier! (Listo para envío)</option>
+      </select>
+    </div>
+  );
+})()}
+
   ])
 );
 
