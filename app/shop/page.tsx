@@ -264,6 +264,7 @@ export default function AtelierShop() {
 
   if (loading) return <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando Hyune Atelier Shop... 🛍️</div>;
   return (
+      return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-2">
@@ -509,7 +510,25 @@ export default function AtelierShop() {
                   ))}
                 </div>
               </div>
-            )}      {mostrarGuia && (
+            )}
+
+            <div className="flex justify-between items-center pt-2 border-t">
+              <span className="text-lg font-black text-zinc-900">
+                ${Number(varianteSeleccionada ? varianteSeleccionada.precio : productoDetalle.precio).toFixed(2)} USD
+              </span>
+              <button
+                type="button"
+                disabled={productoDetalle.estado_pago === 'SOLD OUT' || productoDetalle.cantidad_disponible <= 0 || (varianteSeleccionada !== null && varianteSeleccionada.stock <= 0)}
+                onClick={() => agregarAlCarrito(productoDetalle, varianteSeleccionada)}
+                className="px-5 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold"
+              >
+                + Agregar al carrito 🛒
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {mostrarGuia && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl">
             <div className="flex justify-between items-center border-b pb-3">
@@ -627,21 +646,3 @@ export default function AtelierShop() {
     </div>
   );
 }
-
-
-            <div className="flex justify-between items-center pt-2 border-t">
-              <span className="text-lg font-black text-zinc-900">
-                ${Number(varianteSeleccionada ? varianteSeleccionada.precio : productoDetalle.precio).toFixed(2)} USD
-              </span>
-              <button
-                type="button"
-                disabled={productoDetalle.estado_pago === 'SOLD OUT' || productoDetalle.cantidad_disponible <= 0 || (varianteSeleccionada !== null && varianteSeleccionada.stock <= 0)}
-                onClick={() => agregarAlCarrito(productoDetalle, varianteSeleccionada)}
-                className="px-5 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold"
-              >
-                + Agregar al carrito 🛒
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
