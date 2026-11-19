@@ -4,6 +4,11 @@ import { supabase } from '../supabase';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
+function crearLinkMiWhatsApp(mensaje: string) {
+  const telefono = ['593', '999', '530', '327'].join('');
+  const params = new URLSearchParams({ phone: telefono, text: mensaje });
+  return 'https://whatsapp.com?' + params.toString();
+}
 
 const PRECIOS_ENVIO: Record<string, number> = {
   'Quito (+$3.50)': 3.5,
@@ -267,7 +272,7 @@ export default function MiEscritorioJoiner() {
 
       setSeleccionadosEnvio({});
       await cargarMisPedidos();
-      window.open('https://wa.me' + encodeURIComponent(msgWsp), '_blank');
+      window.location.href = abrirChatLia(msgWsp);
     } else {
       alert('Error: ' + error.message);
     }
@@ -425,19 +430,8 @@ export default function MiEscritorioJoiner() {
 
             {premiosDisponibles > 0 && (
               <a
-                href={
-                  'https://wa.me' +
-                  encodeURIComponent(
-                    '¡Holis, Lia! 🎉 Completé mis 10 estampitas en hyuneatelier y quiero reclamar mi PC de Wishlist / sorpresa extra:\n\n' +
-                      '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + ' (' + (instagramJoiner || usuarioEmail) + ')\n' +
-                      '• *Mi Wishlist guardada:* ' +
-                      (wishlistProds.length > 0
-                        ? wishlistProds.map((w) => w.nombre_producto).join(', ')
-                        : 'Sorpresa del Atelier ✨')
-                  )
-                }
-                target="_blank"
-                rel="noopener noreferrer"
+                href={abrirChatLia('¡Holis, Lia! 🎉 Completé mis 10 estampitas en hyuneatelier y quiero reclamar mi PC de Wishlist.')}
+
                 className="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-zinc-950 font-black text-[11px] uppercase rounded-xl flex items-center justify-center gap-1.5 shadow-2xs"
               >
                 🎁 ¡Reclamar mi PC de Wishlist por WhatsApp!
@@ -542,25 +536,14 @@ export default function MiEscritorioJoiner() {
                   </p>
 
                   <a
-                    href={
-                      'https://wa.me' +
-                      encodeURIComponent(
-                        '¡Hola, Lia! Quiero reportar el pago de mis pedidos en hyuneatelier:\n\n' +
-                          '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + '\n' +
-                          '• *Titular transferencia:* ' + (titularTransferencia || nombreJoiner || usuarioEmail) + '\n' +
-                          '• *Instagram:* ' + (instagramJoiner || 'No registrado') + '\n' +
-                          '• *Correo:* ' + usuarioEmail + '\n\n' +
-                          '*Artículos a pagar:*\n' +
-                          itemsAPagarHoy
-                            .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2))
-                            .join('\n') +
-                          (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
-                          '\n\n• *Total Transferido:* $' + totalPendientePagar.toFixed(2) + ' USD\n\n' +
-                          'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
-                      )
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={abrirChatLia(
+  '¡Hola, Lia! Quiero reportar mi pago en hyuneatelier:\n' +
+  '• Nombre: ' + (nombreJoiner || usuarioEmail) + '\n' +
+  '• Titular cuenta: ' + (titularTransferencia || nombreJoiner || usuarioEmail) + '\n' +
+  '• Total transferido: $' + totalPendientePagar.toFixed(2) + ' USD\n' +
+  'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
+)}
+
                     className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase rounded-2xl flex items-center justify-center gap-2 shadow-sm transition-all"
                   >
                     💬 Enviar Resumen de Pago y Comprobante por WhatsApp (${totalPendientePagar.toFixed(2)})
