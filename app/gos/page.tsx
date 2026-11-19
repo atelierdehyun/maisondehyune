@@ -81,6 +81,16 @@ export default function Masterlist() {
       ]);
       setGos(dGos || []);
       setProductos(dProds || []);
+         if (typeof window !== 'undefined') {
+     const params = new URLSearchParams(window.location.search);
+     const goParam = Number(params.get('go'));
+     if (goParam && dGos?.some((g: any) => g.id === goParam)) {
+       setGoSeleccionado(goParam);
+       const firstP = (dProds || []).find((p: any) => p.go_id === goParam);
+       setProductoSeleccionado(firstP ? firstP.id : null);
+     }
+   }
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -306,6 +316,18 @@ export default function Masterlist() {
                 <div>
                   <span className="bg-pink-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">{activeGo?.status || 'OPEN'}</span>
                   <h3 className="text-base font-black text-zinc-900 uppercase mt-1">{activeGo?.title}</h3>
+                  <button
+  type="button"
+  onClick={() => {
+    const urlGo = window.location.origin + '/gos?go=' + activeGo?.id;
+    navigator.clipboard.writeText(urlGo);
+    alert('🔗 ¡Link directo de este GO copiado! Listo para pegar en tus historias ✨\n\n' + urlGo);
+  }}
+  className="mt-2 inline-flex items-center gap-1.5 bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 text-[11px] font-extrabold px-3 py-1.5 rounded-xl"
+>
+  🔗 Copiar link directo de este GO
+</button>
+
                   {activeProducto?.descripcion && <p className="text-xs text-zinc-600 bg-zinc-50 p-3 rounded-xl border mt-2 whitespace-pre-line">{activeProducto.descripcion}</p>}
                 </div>
               </div>
