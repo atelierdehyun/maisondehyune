@@ -819,13 +819,13 @@ export default function AdminPanelPremium() {
 
                                   return (
                                     <a
-                                      href={'https://wa.me' + numeroWsp + '?text=' + encodeURIComponent(textoCobro)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-2xs"
-                                    >
-                                      💬 Cobrar por WhatsApp (${faltaPagar.toFixed(2)})
-                                    </a>
+                                      <a
+  href={'https://whatsapp.com' + numeroWsp + '&text=' + encodeURIComponent(textoCobro)}
+  className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-2xs"
+>
+  💬 Cobrar por WhatsApp (${faltaPagar.toFixed(2)})
+</a>
+
                                   );
                                 })()}
                               </div>
