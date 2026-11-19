@@ -26,6 +26,7 @@ type ItemEscritorio = {
   estadoPago: string;
   fechaPago: string;
   estadoEnvio?: string;
+  montoAbonado?: number;
 };
 
 type GrupoGoEscritorio = {
@@ -43,9 +44,9 @@ export default function MiEscritorioJoiner() {
 
   const [grupos, setGrupos] = useState<GrupoGoEscritorio[]>([]);
   const [solicitudesPrevias, setSolicitudesPrevias] = useState<any[]>([]);
+  const [wishlistProds, setWishlistProds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados para solicitar envío estilo Pocamarket
   const [seleccionadosEnvio, setSeleccionadosEnvio] = useState<Record<string, boolean>>({});
   const [envioNombre, setEnvioNombre] = useState('');
   const [envioTelefono, setEnvioTelefono] = useState('');
@@ -61,26 +62,36 @@ export default function MiEscritorioJoiner() {
       setUsuarioEmail(email);
 
       if (email) {
-        const [{ data: perfil }, { data: prods }, { data: segs }, { data: peds }, { data: sols }] = await Promise.all([
+        const [{ data: perfil }, { data: prods }, { data: segs }, { data: peds }, { data: sols }, { data: wishRows }] = await Promise.all([
           supabase.from('perfiles_joiners').select('*').eq('user_email', email).maybeSingle(),
           supabase.from('productos').select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title)'),
           supabase.from('seguimiento_claims').select('*').eq('user_email', email),
           supabase.from('pedidos').select('*').eq('user_email', email).order('id', { ascending: false }),
           supabase.from('solicitudes_envio').select('*').eq('user_email', email).order('id', { ascending: false }),
+          supabase.from('wishlist_joiners').select('producto_id').eq('user_email', email),
         ]);
 
         if (perfil) {
           setNombreJoiner(perfil.nombre_completo || '');
           setEnvioNombre(perfil.nombre_completo || '');
           setInstagramJoiner(perfil.usuario_red || '');
+          if (perfil.telefono) setEnvioTelefono(perfil.telefono);
         }
         if (sols) setSolicitudesPrevias(sols);
+
+        if (wishRows && wishRows.length > 0) {
+          const ids = wishRows.map((w: any) => w.producto_id);
+          const { data: prodsW } = await supabase
+            .from('tienda_productos')
+            .select('id, nombre_producto, imagen_producto, integrante')
+            .in('id', ids);
+          setWishlistProds(prodsW || []);
+        }
 
         const mapaSeg: Record<string, any> = {};
         if (segs) segs.forEach((s: any) => { mapaSeg[s.claim_key] = s; });
 
         const mapaGrupos: Record<string, GrupoGoEscritorio> = {};
-
         const agregarItem = (tituloGrupo: string, origen: 'GO' | 'SHOP', item: ItemEscritorio) => {
           if (!mapaGrupos[tituloGrupo]) {
             mapaGrupos[tituloGrupo] = { titulo: tituloGrupo, origen, items: [], totalGrupo: 0 };
@@ -113,6 +124,7 @@ export default function MiEscritorioJoiner() {
                   estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
                   estadoPago: seg?.estado_pago || 'Sin pagar',
                   fechaPago: seg?.fecha_pago || '',
+                  montoAbonado: Number(seg?.monto_abonado || 0),
                 });
               } else if (typeof dataClaim === 'object') {
                 Object.entries(dataClaim).forEach(([mailC, cant]: [string, any]) => {
@@ -130,6 +142,7 @@ export default function MiEscritorioJoiner() {
                       estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
                       estadoPago: seg?.estado_pago || 'Sin pagar',
                       fechaPago: seg?.fecha_pago || '',
+                      montoAbonado: Number(seg?.monto_abonado || 0),
                     });
                   }
                 });
@@ -154,6 +167,7 @@ export default function MiEscritorioJoiner() {
               estadoPago: ped.estado_pago || 'Sin pagar',
               fechaPago: ped.fecha_pago || '',
               estadoEnvio: ped.estado_envio || 'En bodega',
+              montoAbonado: Number(ped.monto_abonado || 0),
             });
           });
         }
@@ -174,13 +188,23 @@ export default function MiEscritorioJoiner() {
     e.preventDefault();
     if (!usuarioEmail || !nombreJoiner.trim()) return;
     setGuardandoNombre(true);
-    await supabase.from('perfiles_joiners').upsert({
-      user_email: usuarioEmail,
-      nombre_completo: nombreJoiner.trim(),
-      usuario_red: instagramJoiner.trim(),
-    });
+    const { error } = await supabase.from('perfiles_joiners').upsert(
+      {
+        user_email: usuarioEmail.toLowerCase().trim(),
+        nombre_completo: nombreJoiner.trim(),
+        usuario_red: instagramJoiner.trim()
+          ? '@' + instagramJoiner.replace('@', '').trim()
+          : '',
+      },
+      { onConflict: 'user_email' }
+    );
     setGuardandoNombre(false);
-    alert('¡Datos guardados! ✨');
+    if (error) {
+      alert('Error al guardar: ' + error.message);
+    } else {
+      alert('✅ ¡Tus datos quedaron guardados!');
+      cargarMisPedidos();
+    }
   }
 
   const todosLosItems = grupos.flatMap((g) => g.items);
@@ -237,7 +261,6 @@ export default function MiEscritorioJoiner() {
       setSeleccionadosEnvio({});
       await cargarMisPedidos();
       window.open('https://wa.me' + encodeURIComponent(msgWsp), '_blank');
-
     } else {
       alert('Error: ' + error.message);
     }
@@ -275,16 +298,19 @@ export default function MiEscritorioJoiner() {
 
   const inicialAvatar = (nombreJoiner || usuarioEmail).slice(0, 2).toUpperCase();
   const itemsSinPagar = todosLosItems.filter(
-  (i) => i.estadoPago !== 'Pagado' && i.estadoConfirmacion !== 'Cancelado'
-);
-const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal, 0);
-    const estampitasGanadas = todosLosItems.filter(
+    (i) => i.estadoPago !== 'Pagado' && i.estadoConfirmacion !== 'Cancelado'
+  );
+  const totalAbonadoPendientes = itemsSinPagar.reduce((acc, i) => acc + Number(i.montoAbonado || 0), 0);
+  const totalPendientePagar = Math.max(
+    0,
+    itemsSinPagar.reduce((acc, i) => acc + i.precioTotal, 0) - totalAbonadoPendientes
+  );
+
+  const estampitasGanadas = todosLosItems.filter(
     (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.precioTotal >= 20
   ).length;
   const estampitasActuales = estampitasGanadas % 10;
   const premiosDisponibles = Math.floor(estampitasGanadas / 10);
-
-
   return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3">
@@ -318,36 +344,38 @@ const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-4 bg-white border border-zinc-200/80 rounded-3xl p-5 shadow-2xs space-y-5">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-pink-600 text-white font-black text-base flex items-center justify-center shrink-0">
-              {inicialAvatar}
+        <div className="lg:col-span-4 space-y-5">
+          <div className="bg-white border border-zinc-200/80 rounded-3xl p-5 shadow-2xs space-y-5">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-pink-600 text-white font-black text-base flex items-center justify-center shrink-0">
+                {inicialAvatar}
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-extrabold text-zinc-900 truncate">{nombreJoiner || 'Joiner Atelier'}</h2>
+                <p className="text-xs text-zinc-400 truncate">{usuarioEmail}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h2 className="text-base font-extrabold text-zinc-900 truncate">{nombreJoiner || 'Joiner Atelier'}</h2>
-              <p className="text-xs text-zinc-400 truncate">{usuarioEmail}</p>
+
+            <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5 pt-2 border-t border-zinc-100">
+              <label className="text-[11px] font-bold text-zinc-500 block">Tu nombre real (para tus envíos)</label>
+              <input type="text" placeholder="Ej: Camila López" value={nombreJoiner} onChange={(e) => setNombreJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
+              <input type="text" placeholder="Tu Instagram (ej: @cami_skz)" value={instagramJoiner} onChange={(e) => setInstagramJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
+              <button type="submit" disabled={guardandoNombre} className="w-full py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold">
+                {guardandoNombre ? 'Guardando...' : '💾 Guardar mis datos'}
+              </button>
+            </form>
+
+            <div className="bg-pink-5/70 border border-pink-200 rounded-2xl p-4 text-[11px] text-zinc-700 space-y-1.5">
+              <p className="font-extrabold text-pink-700">🏦 Datos de Transferencia</p>
+              <p><strong>Banco Pichincha (Ahorros):</strong> #2213367970</p>
+              <p><strong>Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
+              <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-lg mt-1 font-semibold">
+                ⚠️ Recuerda seguir a <strong>@hyuneatelier</strong> en Instagram para poder subir tus proofs, si no lo haces, se te bloqueará.
+              </p>
             </div>
           </div>
 
-          <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5 pt-2 border-t border-zinc-100">
-            <label className="text-[11px] font-bold text-zinc-500 block">Tu nombre real (para tus envíos)</label>
-            <input type="text" placeholder="Ej: Camila López" value={nombreJoiner} onChange={(e) => setNombreJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
-            <input type="text" placeholder="Tu Instagram (ej: @cami_skz)" value={instagramJoiner} onChange={(e) => setInstagramJoiner(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs w-full bg-zinc-50/70" />
-            <button type="submit" disabled={guardandoNombre} className="w-full py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold">
-              {guardandoNombre ? 'Guardando...' : '💾 Guardar mis datos'}
-            </button>
-          </form>
-
-          <div className="bg-pink-50/70 border border-pink-200 rounded-2xl p-4 text-[11px] text-zinc-700 space-y-1.5">
-            <p className="font-extrabold text-pink-700">🏦 Datos de Transferencia</p>
-            <p><strong>Banco Pichincha (Ahorros):</strong> #2213367970</p>
-            <p><strong>Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
-            <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-lg mt-1 font-semibold">
-              ⚠️ Recuerda seguir a <strong>@hyuneatelier</strong> en Instagram para poder subir tus proofs, si no lo haces, se te bloqueará.
-            </p>
-          </div>
-        </div>
-                  <div className="bg-gradient-to-br from-pink-50 via-rose-50 to-amber-50 border-2 border-pink-200 rounded-3xl p-4 space-y-3 shadow-2xs">
+          <div className="bg-gradient-to-br from-pink-50 via-rose-50 to-amber-50 border-2 border-pink-200 rounded-3xl p-4 space-y-3 shadow-2xs">
             <div className="flex justify-between items-center">
               <div>
                 <span className="text-[10px] font-black uppercase bg-pink-600 text-white px-2.5 py-0.5 rounded-full">
@@ -403,7 +431,7 @@ const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal
               </a>
             )}
           </div>
-
+        </div>
         <div className="lg:col-span-8 space-y-4">
           {itemsCancelados.length > 0 && (
             <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 flex items-start gap-3">
@@ -433,15 +461,21 @@ const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal
                   📦 Ir a mi bodega para pedir envío ➔
                 </button>
               </div>
-                            {itemsSinPagar.length > 0 && (
+
+              {itemsSinPagar.length > 0 && (
                 <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-pink-50 border-2 border-emerald-300 rounded-3xl p-5 shadow-2xs space-y-3">
                   <div>
                     <span className="text-[10px] font-black uppercase bg-emerald-600 text-white px-2.5 py-0.5 rounded-full">
                       💳 Resumen listo para pagar
                     </span>
                     <h2 className="text-base font-black text-zinc-900 mt-1">
-                      Total pendiente: ${totalPendientePagar.toFixed(2)} USD ({itemsSinPagar.length} artículo(s))
+                      Saldo pendiente: ${totalPendientePagar.toFixed(2)} USD ({itemsSinPagar.length} artículo(s))
                     </h2>
+                    {totalAbonadoPendientes > 0 && (
+                      <p className="text-xs font-bold text-emerald-700">
+                        ✅ Ya tienes abonado: ${totalAbonadoPendientes.toFixed(2)} USD
+                      </p>
+                    )}
                   </div>
 
                   <p className="text-xs text-zinc-700">
@@ -461,6 +495,7 @@ const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal
                           itemsSinPagar
                             .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2))
                             .join('\n') +
+                          (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
                           '\n\n• *Total Transferido:* $' + totalPendientePagar.toFixed(2) + ' USD\n\n' +
                           'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
                       )
@@ -473,7 +508,6 @@ const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal
                   </a>
                 </div>
               )}
-
 
               {grupos.length === 0 ? (
                 <div className="bg-white border border-zinc-200/80 rounded-3xl p-10 text-center space-y-3">
@@ -505,6 +539,11 @@ const totalPendientePagar = itemsSinPagar.reduce((acc, i) => acc + i.precioTotal
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.estadoConfirmacion === 'Confirmado' ? 'bg-blue-50 text-blue-700' : item.estadoConfirmacion === 'Cancelado' ? 'bg-rose-100 text-rose-700' : 'bg-zinc-200/70 text-zinc-600'}`}>
                                   {item.estadoConfirmacion}
                                 </span>
+                                {Number(item.montoAbonado || 0) > 0 && item.estadoPago !== 'Pagado' && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    💰 Abonado: ${Number(item.montoAbonado).toFixed(2)}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
