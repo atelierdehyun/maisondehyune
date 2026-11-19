@@ -643,7 +643,13 @@ export default function AdminPanelPremium() {
     setEditandoProducto(null);
     cargarDatosHibridos();
   }
-  const categoriasGos = Array.from(new Set(tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo)));
+  const categoriasGos = Array.from(
+  new Set([
+    ...gosAdmin.map((g) => g.title),
+    ...tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo),
+  ])
+);
+
   const tarjetasFiltradas = tarjetasJoiners
     .filter((t) => {
       if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
@@ -791,9 +797,39 @@ export default function AdminPanelPremium() {
                               </div>
                             )}
                             <p className="text-[11px] text-zinc-400 break-all">{tarjeta.correo}</p>
-                            {tarjeta.telefono && (
-                              <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
-                            )}
+                            {tarjeta.telefono ? (
+  <div className="pt-1 space-y-1">
+    <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
+    {estadoPagoActual !== 'Pagado' && estadoConfirmActual !== 'Cancelado' && (() => {
+      const soloDigitos = tarjeta.telefono!.replace(/\D/g, '');
+      const numeroWsp = soloDigitos.startsWith('0')
+        ? '593' + soloDigitos.slice(1)
+        : soloDigitos.startsWith('593')
+        ? soloDigitos
+        : '593' + soloDigitos;
+      const faltaPagar = Math.max(0, tarjeta.totalTarjeta - (tarjeta.abonadoTarjeta || 0));
+      const resumenItems = tarjeta.items.map((it) => it.productoNombre + ' (' + it.detalleSlot + ')').join(', ');
+      const textoCobro =
+        '¡Holis, ' + tarjeta.nombreReal + '! 🎀 Te escribo de *Hyune Atelier* para recordarte que tienes un saldo pendiente de *$' +
+        faltaPagar.toFixed(2) + ' USD* por tu pedido en *' + tarjeta.categoriaTitulo + '* (' + resumenItems + ').\n\n' +
+        'Quedo atenta a tu comprobante por aquí para mantener tus apartados ✨';
+
+      return (
+        <a
+          href={'https://wa.me' + numeroWsp + '?text=' + encodeURIComponent(textoCobro)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-2xs"
+        >
+          💬 Cobrar por WhatsApp (${faltaPagar.toFixed(2)})
+        </a>
+      );
+    })()}
+  </div>
+) : (
+  <p className="text-[10px] font-semibold text-rose-500">⚠️ Sin teléfono registrado</p>
+)}
+
                           </div>
                         </div>
                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${estadoConfirmActual === 'Confirmado' ? 'bg-emerald-50 text-emerald-700' : estadoConfirmActual === 'Cancelado' ? 'bg-rose-100 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
