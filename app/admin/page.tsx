@@ -846,6 +846,12 @@ export default function AdminPanelPremium() {
   </button>
 )}
 
+    className="mt-1 inline-flex items-center gap-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-extrabold px-2.5 py-1 rounded-lg"
+  >
+    📱 + Agregar WhatsApp para cobrar
+  </button>
+)}
+
                             ) : (
                               <p className="text-[10px] font-semibold text-rose-500">⚠️ Sin teléfono registrado</p>
                             )}
