@@ -40,7 +40,6 @@ interface ItemCarrito {
   maxStock: number;
   cantidad: number;
 }
-
 export default function AtelierShop() {
   const router = useRouter();
   const [productos, setProductos] = useState<ProductoShop[]>([]);
@@ -59,8 +58,7 @@ export default function AtelierShop() {
   const [mostrarCarrito, setMostrarCarrito] = useState(false);
   const [mostrarGuia, setMostrarGuia] = useState(false);
   const [wishlistIds, setWishlistIds] = useState<number[]>([]);
-const [soloWishlist, setSoloWishlist] = useState(false);
-
+  const [soloWishlist, setSoloWishlist] = useState(false);
   const [productoDetalle, setProductoDetalle] = useState<ProductoShop | null>(null);
   const [varianteSeleccionada, setVarianteSeleccionada] = useState<VarianteShop | null>(null);
   const [fotoActivaDetalle, setFotoActivaDetalle] = useState<string>('');
@@ -76,15 +74,17 @@ const [soloWishlist, setSoloWishlist] = useState(false);
           .select('*')
           .eq('user_email', mail)
           .maybeSingle();
+
         setPerfilCliente({
-               const { data: dataWish } = await supabase
-       .from('wishlist_joiners')
-       .select('producto_id')
-       .eq('user_email', mail);
-     setWishlistIds((dataWish || []).map((w: any) => Number(w.producto_id)));
           nombre: perfil?.nombre_completo || mail.split('@').at(0) || 'Joiner',
           ig: perfil?.usuario_red || '',
         });
+
+        const { data: dataWish } = await supabase
+          .from('wishlist_joiners')
+          .select('producto_id')
+          .eq('user_email', mail);
+        setWishlistIds((dataWish || []).map((w: any) => Number(w.producto_id)));
       }
 
       const [{ data: dataProds }, { data: dataFotos }] = await Promise.all([
@@ -108,7 +108,6 @@ const [soloWishlist, setSoloWishlist] = useState(false);
   useEffect(() => {
     cargarTienda();
   }, []);
-
   const gruposUnicos = Array.from(new Set(productos.map((p) => (p.grupo || p.due_date || 'Otros').toUpperCase())));
 
   const prodsDelGrupo = filtroGrupo === 'TODOS'
@@ -131,10 +130,8 @@ const [soloWishlist, setSoloWishlist] = useState(false);
     if (filtroEra !== 'TODOS' && eraProd !== filtroEra) return false;
     if (filtroTipoPc !== 'TODOS' && tipoProd !== filtroTipoPc) return false;
     if (busqueda && !p.nombre_producto.toLowerCase().includes(busqueda.toLowerCase())) return false;
-        if (soloWishlist && !wishlistIds.includes(p.id)) return false;
-
+    if (soloWishlist && !wishlistIds.includes(p.id)) return false;
     return true;
-    
   });
 
   const productosDestacados = productos.filter(
@@ -218,7 +215,6 @@ const [soloWishlist, setSoloWishlist] = useState(false);
 
   const totalItemsCarrito = carrito.reduce((acc, i) => acc + i.cantidad, 0);
   const subtotalCarrito = carrito.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
-
   async function enviarDirectoAMisPedidos() {
     if (carrito.length === 0) return;
     setProcesando(true);
@@ -265,16 +261,27 @@ const [soloWishlist, setSoloWishlist] = useState(false);
     setProcesando(false);
     router.push('/mi-escritorio');
   }
-  if (loading) return <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando Hyune Atelier Shop... 🛍️</div>;
 
+  if (loading) return <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando Hyune Atelier Shop... 🛍️</div>;
   return (
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <Link href="/gos" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">← Ver Group Orders</Link>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => setMostrarGuia(true)} className="text-xs font-bold text-pink-600 bg-pink-50 border border-pink-200 px-3 py-1.5 rounded-full hover:bg-pink-100">
               ❓ ¿Cómo comprar?
+            </button>
+            <button
+              type="button"
+              onClick={() => setSoloWishlist(!soloWishlist)}
+              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all ${
+                soloWishlist
+                  ? 'bg-rose-600 text-white border-rose-600'
+                  : 'bg-white text-rose-600 border-rose-200 hover:bg-rose-50'
+              }`}
+            >
+              {soloWishlist ? `🩷 Viendo Wishlist (${wishlistIds.length})` : `🤍 Wishlist (${wishlistIds.length})`}
             </button>
             <Link href="/mi-escritorio" className="text-xs font-bold text-zinc-600 hover:text-pink-600">Mis Pedidos / Bodega</Link>
             <button type="button" onClick={() => setMostrarCarrito(true)} className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-extrabold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-2xs">
@@ -288,6 +295,9 @@ const [soloWishlist, setSoloWishlist] = useState(false);
       <div className="max-w-6xl mx-auto px-4 pt-6 space-y-5">
         <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 text-center space-y-4 shadow-2xs">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 uppercase">Hyune Atelier Shop</h1>
+          <p className="text-[11px] font-semibold text-pink-700 bg-pink-50 border border-pink-200/80 rounded-full px-3.5 py-1 inline-block">
+            📲 Tip: Toca <strong>Compartir / Menú ➔ Agregar a pantalla de inicio</strong> para instalar Hyune Atelier como App ✨
+          </p>
 
           <div className="flex flex-wrap justify-center gap-1.5">
             <button
@@ -347,7 +357,6 @@ const [soloWishlist, setSoloWishlist] = useState(false);
             </select>
           </div>
         </div>
-
         {productosDestacados.length > 0 && (
           <div className="bg-gradient-to-r from-amber-50 via-pink-50 to-indigo-50 border-2 border-amber-200/80 rounded-3xl p-5 space-y-3 shadow-2xs">
             <div className="flex flex-wrap justify-between items-center gap-2">
@@ -385,6 +394,7 @@ const [soloWishlist, setSoloWishlist] = useState(false);
             </div>
           </div>
         )}
+
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {productosFiltrados.map((p) => {
             const tieneVars = Array.isArray(p.variantes) && p.variantes.length > 0;
@@ -396,6 +406,17 @@ const [soloWishlist, setSoloWishlist] = useState(false);
                     <span className="absolute top-2 left-2 bg-white/95 text-[10px] font-extrabold px-2 py-0.5 rounded-full text-zinc-700 border border-zinc-200">
                       {p.badge_especial || p.tipo_pc || p.categoria || 'Álbum PC'}
                     </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleWishlist(p.id);
+                      }}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/95 border border-zinc-200 flex items-center justify-center text-xs shadow-2xs hover:scale-110 transition-transform"
+                      title="Guardar en mi Wishlist"
+                    >
+                      {wishlistIds.includes(p.id) ? '🩷' : '🤍'}
+                    </button>
                     {p.estado_pago === 'SOLD OUT' || p.cantidad_disponible <= 0 ? (
                       <span className="absolute inset-0 bg-zinc-950/60 text-white text-xs font-black flex items-center justify-center uppercase">SOLD OUT</span>
                     ) : p.cantidad_disponible === 1 ? (
@@ -429,7 +450,6 @@ const [soloWishlist, setSoloWishlist] = useState(false);
           })}
         </div>
       </div>
-
       {productoDetalle && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -489,25 +509,7 @@ const [soloWishlist, setSoloWishlist] = useState(false);
                   ))}
                 </div>
               </div>
-            )}
-
-            <div className="flex justify-between items-center pt-2 border-t">
-              <span className="text-lg font-black text-zinc-900">
-                ${Number(varianteSeleccionada ? varianteSeleccionada.precio : productoDetalle.precio).toFixed(2)} USD
-              </span>
-              <button
-                type="button"
-                disabled={productoDetalle.estado_pago === 'SOLD OUT' || productoDetalle.cantidad_disponible <= 0 || (varianteSeleccionada !== null && varianteSeleccionada.stock <= 0)}
-                onClick={() => agregarAlCarrito(productoDetalle, varianteSeleccionada)}
-                className="px-5 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold"
-              >
-                + Agregar al carrito 🛒
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {mostrarGuia && (
+            )}      {mostrarGuia && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl">
             <div className="flex justify-between items-center border-b pb-3">
@@ -538,7 +540,6 @@ const [soloWishlist, setSoloWishlist] = useState(false);
           </div>
         </div>
       )}
-
       {mostrarCarrito && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex justify-end z-50">
           <div className="bg-white w-full max-w-md h-full overflow-y-auto p-5 flex flex-col justify-between shadow-2xl">
@@ -626,3 +627,21 @@ const [soloWishlist, setSoloWishlist] = useState(false);
     </div>
   );
 }
+
+
+            <div className="flex justify-between items-center pt-2 border-t">
+              <span className="text-lg font-black text-zinc-900">
+                ${Number(varianteSeleccionada ? varianteSeleccionada.precio : productoDetalle.precio).toFixed(2)} USD
+              </span>
+              <button
+                type="button"
+                disabled={productoDetalle.estado_pago === 'SOLD OUT' || productoDetalle.cantidad_disponible <= 0 || (varianteSeleccionada !== null && varianteSeleccionada.stock <= 0)}
+                onClick={() => agregarAlCarrito(productoDetalle, varianteSeleccionada)}
+                className="px-5 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold"
+              >
+                + Agregar al carrito 🛒
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
