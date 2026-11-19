@@ -646,7 +646,7 @@ export default function AdminPanelPremium() {
     cargarDatosHibridos();
   }
 
-  const categoriasGos = Array.from(
+    const categoriasGos = Array.from(
     new Set([
       ...gosAdmin.map((g) => g.title),
       ...tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo),
@@ -681,6 +681,7 @@ export default function AdminPanelPremium() {
 
   return (
     <div className="min-h-screen bg-[#F6F7F9] font-sans text-zinc-800 pb-16">
+
       <div className="bg-white border-b border-zinc-200 px-5 py-3.5">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
           <div className="flex items-center gap-4">
