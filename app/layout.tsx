@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import VerificarPerfilModal from "./VerificarPerfilModal";
+
 
 export const metadata: Metadata = {
   title: "Hyune Atelier — K-Pop Store & GOs",
-  description: "Tienda de photocards, merch oficial y Group Orders estilo Pocamarket",
+  description: "Tienda de photocards, merch oficial y Group Orders",
   manifest: "/manifest.json",
   themeColor: "#DB2777",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Hyune Atelier",
+    title: "Hyuneatelier",
   },
 };
 
@@ -28,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-200" />
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-200" />
               </div>
-              <span className="ml-1 font-bold">✧ ATELIERDEHYUN.SYS</span>
+              <span className="ml-1 font-bold">✧ HYUNEATELIER.SYS</span>
             </div>
             <div className="hidden md:flex gap-4 font-bold text-zinc-400/80">
               <span> ✦</span>
@@ -79,6 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
 
       </body>
+      <VerificarPerfilModal />
     </html>
   );
 }
