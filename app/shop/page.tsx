@@ -300,9 +300,9 @@ export default function AtelierShop() {
           </div>
 
           <div className="mb-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button type="button" onClick={() => { setFiltroGrupo('TODOS'); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); }} className={`shrink-0 rounded-xl px-4 py-2.5 text-[11px] font-extrabold transition ${filtroGrupo === 'TODOS' ? 'bg-[#C43D7D] text-white shadow-sm' : 'border border-white bg-white/80 text-[#806B77]'}`}>Todos los grupos</button>
+            <button type="button" onClick={() => { setFiltroGrupo('TODOS'); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); setFiltroTipoPc('TODOS'); }} className={`shrink-0 rounded-xl px-4 py-2.5 text-[11px] font-extrabold transition ${filtroGrupo === 'TODOS' ? 'bg-[#C43D7D] text-white shadow-sm' : 'border border-white bg-white/80 text-[#806B77]'}`}>Todos los grupos</button>
             {gruposUnicos.map((g, i) => (
-              <button key={g} type="button" onClick={() => { setFiltroGrupo(g); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); }} className={`shrink-0 rounded-xl px-4 py-2.5 text-[11px] font-extrabold transition ${filtroGrupo === g ? 'bg-[#C43D7D] text-white shadow-sm' : `border border-white ${i % 3 === 0 ? 'bg-[#FCE4EE]' : i % 3 === 1 ? 'bg-[#E7F2E9]' : 'bg-[#FFF0CC]'} text-[#806B77]`}`}>{g}</button>
+              <button key={g} type="button" onClick={() => { setFiltroGrupo(g); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); setFiltroTipoPc('TODOS'); }} className={`shrink-0 rounded-xl px-4 py-2.5 text-[11px] font-extrabold transition ${filtroGrupo === g ? 'bg-[#C43D7D] text-white shadow-sm' : `border border-white ${i % 3 === 0 ? 'bg-[#FCE4EE]' : i % 3 === 1 ? 'bg-[#E7F2E9]' : 'bg-[#FFF0CC]'} text-[#806B77]`}`}>{g}</button>
             ))}
           </div>
 
@@ -329,19 +329,33 @@ export default function AtelierShop() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.3fr_1fr_1fr]">
-            <label className="flex min-w-0 items-center gap-2 rounded-2xl border border-white bg-white/90 px-3.5 py-3 shadow-sm">
-              <span className="text-[#B87998]">⌕</span>
-              <input type="text" placeholder="Buscar photocards, álbumes..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="min-w-0 flex-1 bg-transparent text-[12px] text-[#51444D] outline-none placeholder:text-[#B7A8B0]"/>
-              {busqueda && <button type="button" onClick={() => setBusqueda('')} className="text-xs text-[#A98A9B]">✕</button>}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1.3fr_1fr_1fr]">
+            <label className="col-span-2 flex min-h-[50px] min-w-0 items-center gap-3 rounded-[18px] border border-[#F0DCE6] bg-white px-4 py-3 shadow-[0_3px_12px_rgba(177,112,143,0.05)] sm:col-span-1">
+              <span className="shrink-0 text-lg leading-none text-[#C45A8A]">⌕</span>
+              <input type="search" placeholder="Buscar photocards, álbumes, integrantes..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="min-w-0 flex-1 bg-transparent text-[13px] text-[#51444D] outline-none placeholder:text-[#B7A8B0]"/>
+              {busqueda && <button type="button" aria-label="Borrar búsqueda" onClick={() => setBusqueda('')} className="shrink-0 rounded-full bg-[#F9EAF1] px-2 py-1 text-xs font-bold text-[#A85A7D]">✕</button>}
             </label>
-            <label className="flex min-w-0 items-center justify-between gap-2 rounded-2xl border border-[#D7E9DB] bg-[#F1F8F1] px-3.5 py-3 shadow-sm">
-              <span className="min-w-0"><span className="block text-[8px] font-extrabold uppercase tracking-[0.16em] text-[#73947B]">Era / Serie</span><select value={filtroEra} onChange={(e) => setFiltroEra(e.target.value)} className="w-full max-w-full bg-transparent text-[11px] font-bold text-[#4F7058] outline-none"><option value="TODOS">Todas las eras</option>{erasDisponibles.map((er) => <option key={er} value={er}>{er}</option>)}</select></span>
-              <span className="text-[#73947B]">⌄</span>
+
+            <label className="relative flex min-h-[76px] min-w-0 flex-col justify-center gap-1.5 rounded-[18px] border border-[#D8E9DC] bg-[#F1F8F1] px-3 py-2.5 shadow-[0_3px_12px_rgba(116,157,125,0.06)]">
+              <span className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.13em] text-[#66866D]">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/80 text-[11px]">◉</span> Era / Serie
+              </span>
+              <select aria-label="Filtrar por era o serie" value={filtroEra} onChange={(e) => setFiltroEra(e.target.value)} className="w-full min-w-0 appearance-none truncate bg-transparent pr-5 text-[12px] font-bold text-[#45664D] outline-none">
+                <option value="TODOS">Todas las eras</option>
+                {erasDisponibles.map((er) => <option key={er} value={er}>{er}</option>)}
+              </select>
+              <span className="pointer-events-none absolute bottom-[17px] right-3 text-[11px] text-[#66866D]">⌄</span>
             </label>
-            <label className="flex min-w-0 items-center justify-between gap-2 rounded-2xl border border-[#F0E1B9] bg-[#FFF8E8] px-3.5 py-3 shadow-sm">
-              <span className="min-w-0"><span className="block text-[8px] font-extrabold uppercase tracking-[0.16em] text-[#A58B51]">Tipo</span><select value={filtroTipoPc} onChange={(e) => setFiltroTipoPc(e.target.value)} className="w-full max-w-full bg-transparent text-[11px] font-bold text-[#826C3C] outline-none"><option value="TODOS">Todos los productos</option>{tiposPcDisponibles.map((tp) => <option key={tp} value={tp}>{tp}</option>)}</select></span>
-              <span className="text-[#A58B51]">⌄</span>
+
+            <label className="relative flex min-h-[76px] min-w-0 flex-col justify-center gap-1.5 rounded-[18px] border border-[#F0E2BC] bg-[#FFF8E9] px-3 py-2.5 shadow-[0_3px_12px_rgba(190,157,91,0.06)]">
+              <span className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.13em] text-[#9B8047]">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/80 text-[11px]">▧</span> Tipo
+              </span>
+              <select aria-label="Filtrar por tipo de producto" value={filtroTipoPc} onChange={(e) => setFiltroTipoPc(e.target.value)} className="w-full min-w-0 appearance-none truncate bg-transparent pr-5 text-[12px] font-bold text-[#796338] outline-none">
+                <option value="TODOS">Todos los tipos</option>
+                {tiposPcDisponibles.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
+              </select>
+              <span className="pointer-events-none absolute bottom-[17px] right-3 text-[11px] text-[#9B8047]">⌄</span>
             </label>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
