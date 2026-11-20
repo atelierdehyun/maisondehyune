@@ -68,6 +68,8 @@ export default function AdminPanelPremium() {
 
   const [tarjetasJoiners, setTarjetasJoiners] = useState<TarjetaJoiner[]>([]);
   const [filtroCategoria, setFiltroCategoria] = useState<string>('TODOS');
+  const [filtroGrupoAdmin, setFiltroGrupoAdmin] = useState<string>('TODOS');
+
   const [busqueda, setBusqueda] = useState('');
   const [editandoNombreCorreo, setEditandoNombreCorreo] = useState<string | null>(null);
   const [inputNombreTemp, setInputNombreTemp] = useState('');
@@ -660,15 +662,23 @@ export default function AdminPanelPremium() {
     cargarDatosHibridos();
   }
 
-  const categoriasGos = Array.from(
-    new Set([
-      ...gosAdmin.map((g) => g.title),
-      ...tarjetasJoiners.filter((t) => t.origen === 'GO').map((t) => t.categoriaTitulo),
-    ])
+    const gruposDisponiblesAdmin = Array.from(
+    new Set(gosAdmin.map((g) => (g.group_name || 'OTROS').toUpperCase().trim()).filter(Boolean))
   );
+
+  const gosFiltradosPorGrupo = gosAdmin.filter(
+    (g) => filtroGrupoAdmin === 'TODOS' || (g.group_name || 'OTROS').toUpperCase().trim() === filtroGrupoAdmin
+  );
+
+  const categoriasGos = gosFiltradosPorGrupo.map((g) => g.title);
 
   const tarjetasFiltradas = tarjetasJoiners
     .filter((t) => {
+      if (filtroGrupoAdmin !== 'TODOS' && t.origen === 'GO') {
+        const goDeTarjeta = gosAdmin.find((g) => g.title === t.categoriaTitulo);
+        const grupoTarjeta = (goDeTarjeta?.group_name || 'OTROS').toUpperCase().trim();
+        if (grupoTarjeta !== filtroGrupoAdmin) return false;
+      }
       if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
       if (busqueda && !t.nombreReal.toLowerCase().includes(busqueda.toLowerCase()) && !t.correo.toLowerCase().includes(busqueda.toLowerCase())) return false;
       return true;
@@ -678,16 +688,6 @@ export default function AdminPanelPremium() {
       const fechaB = b.items.at(0)?.creadoEn || '9999-12-31';
       return fechaA.localeCompare(fechaB);
     });
-
-  if (loading) return <div className="min-h-screen bg-[#F6F7F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando atelier admin...</div>;
-  if (usuarioEmail !== correoAdmin) {
-    return (
-      <div className="min-h-screen bg-[#F6F7F9] flex flex-col items-center justify-center p-4 gap-3">
-        <p className="text-sm font-bold text-rose-600 bg-white border border-rose-100 px-6 py-3 rounded-full">✕ Acceso exclusivo de hyuneatelier 🎀</p>
-        <Link href="/gos" className="text-xs underline text-zinc-500">Volver al catálogo ➔</Link>
-      </div>
-    );
-  }
 
   const todosLosProductosAdmin = [...productosAdmin, ...productosTiendaAdmin];
   const productosStockFiltrados = goStockFiltro === 'TODOS' ? productosAdmin : productosAdmin.filter((p) => p.go_id === goStockFiltro);
@@ -728,19 +728,57 @@ export default function AdminPanelPremium() {
               <input type="text" placeholder="Buscar por nombre o correo..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="bg-white border border-zinc-200 rounded-xl px-4 py-2 text-xs w-full sm:w-72 shadow-2xs" />
             </div>
 
-            <div className="flex flex-wrap gap-2 items-center">
-              <button type="button" onClick={() => setFiltroCategoria('TODOS')} className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === 'TODOS' ? 'bg-teal-800 text-white' : 'bg-white text-zinc-600 border border-zinc-200'}`}>
-                Todos ({tarjetasJoiners.length})
-              </button>
-              {categoriasGos.map((cat) => (
-                <button key={cat} type="button" onClick={() => setFiltroCategoria(cat)} className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === cat ? 'bg-pink-600 text-white' : 'bg-white text-zinc-700 border border-zinc-200'}`}>
-                  🧸 {cat}
+                        <div className="bg-white border border-zinc-200/80 rounded-2xl p-3 space-y-2.5 shadow-2xs">
+              <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-zinc-100">
+                <span className="text-[10px] font-black uppercase text-zinc-400 mr-1">1. Grupo:</span>
+                <button
+                  type="button"
+                  onClick={() => { setFiltroGrupoAdmin('TODOS'); setFiltroCategoria('TODOS'); }}
+                  className={`px-3 py-1 rounded-full text-[11px] font-extrabold ${filtroGrupoAdmin === 'TODOS' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                >
+                  ✨ Todos los grupos
                 </button>
-              ))}
-              <button type="button" onClick={() => setFiltroCategoria('Tienda / Shop')} className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === 'Tienda / Shop' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
-                🛍️ Tienda / Shop ({tarjetasJoiners.filter((t) => t.origen === 'SHOP').length})
-              </button>
+                {gruposDisponiblesAdmin.map((grp) => (
+                  <button
+                    key={grp}
+                    type="button"
+                    onClick={() => { setFiltroGrupoAdmin(grp); setFiltroCategoria('TODOS'); }}
+                    className={`px-3 py-1 rounded-full text-[11px] font-extrabold uppercase ${filtroGrupoAdmin === grp ? 'bg-pink-600 text-white' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}`}
+                  >
+                    🎤 {grp}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => { setFiltroGrupoAdmin('TODOS'); setFiltroCategoria('Tienda / Shop'); }}
+                  className={`px-3 py-1 rounded-full text-[11px] font-extrabold ${filtroCategoria === 'Tienda / Shop' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700'}`}
+                >
+                  🛍️ Tienda / Shop ({tarjetasJoiners.filter((t) => t.origen === 'SHOP').length})
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 items-center">
+                <span className="text-[10px] font-black uppercase text-zinc-400 mr-1">2. GO:</span>
+                <button
+                  type="button"
+                  onClick={() => setFiltroCategoria('TODOS')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === 'TODOS' ? 'bg-teal-800 text-white' : 'bg-zinc-50 text-zinc-600 border border-zinc-200'}`}
+                >
+                  Ver todos ({tarjetasFiltradas.length})
+                </button>
+                {categoriasGos.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setFiltroCategoria(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === cat ? 'bg-pink-600 text-white' : 'bg-white text-zinc-700 border border-zinc-200 hover:border-pink-300'}`}
+                  >
+                    🧸 {cat}
+                  </button>
+                ))}
+              </div>
             </div>
+
 
             {filtroCategoria !== 'TODOS' && filtroCategoria !== 'Tienda / Shop' && tarjetasFiltradas.length > 0 && (
               <div className="bg-white border border-pink-200 rounded-2xl overflow-hidden shadow-2xs">
