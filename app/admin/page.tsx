@@ -691,7 +691,7 @@ export default function AdminPanelPremium() {
 
   const todosLosProductosAdmin = [...productosAdmin, ...productosTiendaAdmin];
   const productosStockFiltrados = goStockFiltro === 'TODOS' ? productosAdmin : productosAdmin.filter((p) => p.go_id === goStockFiltro);
-  const coloresAvatar = ['bg-teal-700', 'bg-pink-600', 'bg-amber-600', 'bg-indigo-600', 'bg-emerald-700', 'bg-purple-700'];
+  const coloresAvatar = ['bg-[#8fc9bd]', 'bg-[#e88db4]', 'bg-[#e8c96f]', 'bg-[#a9a4dc]', 'bg-[#8ebbd9]', 'bg-[#c4a0d8]'];
 
   if (loading) {
     return <div className="min-h-screen bg-[#fff8fb] flex items-center justify-center text-sm font-semibold text-pink-700">🎀 Preparando tu Atelier...</div>;
@@ -711,16 +711,23 @@ export default function AdminPanelPremium() {
   }
 
   const tabsAdmin = [
-    { id: 'joiners', label: 'Órdenes por Joiner', icon: '📋', note: 'Pedidos y pagos' },
-    { id: 'envios', label: 'Envíos', icon: '🚚', note: 'Solicitudes de bodega' },
-    { id: 'stock', label: 'Stock por GO', icon: '📦', note: 'Disponibilidad y logística' },
-    { id: 'lanzar', label: 'Crear GO / Tienda', icon: '➕', note: 'Publicar novedades' },
-    { id: 'items', label: 'Editar ítems', icon: '🛠️', note: 'Catálogo y productos' },
+    { id: 'joiners', label: 'Pedidos y pagos', icon: '🧾', note: 'Revisar apartados y cobrar', tint: 'bg-[#fce7f0]', active: 'bg-[#fce7f0] text-[#a83f70] ring-[#f4c9dc]' },
+    { id: 'envios', label: 'Envíos', icon: '📮', note: 'Preparar y despachar paquetes', tint: 'bg-[#e4f4ef]', active: 'bg-[#e4f4ef] text-[#397d70] ring-[#c8e8dd]' },
+    { id: 'stock', label: 'Stock y GOs', icon: '📦', note: 'Controlar cupos y estado', tint: 'bg-[#fff3cf]', active: 'bg-[#fff3cf] text-[#927126] ring-[#f3e2a9]' },
+    { id: 'lanzar', label: 'Crear publicaciones', icon: '✨', note: 'Añadir GO o producto', tint: 'bg-[#e9e8fb]', active: 'bg-[#e9e8fb] text-[#6861a6] ring-[#d8d5f2]' },
+    { id: 'items', label: 'Editar catálogo', icon: '🪄', note: 'Modificar productos existentes', tint: 'bg-[#e4f1fb]', active: 'bg-[#e4f1fb] text-[#477b9e] ring-[#cde3f4]' },
   ];
+  const resumenSeccion: Record<string, { titulo: string; descripcion: string; paso: string; color: string }> = {
+    joiners: { titulo: 'Pedidos y pagos', descripcion: 'Aquí puedes revisar quién pidió, cuánto debe y si su pago está confirmado.', paso: 'Busca a la persona o selecciona un GO para ver sus pedidos.', color: 'from-[#fff0f6] to-[#fff9ed]' },
+    envios: { titulo: 'Envíos', descripcion: 'Revisa las solicitudes que llegan desde Mi escritorio y registra la guía cuando despaches.', paso: 'Copia o escribe el número de rastreo y pulsa «Marcar enviado».', color: 'from-[#eaf7f2] to-[#f4fbf8]' },
+    stock: { titulo: 'Stock y Group Orders', descripcion: 'Controla los cupos disponibles de cada integrante y el avance de cada GO.', paso: 'Elige un GO, actualiza las cantidades y guarda los cambios.', color: 'from-[#fff7dc] to-[#fffaf0]' },
+    lanzar: { titulo: 'Crear publicaciones', descripcion: 'Desde aquí agregas nuevos Group Orders, productos de la tienda y fotos de integrantes.', paso: 'Completa los campos del formulario y revisa la información antes de publicar.', color: 'from-[#f0efff] to-[#fff5fa]' },
+    items: { titulo: 'Editar catálogo', descripcion: 'Encuentra publicaciones que ya existen para corregir su información.', paso: 'Filtra por Tienda o GO, busca el artículo y pulsa «Editar».', color: 'from-[#eaf4fc] to-[#f6f3ff]' },
+  };
 
   return (
-    <div className="min-h-screen bg-[#fff9fc] font-sans text-zinc-800 pb-8">
-      <header className="sticky top-0 z-30 border-b border-pink-100 bg-white/95 backdrop-blur px-4 sm:px-6 py-3">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#fff4f8_0%,#fffaf0_42%,#f1fbf7_100%)] font-sans text-[#514653] pb-8">
+      <header className="sticky top-0 z-30 border-b border-[#f4dce8] bg-white/90 backdrop-blur px-4 sm:px-6 py-3">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-xl">🎀</div>
@@ -735,35 +742,47 @@ export default function AdminPanelPremium() {
 
       <div className="mx-auto flex max-w-[1500px] gap-5 px-3 sm:px-5 pt-4 lg:pt-6">
         <aside className="hidden lg:block w-64 shrink-0">
-          <div className="sticky top-24 rounded-3xl border border-pink-100 bg-white p-3 shadow-sm">
+          <div className="sticky top-24 rounded-3xl border border-[#f2dce8] bg-white/95 p-3 shadow-[0_12px_35px_rgba(170,120,150,0.08)]">
             <p className="px-3 pb-3 pt-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Espacio de trabajo</p>
             <nav className="space-y-1">
               {tabsAdmin.map((tab) => (
-                <button key={tab.id} type="button" onClick={() => setPestanaAdmin(tab.id as any)} className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${pestanaAdmin === tab.id ? 'bg-pink-50 text-pink-700 ring-1 ring-pink-100' : 'text-zinc-600 hover:bg-zinc-50'}`}>
-                  <span className="text-lg">{tab.icon}</span><span className="min-w-0 flex-1"><span className="block text-xs font-extrabold">{tab.label}{tab.id === 'envios' ? ` (${solicitudesEnvio.filter((s) => s.estado_despacho !== 'Enviado').length})` : ''}</span><span className="mt-0.5 block text-[10px] text-zinc-400">{tab.note}</span></span>
+                <button key={tab.id} type="button" onClick={() => setPestanaAdmin(tab.id as any)} className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${pestanaAdmin === tab.id ? `${tab.active} ring-1` : 'text-[#766d78] hover:bg-[#faf5f8]'}`}>
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg ${tab.tint}`}>{tab.icon}</span><span className="min-w-0 flex-1"><span className="block text-xs font-extrabold">{tab.label}{tab.id === 'envios' ? ` (${solicitudesEnvio.filter((s) => s.estado_despacho !== 'Enviado').length})` : ''}</span><span className="mt-0.5 block text-[10px] text-zinc-400">{tab.note}</span></span>
                   {pestanaAdmin === tab.id && <span className="text-pink-500">●</span>}
                 </button>
               ))}
             </nav>
-            <div className="mt-4 rounded-2xl bg-[#fff8fb] p-3"><p className="text-[10px] font-bold text-pink-700">Tu Atelier, en orden ✨</p><p className="mt-1 text-[10px] leading-relaxed text-zinc-500">Gestiona pedidos, envíos, stock y publicaciones desde un solo lugar.</p></div>
+            <div className="mt-4 rounded-2xl bg-gradient-to-br from-[#fff0f6] via-[#fff8e8] to-[#edf8f4] p-3"><p className="text-[10px] font-bold text-[#a83f70]">Tu Atelier, en orden ✨</p><p className="mt-1 text-[10px] leading-relaxed text-zinc-500">Gestiona pedidos, envíos, stock y publicaciones desde un solo lugar.</p></div>
           </div>
         </aside>
 
         <main className="min-w-0 flex-1">
           <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {tabsAdmin.map((tab) => (
-              <button key={tab.id} type="button" onClick={() => setPestanaAdmin(tab.id as any)} className={`shrink-0 rounded-xl px-3 py-2 text-[11px] font-bold ${pestanaAdmin === tab.id ? 'bg-pink-600 text-white shadow-sm' : 'border border-pink-100 bg-white text-zinc-600'}`}>
+              <button key={tab.id} type="button" onClick={() => setPestanaAdmin(tab.id as any)} className={`shrink-0 rounded-xl px-3 py-2 text-[11px] font-bold ${pestanaAdmin === tab.id ? `${tab.active} shadow-sm ring-1` : 'border border-[#f0e2eb] bg-white text-[#766d78]'}`}>
                 {tab.icon} {tab.label}{tab.id === 'envios' ? ` (${solicitudesEnvio.filter((s) => s.estado_despacho !== 'Enviado').length})` : ''}
               </button>
             ))}
           </div>
-          <div className="rounded-3xl border border-pink-100/80 bg-white/60 p-3 sm:p-5 shadow-[0_8px_35px_rgba(190,24,93,0.04)]">
+          <div className="mb-4 overflow-hidden rounded-3xl border border-white/80 bg-gradient-to-r from-[#fce8f1] via-[#fff5df] to-[#eaf7f2] p-4 sm:p-5 shadow-[0_10px_30px_rgba(170,120,150,0.07)]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="max-w-2xl">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#a45e7c]">Tu espacio de trabajo</p>
+                <h1 className="mt-1 text-xl font-black text-[#514653] sm:text-2xl">{resumenSeccion[pestanaAdmin].titulo}</h1>
+                <p className="mt-1.5 text-xs leading-relaxed text-[#766d78] sm:text-sm">{resumenSeccion[pestanaAdmin].descripcion}</p>
+              </div>
+              <div className="max-w-xs rounded-2xl border border-white/80 bg-white/70 px-3 py-2.5 text-[11px] leading-relaxed text-[#6d626e]">
+                <span className="font-extrabold text-[#a45e7c]">¿Qué hago aquí?</span><br />{resumenSeccion[pestanaAdmin].paso}
+              </div>
+            </div>
+          </div>
+          <div className="rounded-3xl border border-[#f1dce8] bg-white/90 p-3 sm:p-5 shadow-[0_12px_40px_rgba(170,120,150,0.08)]">
         {pestanaAdmin === 'joiners' && (
           <div className="space-y-5">
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
-                <h1 className="text-xl font-extrabold text-zinc-900">Órdenes por Joiner</h1>
-                <p className="text-xs text-zinc-500">Toca un GO para ver la Tabla de Prioridad (#1, #2, #3...) y cobrar por WhatsApp</p>
+                <h2 className="text-lg font-extrabold text-zinc-900">Lista de pedidos</h2>
+                <p className="mt-1 text-xs text-zinc-500">Selecciona un grupo y luego un GO. Cada tarjeta corresponde a una persona y reúne sus pedidos.</p>
               </div>
               <input type="text" placeholder="Buscar por nombre o correo..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="bg-white border border-zinc-200 rounded-xl px-4 py-2 text-xs w-full sm:w-72 shadow-2xs" />
             </div>
@@ -774,7 +793,7 @@ export default function AdminPanelPremium() {
                 <button
                   type="button"
                   onClick={() => { setFiltroGrupoAdmin('TODOS'); setFiltroCategoria('TODOS'); }}
-                  className={`px-3 py-1 rounded-full text-[11px] font-extrabold ${filtroGrupoAdmin === 'TODOS' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                  className={`px-3 py-1 rounded-full text-[11px] font-extrabold ${filtroGrupoAdmin === 'TODOS' ? 'bg-[#776a79] text-white' : 'bg-zinc-100 text-zinc-600'}`}
                 >
                   ✨ Todos los grupos
                 </button>
@@ -783,7 +802,7 @@ export default function AdminPanelPremium() {
                     key={grp}
                     type="button"
                     onClick={() => { setFiltroGrupoAdmin(grp); setFiltroCategoria('TODOS'); }}
-                    className={`px-3 py-1 rounded-full text-[11px] font-extrabold uppercase ${filtroGrupoAdmin === grp ? 'bg-pink-600 text-white' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}`}
+                    className={`px-3 py-1 rounded-full text-[11px] font-extrabold uppercase ${filtroGrupoAdmin === grp ? 'bg-[#df82aa] text-white' : 'bg-[#fce7f0] text-[#a83f70] hover:bg-pink-100'}`}
                   >
                     🎤 {grp}
                   </button>
@@ -791,7 +810,7 @@ export default function AdminPanelPremium() {
                 <button
                   type="button"
                   onClick={() => { setFiltroGrupoAdmin('TODOS'); setFiltroCategoria('Tienda / Shop'); }}
-                  className={`px-3 py-1 rounded-full text-[11px] font-extrabold ${filtroCategoria === 'Tienda / Shop' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700'}`}
+                  className={`px-3 py-1 rounded-full text-[11px] font-extrabold ${filtroCategoria === 'Tienda / Shop' ? 'bg-[#aaa4df] text-[#39345f]' : 'bg-indigo-50 text-indigo-700'}`}
                 >
                   🛍️ Tienda / Shop ({tarjetasJoiners.filter((t) => t.origen === 'SHOP').length})
                 </button>
@@ -811,7 +830,7 @@ export default function AdminPanelPremium() {
                     key={cat}
                     type="button"
                     onClick={() => setFiltroCategoria(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === cat ? 'bg-pink-600 text-white' : 'bg-white text-zinc-700 border border-zinc-200 hover:border-pink-300'}`}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold ${filtroCategoria === cat ? 'bg-[#df82aa] text-white' : 'bg-white text-zinc-700 border border-zinc-200 hover:border-pink-300'}`}
                   >
                     🧸 {cat}
                   </button>
@@ -820,11 +839,49 @@ export default function AdminPanelPremium() {
             </div>
 
 
+            {filtroCategoria === 'TODOS' && (
+              <section className="space-y-3">
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-black text-[#514653]">Tus Group Orders</h3>
+                    <p className="text-[11px] text-[#8b7c89]">Elige una tarjeta para abrir sus pedidos y ver la prioridad de llegada.</p>
+                  </div>
+                  <span className="rounded-full bg-[#fff3cf] px-3 py-1 text-[10px] font-bold text-[#927126]">{gosAdmin.filter((g) => filtroGrupoAdmin === 'TODOS' || (g.group_name || 'OTROS').toUpperCase().trim() === filtroGrupoAdmin).length} GO(s)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {gosAdmin
+                    .filter((g) => filtroGrupoAdmin === 'TODOS' || (g.group_name || 'OTROS').toUpperCase().trim() === filtroGrupoAdmin)
+                    .map((g) => {
+                      const pedidosGo = tarjetasJoiners.filter((t) => t.origen === 'GO' && t.categoriaTitulo === g.title);
+                      const pendientes = pedidosGo.filter((t) => t.items.some((it) => it.estadoPago !== 'Pagado')).length;
+                      const totalSlots = pedidosGo.reduce((sum, t) => sum + t.items.reduce((n, it) => n + it.cantidad, 0), 0);
+                      return (
+                        <button key={g.id} type="button" onClick={() => setFiltroCategoria(g.title)} className="rounded-2xl border border-[#f0dce7] bg-gradient-to-br from-white to-[#fff7fb] p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#df82aa] hover:shadow-md">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#b17b96]">{g.group_name}</p><h4 className="mt-1 truncate text-sm font-black text-[#514653]">{g.title}</h4></div>
+                            <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-extrabold ${g.status === 'HIDDEN' ? 'bg-zinc-100 text-zinc-500' : 'bg-[#e4f4ef] text-[#397d70]'}`}>{g.status === 'HIDDEN' ? 'Oculto' : 'Visible'}</span>
+                          </div>
+                          <div className="mt-4 grid grid-cols-3 gap-2">
+                            <div className="rounded-xl bg-[#fce7f0] p-2"><p className="text-lg font-black text-[#a83f70]">{pedidosGo.length}</p><p className="text-[9px] font-semibold text-[#a45e7c]">Joiners</p></div>
+                            <div className="rounded-xl bg-[#fff3cf] p-2"><p className="text-lg font-black text-[#927126]">{pendientes}</p><p className="text-[9px] font-semibold text-[#927126]">Por cobrar</p></div>
+                            <div className="rounded-xl bg-[#e4f1fb] p-2"><p className="text-lg font-black text-[#477b9e]">{totalSlots}</p><p className="text-[9px] font-semibold text-[#477b9e]">Slots</p></div>
+                          </div>
+                          <p className="mt-3 text-[10px] font-extrabold text-[#b34e7c]">Ver pedidos y prioridad →</p>
+                        </button>
+                      );
+                    })}
+                  {gosAdmin.filter((g) => filtroGrupoAdmin === 'TODOS' || (g.group_name || 'OTROS').toUpperCase().trim() === filtroGrupoAdmin).length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-[#ead9e3] bg-[#fffafd] p-6 text-center text-xs text-[#8b7c89]">Todavía no hay GOs en este grupo.</div>
+                  )}
+                </div>
+              </section>
+            )}
+
             {filtroCategoria !== 'TODOS' && filtroCategoria !== 'Tienda / Shop' && tarjetasFiltradas.length > 0 && (
               <div className="bg-white border border-pink-200 rounded-2xl overflow-hidden shadow-2xs">
                 <div className="bg-pink-50/80 px-4 py-2.5 border-b border-pink-100 flex justify-between items-center">
-                  <span className="text-xs font-black text-pink-700 uppercase">⏱️ Tabla de Prioridad — {filtroCategoria}</span>
-                  <span className="text-[11px] font-bold text-zinc-500">{tarjetasFiltradas.length} joiner(s)</span>
+                  <span className="text-xs font-black text-pink-700 uppercase">⏱️ Prioridad de llegada — {filtroCategoria}</span>
+                  <span className="text-[11px] font-bold text-zinc-500">{tarjetasFiltradas.length} joiner(s) · primero en reclamar = #1</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
@@ -975,7 +1032,7 @@ export default function AdminPanelPremium() {
                                       <p className="font-extrabold text-zinc-900 leading-snug break-words">
                                         {tituloPost}{' '}
                                         {subItems.length > 0 && (
-                                          <span className="text-[10px] font-bold bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full ml-1">
+                                          <span className="text-[10px] font-bold bg-[#f9dce9] text-[#a83f70] px-2 py-0.5 rounded-full ml-1">
                                             {subItems.length} elegido(s)
                                           </span>
                                         )}
@@ -1093,7 +1150,7 @@ export default function AdminPanelPremium() {
         )}
         {pestanaAdmin === 'envios' && (
           <div className="space-y-4">
-            <h1 className="text-xl font-extrabold text-zinc-900">🚚 Solicitudes de Envío (Bodega)</h1>
+            <div><h2 className="text-lg font-extrabold text-zinc-900">Solicitudes recibidas</h2><p className="mt-1 text-xs text-zinc-500">Cuando prepares un paquete, añade su guía y marca el envío como despachado.</p></div>
             {solicitudesEnvio.length === 0 ? (
               <div className="bg-white border rounded-2xl p-10 text-center text-xs text-zinc-400">Aún no hay solicitudes de envío registradas 📦</div>
             ) : (
@@ -1128,10 +1185,10 @@ export default function AdminPanelPremium() {
         {pestanaAdmin === 'stock' && (
           <div className="space-y-5">
             <div className="bg-white border rounded-2xl p-4 space-y-3">
-              <h2 className="text-base font-extrabold text-zinc-900">📦 Gestor de Stock, Estatus y Visibilidad por GO</h2>
+              <div><h2 className="text-base font-extrabold text-zinc-900">Inventario por Group Order</h2><p className="mt-1 text-xs text-zinc-500">Elige un GO para ver y actualizar los cupos de cada producto.</p></div>
               <div className="flex flex-wrap gap-2">
                 {gosAdmin.map((g) => (
-                  <button key={g.id} type="button" onClick={() => setGoStockFiltro(g.id)} className={`px-3.5 py-2 rounded-xl text-xs font-bold ${goStockFiltro === g.id ? 'bg-pink-600 text-white' : 'bg-zinc-100 text-zinc-700'}`}>
+                  <button key={g.id} type="button" onClick={() => setGoStockFiltro(g.id)} className={`px-3.5 py-2 rounded-xl text-xs font-bold ${goStockFiltro === g.id ? 'bg-[#df82aa] text-white' : 'bg-[#f4edf2] text-[#665b68]'}`}>
                     {g.status === 'HIDDEN' ? '🙈 ' : '🧸 '}{g.title}
                   </button>
                 ))}
@@ -1171,11 +1228,16 @@ export default function AdminPanelPremium() {
                 );
               })()}
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-[#fce7f0] p-3"><p className="text-xl font-black text-[#a83f70]">{productosStockFiltrados.length}</p><p className="text-[10px] font-bold text-[#a45e7c]">Publicaciones en este GO</p></div>
+              <div className="rounded-2xl bg-[#e4f4ef] p-3"><p className="text-xl font-black text-[#397d70]">{productosStockFiltrados.reduce((n, p) => n + Number(p.cantidad_disponible || 0), 0)}</p><p className="text-[10px] font-bold text-[#397d70]">Stock total registrado</p></div>
+              <div className="rounded-2xl bg-[#fff3cf] p-3"><p className="text-xl font-black text-[#927126]">{productosStockFiltrados.reduce((n, p) => n + Object.values(inputsStock[p.id] || {}).reduce((a, v) => a + Math.max(0, Number(v) || 0), 0), 0)}</p><p className="text-[10px] font-bold text-[#927126]">Cupos disponibles por integrante</p></div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {productosStockFiltrados.map((prod) => (
                 <div key={prod.id} className="bg-white border rounded-2xl p-5 space-y-4 shadow-2xs">
                   <div className="flex items-center gap-3 border-b pb-3">
-                    {prod.imagen_producto && <img src={prod.imagen_producto} alt="" className="w-12 h-12 rounded-xl object-cover border" />}
+                    {prod.imagen_producto && <img src={prod.imagen_producto} alt="" className="w-12 h-12 rounded-xl object-contain bg-white border p-1" />}
                     <div>
                       <h3 className="text-sm font-extrabold text-zinc-900">{prod.nombre_producto}</h3>
                       <p className="text-xs text-zinc-500">${Number(prod.precio).toFixed(2)} USD</p>
@@ -1194,9 +1256,10 @@ export default function AdminPanelPremium() {
                       ))}
                     </div>
                   )}
-                  <button type="button" onClick={() => handleGuardarStockBD(prod.id)} className="w-full bg-zinc-900 text-white text-xs font-bold py-2.5 rounded-xl">💾 Guardar stock</button>
+                  <button type="button" onClick={() => handleGuardarStockBD(prod.id)} className="w-full bg-[#776a79] text-white text-xs font-bold py-2.5 rounded-xl">💾 Guardar stock</button>
                 </div>
               ))}
+              {productosStockFiltrados.length === 0 && <div className="md:col-span-2 rounded-2xl border border-dashed border-[#ead9e3] bg-[#fffafd] p-8 text-center"><p className="text-2xl">📦</p><p className="mt-2 text-sm font-extrabold text-[#514653]">Este GO todavía no tiene artículos</p><p className="mt-1 text-xs text-[#8b7c89]">Puedes crear uno desde «Crear publicaciones».</p><button type="button" onClick={() => setPestanaAdmin('lanzar')} className="mt-3 rounded-xl bg-[#df82aa] px-4 py-2 text-[11px] font-bold text-white">Crear artículo para GO</button></div>}
             </div>
           </div>
         )}
@@ -1204,8 +1267,8 @@ export default function AdminPanelPremium() {
           <div className="space-y-8">
             <form onSubmit={handleCrearItemShop} className="bg-white border rounded-3xl p-6 shadow-2xs space-y-6">
               <div className="flex flex-wrap justify-between items-center border-b pb-4 gap-2">
-                <h2 className="text-lg font-extrabold text-zinc-900">Agregar Nuevo Producto a la Tienda</h2>
-                <button type="submit" disabled={loadingForm || subiendoImagen} className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold">
+                <div><h2 className="text-lg font-extrabold text-zinc-900">Agregar producto a la Tienda</h2><p className="mt-1 text-[11px] text-zinc-500">Completa grupo, categoría, integrante, era, tipo, precio, stock y fotos. Si hay varias photocards, usa «Opciones» para registrar cada una por separado.</p></div>
+                <button type="submit" disabled={loadingForm || subiendoImagen} className="px-6 py-2.5 rounded-xl bg-[#aaa4df] text-[#39345f] text-xs font-extrabold">
                   {subiendoImagen ? 'Subiendo...' : '✨ Publicar en Tienda'}
                 </button>
               </div>
@@ -1269,8 +1332,8 @@ export default function AdminPanelPremium() {
 
                   <div className="bg-indigo-50/50 border border-indigo-200 rounded-2xl p-3 space-y-2">
                     <div className="flex justify-between items-center">
-                      <p className="text-xs font-extrabold text-indigo-900">🃏 Opciones / Photocards en esta foto</p>
-                      <button type="button" onClick={() => setNewShopVariantes((prev) => [...prev, { nombre: '', precio: '', stock: '1' }])} className="px-3 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold">+ Agregar opción</button>
+                      <p className="text-xs font-extrabold text-indigo-900">🃏 Opciones / variantes (si la publicación tiene varias PCs)</p>
+                      <button type="button" onClick={() => setNewShopVariantes((prev) => [...prev, { nombre: '', precio: '', stock: '1' }])} className="px-3 py-1 rounded-lg bg-[#aaa4df] text-[#39345f] text-[11px] font-bold">+ Agregar opción</button>
                     </div>
                     {newShopVariantes.map((v, idx) => (
                       <div key={idx} className="grid grid-cols-12 gap-1.5 items-center bg-white p-1.5 rounded-xl border">
@@ -1281,22 +1344,23 @@ export default function AdminPanelPremium() {
                       </div>
                     ))}
                   </div>
-                  <textarea rows={2} placeholder="Descripción..." value={newShopDesc} onChange={(e) => setNewShopDesc(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs w-full" />
+                  <textarea rows={2} placeholder="Descripción: estado, versión, inclusiones, detalles o condiciones de venta..." value={newShopDesc} onChange={(e) => setNewShopDesc(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs w-full" />
                 </div>
               </div>
             </form>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <form onSubmit={handleCreateGO} className="bg-white border rounded-2xl p-5 space-y-3">
-                <h2 className="text-sm font-extrabold">1. Nuevo Group Order (GO)</h2>
-                <input type="text" placeholder="Título del GO" value={newGoTitle} onChange={(e) => setNewGoTitle(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" />
-                <input type="text" placeholder="Grupo (stray kids, enhypen...)" value={newGoGroup} onChange={(e) => setNewGoGroup(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" />
-                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'go')} className="text-xs w-full" />
-                <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-zinc-900 text-white font-bold text-xs py-3 rounded-xl">➕ Crear GO</button>
+                <div><h2 className="text-sm font-extrabold">1. Crear un Group Order</h2><p className="mt-1 text-[10px] leading-relaxed text-zinc-500">Crea primero el GO. Luego podrás añadirle artículos, integrantes y cupos en el formulario de al lado.</p></div>
+                <label className="block space-y-1"><span className="text-[10px] font-bold text-zinc-500">Nombre del GO</span><input type="text" placeholder="Ej. SKZ 6TH FANMEETING MD" value={newGoTitle} onChange={(e) => setNewGoTitle(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" /></label>
+                <label className="block space-y-1"><span className="text-[10px] font-bold text-zinc-500">Grupo / artista</span><input type="text" placeholder="Stray Kids, Enhypen..." value={newGoGroup} onChange={(e) => setNewGoGroup(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" /></label>
+                <label className="block space-y-1"><span className="text-[10px] font-bold text-zinc-500">Imagen de portada (opcional)</span><input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'go')} className="text-xs w-full" /></label>
+                {newGoImage && <img src={newGoImage} alt="Vista previa del GO" className="h-28 w-full rounded-xl border border-pink-100 bg-pink-50 object-contain" />}
+                <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-[#776a79] text-white font-bold text-xs py-3 rounded-xl">➕ Crear GO</button>
               </form>
 
               <form onSubmit={handleCrearProducto} className="bg-white border rounded-2xl p-5 space-y-3">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-sm font-extrabold text-pink-600">2. Nuevo Artículo en GO</h2>
+                  <div><h2 className="text-sm font-extrabold text-pink-600">2. Añadir artículo a un GO</h2><p className="mt-1 text-[10px] text-zinc-500">Primero elige a qué GO pertenece; después completa precio, integrantes, fecha límite y foto.</p></div>
                   {selectedGoId && <button type="button" onClick={() => handleEliminarGO(selectedGoId)} className="text-[11px] text-rose-500 underline">Borrar GO</button>}
                 </div>
                 <select value={selectedGoId || ''} onChange={(e) => setSelectedGoId(Number(e.target.value))} className="border rounded-xl px-3.5 py-2.5 text-xs w-full font-bold">
@@ -1308,9 +1372,10 @@ export default function AdminPanelPremium() {
                   <input type="number" placeholder="Stock por slot" value={newProdQty} onChange={(e) => setNewProdQty(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs" />
                 </div>
                 <input type="text" placeholder="Integrantes (Bang Chan, Lee Know...)" value={newProdSlots} onChange={(e) => setNewProdSlots(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" />
-                <input type="date" value={newProdDueDate} onChange={(e) => setNewProdDueDate(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs w-full" />
-                <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'prod')} className="text-xs w-full" />
-                <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-pink-600 text-white font-bold text-xs py-3 rounded-xl">📦 Publicar en GO</button>
+                <label className="block space-y-1"><span className="text-[10px] font-bold text-zinc-500">Fecha límite (opcional)</span><input type="date" value={newProdDueDate} onChange={(e) => setNewProdDueDate(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs w-full" /></label>
+                <textarea rows={3} placeholder="Descripción / detalles para los joiners (opcional)" value={newProdDesc} onChange={(e) => setNewProdDesc(e.target.value)} className="border rounded-xl px-3.5 py-2 text-xs w-full" />
+                <label className="block space-y-1"><span className="text-[10px] font-bold text-zinc-500">Foto del artículo (opcional)</span><input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'prod')} className="text-xs w-full" /></label>
+                <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-[#df82aa] text-white font-bold text-xs py-3 rounded-xl">📦 Publicar en GO</button>
               </form>
             </div>
 
@@ -1320,7 +1385,7 @@ export default function AdminPanelPremium() {
                 <input type="text" placeholder="Grupo (STRAY KIDS)" value={fotoIntegGrupo} onChange={(e) => setFotoIntegGrupo(e.target.value)} className="border rounded-xl px-3 py-2 text-xs uppercase" />
                 <input type="text" placeholder="Nombre exacto (ej: Hyunjin)" value={fotoIntegNombre} onChange={(e) => setFotoIntegNombre(e.target.value)} className="border rounded-xl px-3 py-2 text-xs" />
                 <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'integ')} className="text-xs" />
-                <button type="submit" disabled={loadingForm || subiendoImagen} className="bg-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl">💾 Guardar Foto</button>
+                <button type="submit" disabled={loadingForm || subiendoImagen} className="bg-[#aaa4df] text-[#39345f] font-bold text-xs py-2.5 rounded-xl">💾 Guardar Foto</button>
               </div>
             </form>
           </div>
@@ -1329,8 +1394,8 @@ export default function AdminPanelPremium() {
           <div className="space-y-5">
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
-                <h2 className="text-xl font-extrabold text-zinc-900">🛠️ Editar Ítems Publicados</h2>
-                <p className="text-xs text-zinc-500">Filtra por Tienda o por GO y edita sus datos sin volver a subir nada</p>
+                <h2 className="text-lg font-extrabold text-zinc-900">Productos publicados</h2>
+                <p className="text-xs text-zinc-500">Filtra por Tienda o por GO. Abre «Editar» para cambiar los datos de una publicación.</p>
               </div>
               <input
                 type="text"
@@ -1345,7 +1410,7 @@ export default function AdminPanelPremium() {
               <button
                 type="button"
                 onClick={() => setFiltroItemsEditar('TIENDA')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all ${filtroItemsEditar === 'TIENDA' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white text-indigo-700 border border-indigo-200'}`}
+                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all ${filtroItemsEditar === 'TIENDA' ? 'bg-[#aaa4df] text-[#39345f] shadow-2xs' : 'bg-white text-indigo-700 border border-indigo-200'}`}
               >
                 🛍️ Tienda / Shop ({productosTiendaAdmin.length})
               </button>
@@ -1357,7 +1422,7 @@ export default function AdminPanelPremium() {
                     key={g.id}
                     type="button"
                     onClick={() => setFiltroItemsEditar('GO_' + g.id)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${filtroItemsEditar === 'GO_' + g.id ? 'bg-pink-600 text-white shadow-2xs' : 'bg-white text-zinc-700 border border-zinc-200'}`}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${filtroItemsEditar === 'GO_' + g.id ? 'bg-[#df82aa] text-white shadow-2xs' : 'bg-white text-zinc-700 border border-zinc-200'}`}
                   >
                     🧸 {g.title} ({countGo})
                   </button>
@@ -1367,7 +1432,7 @@ export default function AdminPanelPremium() {
               <button
                 type="button"
                 onClick={() => setFiltroItemsEditar('TODOS')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${filtroItemsEditar === 'TODOS' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${filtroItemsEditar === 'TODOS' ? 'bg-[#776a79] text-white' : 'bg-zinc-100 text-zinc-600'}`}
               >
                 Ver Todos ({todosLosProductosAdmin.length})
               </button>
@@ -1477,7 +1542,7 @@ export default function AdminPanelPremium() {
                           ) : (
                             <span className="text-2xl">{p.isShop ? '🛍️' : '🧸'}</span>
                           )}
-                          <span className={`absolute top-2 left-2 text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow-2xs ${p.isShop ? 'bg-indigo-600 text-white' : 'bg-pink-600 text-white'}`}>
+                          <span className={`absolute top-2 left-2 text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow-2xs ${p.isShop ? 'bg-[#aaa4df] text-[#39345f]' : 'bg-[#df82aa] text-white'}`}>
                             {p.isShop ? 'TIENDA' : 'GO'}
                           </span>
                           <span className="absolute bottom-2 right-2 bg-zinc-900/85 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
@@ -1531,7 +1596,7 @@ export default function AdminPanelPremium() {
                         <button
                           type="button"
                           onClick={() => iniciarEdicion(p)}
-                          className="py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-extrabold"
+                          className="py-1.5 rounded-xl bg-[#e5f1fb] hover:bg-[#d7eafa] text-[#477b9e] text-[11px] font-extrabold"
                         >
                           ✏️ Editar
                         </button>
