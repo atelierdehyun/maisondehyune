@@ -277,7 +277,7 @@ export default function MiEscritorioJoiner() {
         '• *Método:* ' + envioMetodo + '\n\n' +
         '*Artículos a enviar:*\n' + listaTexto + '\n\n' +
         '• *Costo de envío:* $' + costoEnvioElegido.toFixed(2) + ' USD\n\n' +
-        'Confirmo que sigo a @atelierdehyun.';
+        'Confirmo que sigo a @hyuneatelier.';
 
       setSeleccionadosEnvio({});
       await cargarMisPedidos();
@@ -511,7 +511,7 @@ export default function MiEscritorioJoiner() {
                 <p>CI: 1752806388</p>
               </div>
               <p className="mt-3 rounded-xl border border-[#E7DDF0] bg-white/80 p-2.5 text-[10px] leading-4 text-[#8A7190]">
-                Recuerda seguir a <strong>@atelierdehyun</strong> en Instagram para poder enviar tus proofs.
+                Recuerda seguir a <strong>@hyuneatelier</strong> en Instagram para poder enviar tus proofs.
               </p>
             </section>
           </aside>
@@ -579,7 +579,7 @@ export default function MiEscritorioJoiner() {
                           itemsAPagarHoy.map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2)).join('\n') +
                           (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
                           '\n\n• *Total Transferido:* $' + totalPendientePagar.toFixed(2) + ' USD\n\n' +
-                          'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
+                          'Confirmo que sigo a @hyuneatelier y adjunto mi comprobante.'
                       )} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6EAA8D] px-4 py-3.5 text-xs font-black text-white shadow-sm transition hover:bg-[#5D987C]">
                         💬 Enviar resumen y comprobante · ${totalPendientePagar.toFixed(2)}
                       </a>
