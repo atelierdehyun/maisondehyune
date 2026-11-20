@@ -264,7 +264,7 @@ export default function AtelierShop() {
 
   if (loading) return <div className="min-h-screen bg-[#fff7fb] flex items-center justify-center text-sm font-bold text-pink-500">🎀 Preparando tu rinconcito de compras...</div>;
   return (
-    <div className="min-h-screen bg-[#fff7fb] font-sans text-zinc-800 pb-28 selection:bg-pink-200">
+    <div className="min-h-screen bg-[#fff7fb] font-sans text-zinc-800 pb-32 sm:pb-16 selection:bg-pink-200">
       <div className="bg-white/95 backdrop-blur-xl border-b border-pink-100 px-3 py-2.5 sticky top-0 z-30 shadow-[0_3px_18px_rgba(236,72,153,0.06)]">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <Link href="/gos" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">← Ver Group Orders</Link>
@@ -293,7 +293,7 @@ export default function AtelierShop() {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-5 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
-        <div className="relative overflow-hidden bg-gradient-to-br from-pink-100 via-[#fffafd] to-violet-100 border border-pink-200/80 rounded-[1.7rem] p-4 sm:p-7 text-center space-y-3 shadow-[0_8px_30px_rgba(236,72,153,0.09)]">
+        <div className="relative overflow-hidden bg-gradient-to-br from-pink-100 via-[#fffafd] to-[#e8f8ef] border border-pink-200/80 rounded-[1.7rem] p-4 sm:p-7 text-center space-y-3 shadow-[0_8px_30px_rgba(236,72,153,0.09)]">
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-pink-600">Hyune Atelier Shop ♡</h1>
           <p className="text-[11px] font-semibold text-pink-700 bg-pink-50 border border-pink-200/80 rounded-full px-3.5 py-1 inline-block">
             📲 Tip: Toca <strong>Compartir / Menú ➔ Agregar a pantalla de inicio</strong> para instalar Hyune Atelier como App ✨
@@ -303,7 +303,7 @@ export default function AtelierShop() {
             <button
               type="button"
               onClick={() => { setFiltroGrupo('TODOS'); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); }}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all ${filtroGrupo === 'TODOS' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all ${filtroGrupo === 'TODOS' ? 'bg-[#c83d80] text-white shadow-sm' : 'bg-[#fff1f7] text-[#a92d68]'}`}
             >
               Todos los Grupos
             </button>
@@ -321,7 +321,7 @@ export default function AtelierShop() {
 
           <div className="flex items-center justify-start sm:justify-center gap-3 overflow-x-auto py-2 px-1">
             <button type="button" onClick={() => setFiltroIntegrante('TODOS')} className="flex flex-col items-center gap-1.5 shrink-0">
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${filtroIntegrante === 'TODOS' ? 'border-pink-600 bg-pink-600 text-white scale-105 shadow-sm' : 'border-zinc-200 bg-zinc-50 text-zinc-600'}`}>
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${filtroIntegrante === 'TODOS' ? 'border-[#c83d80] bg-[#c83d80] text-white scale-105 shadow-sm' : 'border-[#bfe8d0] bg-[#effaf3] text-zinc-600'}`}>
                 ALL
               </div>
               <span className={`text-[11px] font-bold ${filtroIntegrante === 'TODOS' ? 'text-pink-600' : 'text-zinc-500'}`}>Todos</span>
@@ -346,12 +346,12 @@ export default function AtelierShop() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left">
-            <input type="text" placeholder="🔍 Buscar por nombre..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="border border-zinc-200 rounded-xl px-3.5 py-2 text-xs bg-zinc-50" />
-            <select value={filtroEra} onChange={(e) => setFiltroEra(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold">
+            <input type="text" placeholder="🔍 Buscar por nombre..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="border border-pink-100 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-pink-200" />
+            <select value={filtroEra} onChange={(e) => setFiltroEra(e.target.value)} className="border border-[#cdebd9] rounded-xl px-3 py-2.5 text-xs bg-[#f5fcf7] font-bold focus:outline-none focus:ring-2 focus:ring-[#bde8ce]">
               <option value="TODOS">💿 Era / Serie: Todas</option>
               {erasDisponibles.map((er) => <option key={er} value={er}>{er}</option>)}
             </select>
-            <select value={filtroTipoPc} onChange={(e) => setFiltroTipoPc(e.target.value)} className="border border-zinc-200 rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold">
+            <select value={filtroTipoPc} onChange={(e) => setFiltroTipoPc(e.target.value)} className="border border-[#cdebd9] rounded-xl px-3 py-2.5 text-xs bg-[#f5fcf7] font-bold focus:outline-none focus:ring-2 focus:ring-[#bde8ce]">
               <option value="TODOS">🃏 Tipo: Todos (Álbum, POB, Merch)</option>
               {tiposPcDisponibles.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
             </select>
@@ -642,6 +642,65 @@ export default function AtelierShop() {
           </div>
         </div>
       )}
+
+      {/* Navegación inferior: pensada primero para teléfonos */}
+      <nav
+        aria-label="Navegación principal"
+        className="fixed bottom-0 inset-x-0 z-40 sm:hidden px-3 pt-2 bg-white/95 backdrop-blur-xl border-t border-pink-100 shadow-[0_-5px_24px_rgba(190,45,112,0.10)]"
+        style={{ paddingBottom: 'max(0.65rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="mx-auto grid grid-cols-5 gap-1 max-w-lg">
+          <button
+            type="button"
+            onClick={() => { setSoloWishlist(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className="flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-[#c83d80] font-extrabold"
+            aria-label="Tienda"
+          >
+            <span className="text-xl leading-6">🛍️</span>
+            <span className="text-[10px]">Tienda</span>
+          </button>
+          <Link
+            href="/gos"
+            className="flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-zinc-500 font-bold"
+            aria-label="Group Orders"
+          >
+            <span className="text-xl leading-6">🎀</span>
+            <span className="text-[10px]">GOs</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => { setSoloWishlist(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className={`flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 font-bold ${soloWishlist ? 'text-[#c83d80]' : 'text-zinc-500'}`}
+            aria-label="Wishlist"
+          >
+            <span className="text-xl leading-6">♡</span>
+            <span className="text-[10px]">Wishlist</span>
+          </button>
+          <Link
+            href="/mi-escritorio"
+            className="flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-zinc-500 font-bold"
+            aria-label="Mis pedidos y bodega"
+          >
+            <span className="text-xl leading-6">📦</span>
+            <span className="text-[10px]">Bodega</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMostrarCarrito(true)}
+            className="relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-zinc-500 font-bold"
+            aria-label={`Carrito, ${totalItemsCarrito} artículos`}
+          >
+            <span className="text-xl leading-6">🛒</span>
+            <span className="text-[10px]">Carrito</span>
+            {totalItemsCarrito > 0 && (
+              <span className="absolute top-0 right-1 min-w-4 h-4 px-1 rounded-full bg-[#c83d80] text-white text-[9px] flex items-center justify-center">
+                {totalItemsCarrito}
+              </span>
+            )}
+          </button>
+        </div>
+      </nav>
+
     </div>
   );
 }
