@@ -354,6 +354,9 @@ export default function MiEscritorioJoiner() {
           <nav className="flex items-center gap-2 text-xs font-bold">
             <Link href="/gos" className="rounded-full border border-[#EADCE5] bg-white px-3 py-2 text-[#8B647A] transition hover:border-[#D98EB0] hover:text-[#B85E89]">🧸 Explorar GOs</Link>
             <Link href="/shop" className="rounded-full border border-[#EADCE5] bg-white px-3 py-2 text-[#8B647A] transition hover:border-[#D98EB0] hover:text-[#B85E89]">🛍️ Tienda</Link>
+            {usuarioEmail.toLowerCase().trim() === 'liahwang1852@gmail.com' && (
+              <Link href="/admin" className="rounded-full border border-[#E6DDF3] bg-[#F4F0FA] px-3 py-2 text-[#806D9F] transition hover:border-[#CFC0E8] hover:bg-[#EEE8F8]">👑 Admin</Link>
+            )}
           </nav>
         </div>
       </header>
