@@ -8,7 +8,6 @@ export const dynamic = 'force-dynamic';
 const PRECIOS_ENVIO: Record<string, number> = {
   'Quito (+$3.50)': 3.5,
   'Otras Provincias (+$6.50)': 6.5,
-  
 };
 
 function abrirChatLia(texto: string) {
@@ -41,6 +40,7 @@ type GrupoGoEscritorio = {
   items: ItemEscritorio[];
   totalGrupo: number;
 };
+
 export default function MiEscritorioJoiner() {
   const [vista, setVista] = useState<'pedidos' | 'bodega'>('pedidos');
   const [usuarioEmail, setUsuarioEmail] = useState('');
@@ -108,6 +108,7 @@ export default function MiEscritorioJoiner() {
           mapaGrupos[tituloGrupo].items.push(item);
           mapaGrupos[tituloGrupo].totalGrupo += item.precioTotal;
         };
+
         if (Array.isArray(prods)) {
           prods.forEach((p: any) => {
             const claims = p?.claims_integrantes || {};
@@ -162,7 +163,6 @@ export default function MiEscritorioJoiner() {
             });
           });
         }
-
         if (Array.isArray(peds)) {
           peds.forEach((ped: any) => {
             agregarItem('Tienda / Shop', 'SHOP', {
@@ -196,6 +196,7 @@ export default function MiEscritorioJoiner() {
   useEffect(() => {
     cargarMisPedidos();
   }, []);
+
   async function handleGuardarMiPerfil(e: React.FormEvent) {
     e.preventDefault();
     if (!usuarioEmail || !nombreJoiner.trim()) return;
@@ -219,26 +220,25 @@ export default function MiEscritorioJoiner() {
       cargarMisPedidos();
     }
   }
-
   const todosLosItems = grupos.flatMap((g) => g.items);
   const itemsPagadosTodos = todosLosItems.filter(
-  (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.estadoEnvio !== 'Enviado'
-);
+    (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.estadoEnvio !== 'Enviado'
+  );
 
-const itemsPagadosEnBodega = itemsPagadosTodos.filter(
-  (i) => i.origen === 'SHOP' || i.estadoLogistica === 'Llegó a hyuneatelier'
-);
+  const itemsPagadosEnBodega = itemsPagadosTodos.filter(
+    (i) => i.origen === 'SHOP' || i.estadoLogistica === 'Llegó a hyuneatelier'
+  );
 
-const itemsPagadosEnCamino = itemsPagadosTodos.filter(
-  (i) => i.origen === 'GO' && i.estadoLogistica !== 'Llegó a hyuneatelier'
-);
+  const itemsPagadosEnCamino = itemsPagadosTodos.filter(
+    (i) => i.origen === 'GO' && i.estadoLogistica !== 'Llegó a hyuneatelier'
+  );
 
-const itemsMarcados = itemsPagadosEnBodega.filter((i) => seleccionadosEnvio[i.idUnico]);
-const costoEnvioElegido = PRECIOS_ENVIO[envioMetodo] ?? 0;
+  const itemsMarcados = itemsPagadosEnBodega.filter((i) => seleccionadosEnvio[i.idUnico]);
+  const costoEnvioElegido = PRECIOS_ENVIO[envioMetodo] ?? 0;
 
   async function handleSolicitarEnvioAcumulado(e: React.FormEvent) {
     e.preventDefault();
-    if (itemsMarcados.length === 0) return alert('Marca al menos 1 artículo pagado de tu bodega 📦');
+    if (itemsMarcados.length === 0) return alert('Marca al menos 1 artículo pagado que ya haya llegado 📦');
     if (!envioNombre || !envioTelefono || !envioCiudad || !envioDireccion) {
       return alert('Completa todos tus datos de dirección y teléfono 🚚');
     }
@@ -287,6 +287,7 @@ const costoEnvioElegido = PRECIOS_ENVIO[envioMetodo] ?? 0;
     }
     setEnviandoSolicitud(false);
   }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">
@@ -337,7 +338,9 @@ const costoEnvioElegido = PRECIOS_ENVIO[envioMetodo] ?? 0;
   ).length;
   const estampitasActuales = estampitasGanadas % 10;
   const premiosDisponibles = Math.floor(estampitasGanadas / 10);
+
   return (
+
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3">
         <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-3">
