@@ -116,7 +116,7 @@ export default function Masterlist() {
   const productosDelGo = productos.filter((p) => p.go_id === goSeleccionado);
   const activeProducto = productos.find((p) => p.id === productoSeleccionado);
 
-  function cambiarCantidadEnBolsa(prod: Producto, integrante: string, delta: number, stockDisp: number) {
+  function cambiarCantidadEnBolsa(prod: Producto, integrante: string, delta: number, stockDisponibles: number) {
     if (!usuarioEmail) {
       setMessage('Inicia sesión primero para apartar slots 🎀');
       return;
@@ -245,7 +245,7 @@ export default function Masterlist() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">
-        ✧ cargando masterlists ... 🧸
+        ✧ preparando tus Group Orders... 🧸
       </div>
     );
   }
@@ -272,8 +272,8 @@ export default function Masterlist() {
           <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-2xs space-y-5">
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
-                <h1 className="text-xl font-black uppercase text-zinc-900">Group Orders Activos</h1>
-                <p className="text-xs text-zinc-500">Elige un catálogo, suma todos los slots que quieras y confirma al final ✨</p>
+                <h1 className="text-xl font-black uppercase text-zinc-900">Group Orders disponibles</h1>
+                <p className="text-xs text-zinc-500">Explora los catálogos, elige tus integrantes y reúne todos tus slots en una sola confirmación ✨</p>
               </div>
               <div className="flex gap-1.5 bg-zinc-100 p-1 rounded-xl">
                 {(['stray kids', 'enhypen', 'otros'] as const).map((b) => (
@@ -284,6 +284,13 @@ export default function Masterlist() {
               </div>
             </div>
 
+            {gosFiltrados.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-pink-200 bg-pink-50/50 px-5 py-10 text-center sm:col-span-3 md:col-span-4">
+                <p className="text-2xl mb-2">🧸</p>
+                <p className="text-sm font-extrabold text-zinc-800">No hay catálogos disponibles en esta categoría</p>
+                <p className="text-xs text-zinc-500 mt-1">Prueba otra pestaña para ver más Group Orders.</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {gosFiltrados.map((g) => (
                 <button
@@ -294,15 +301,16 @@ export default function Masterlist() {
                     const firstP = productos.find((p) => p.go_id === g.id);
                     setProductoSeleccionado(firstP ? firstP.id : null);
                   }}
-                  className="p-3 rounded-2xl border border-zinc-200/80 text-left bg-zinc-50/40 hover:border-pink-400 hover:shadow-sm transition-all flex flex-col justify-between"
+                  className="p-3.5 sm:p-4 rounded-2xl border border-pink-100 text-left bg-white hover:border-pink-300 hover:shadow-md transition-all flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-pink-200"
                 >
-                  <div className="w-full h-36 bg-white rounded-xl flex items-center justify-center overflow-hidden mb-2.5 border border-zinc-100">
-                    {g.imagen_general ? <img src={g.imagen_general} alt="GO" className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-zinc-300 font-bold">NO PHOTO</span>}
+                  <div className="w-full h-36 sm:h-40 bg-[#FAF8F9] rounded-xl flex items-center justify-center overflow-hidden mb-3 border border-pink-50">
+                    {g.imagen_general ? <img src={g.imagen_general} alt="GO" className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-zinc-300 font-bold">Sin fotografía</span>}
                   </div>
-                  <p className="text-xs font-black uppercase text-zinc-900 line-clamp-2">{g.title}</p>
+                  <p className="text-xs sm:text-sm font-black uppercase text-zinc-900 line-clamp-2 leading-snug">{g.title}</p>
                 </button>
               ))}
             </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
@@ -315,7 +323,7 @@ export default function Masterlist() {
                   <img src={activeProducto?.imagen_producto || activeGo?.imagen_general || ''} alt="Preview" className="max-h-full object-contain rounded-lg" />
                 </div>
                 <div>
-                  <span className="bg-pink-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">{activeGo?.status || 'OPEN'}</span>
+                  <span className="bg-pink-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">{activeGo?.status || 'ABIERTO'}</span>
                   <h3 className="text-base font-black text-zinc-900 uppercase mt-1">{activeGo?.title}</h3>
                   <button
   type="button"
@@ -337,7 +345,7 @@ export default function Masterlist() {
 
             <div className="md:col-span-7 flex flex-col gap-4">
               <div className="bg-white border border-zinc-200/80 rounded-2xl p-4 space-y-3 shadow-2xs">
-                <p className="text-[11px] font-bold text-zinc-400 uppercase">Ítems en este GO</p>
+                <p className="text-[11px] font-bold text-zinc-400 uppercase">Productos de este GO</p>
                 <div className="flex flex-wrap gap-2">
                   {productosDelGo.map((p) => (
                     <button key={p.id} type="button" onClick={() => setProductoSeleccionado(p.id)} className={`px-3 py-2 rounded-xl text-xs font-extrabold border ${productoSeleccionado === p.id ? 'bg-zinc-950 text-white border-zinc-950' : 'bg-zinc-50 text-zinc-700 border-zinc-200'}`}>
@@ -350,7 +358,7 @@ export default function Masterlist() {
               {activeProducto && (
                 <div className="bg-white p-5 rounded-2xl border border-zinc-200/80 space-y-4 shadow-2xs">
                   <div className="flex justify-between items-center border-b pb-2">
-                    <span className="text-xs font-extrabold text-zinc-900 uppercase">Elige tus Slots — {activeProducto.nombre_producto}</span>
+                    <span className="text-xs font-extrabold text-zinc-900 uppercase">Elige tus slots — {activeProducto.nombre_producto}</span>
                     <span className="text-xs font-black text-pink-600">${activeProducto.precio} USD c/u</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
@@ -362,10 +370,10 @@ export default function Masterlist() {
                         <div key={int} className="bg-zinc-50/70 p-3 rounded-xl border border-zinc-200/80 flex justify-between items-center">
                           <div>
                             <p className="text-xs font-black uppercase text-zinc-800">{int}</p>
-                            <p className="text-[10px] font-mono text-zinc-400">Disp: {stockD}</p>
+                            <p className="text-[10px] font-mono text-zinc-400">Disponibles: {stockD}</p>
                           </div>
                           {stockD === 0 ? (
-                            <span className="text-[10px] text-zinc-400 font-bold bg-white border px-2.5 py-1 rounded-lg">🔒 OCUPADO</span>
+                            <span className="text-[10px] text-zinc-400 font-bold bg-white border px-2.5 py-1 rounded-lg">🔒 AGOTADO</span>
                           ) : (
                             <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl border">
                               <button type="button" onClick={() => cambiarCantidadEnBolsa(activeProducto, int, -1, stockD)} className="font-black text-zinc-500 px-1">-</button>
@@ -387,7 +395,7 @@ export default function Masterlist() {
 
               {usuarioEmail === correoAdmin && activeProducto?.claims_integrantes && Object.keys(activeProducto.claims_integrantes).length > 0 && (
                 <div className="bg-white border rounded-2xl p-4 space-y-2">
-                  <h3 className="text-[11px] font-bold text-zinc-400 uppercase text-center">Panel Control Admin 👑</h3>
+                  <h3 className="text-[11px] font-bold text-zinc-400 uppercase text-center">Panel de administración 👑</h3>
                   {Object.keys(activeProducto.claims_integrantes).map((sName) =>
                     Object.entries(activeProducto.claims_integrantes?.[sName] || {}).map(([mail, cant]) => (
                       <div key={sName + '-' + mail} className="bg-zinc-50 border rounded-xl p-2.5 flex justify-between items-center text-xs">
@@ -435,7 +443,7 @@ export default function Masterlist() {
                   </div>
 
                   <form onSubmit={handleConfirmarTodoElCarrito} className="space-y-2.5 border-t pt-3">
-                    <p className="text-[11px] font-bold uppercase text-zinc-400">Tus Datos de Joiner</p>
+                    <p className="text-[11px] font-bold uppercase text-zinc-400">Tus datos de compra</p>
                     <div className="grid grid-cols-2 gap-2">
                       <input type="text" required placeholder="Nombre Completo" value={formNombre} onChange={(e) => setFormNombre(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50" />
                       <input type="text" required placeholder="Instagram (sin @)" value={formInstagram} onChange={(e) => setFormInstagram(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-zinc-50 font-bold text-pink-600" />
@@ -457,7 +465,7 @@ export default function Masterlist() {
                       <span className="text-pink-600">${totalDineroBolsa.toFixed(2)} USD</span>
                     </div>
                     <button type="submit" disabled={procesando} className="w-full py-3 bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase rounded-xl">
-                      {procesando ? 'Guardando claims...' : '🔒 Confirmar Mis Claims ($' + totalDineroBolsa.toFixed(2) + ')'}
+                      {procesando ? 'Guardando claims...' : '🔒 Confirmar mis apartados ($' + totalDineroBolsa.toFixed(2) + ')'}
                     </button>
                   </form>
                 </>
@@ -470,7 +478,7 @@ export default function Masterlist() {
       {mostrarModuloPago && datosUltimoClaim && (
         <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
-            <h4 className="text-sm font-black text-pink-600 uppercase">✨ ¡Claims Apartados con Éxito! 🐻</h4>
+            <h4 className="text-sm font-black text-pink-600 uppercase">✨ ¡Tus apartados están registrados! 🐻</h4>
             <div className="bg-zinc-50 p-4 rounded-2xl text-left text-xs space-y-1.5 text-zinc-700 border">
               <p><strong>🏦 Banco Pichincha (Ahorros):</strong> #2213367970</p>
               <p><strong>👤 Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
@@ -486,7 +494,7 @@ export default function Masterlist() {
               rel="noopener noreferrer"
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase rounded-xl block"
             >
-              💬 Enviar Comprobante a WhatsApp 🍰
+              💬 Enviar comprobante por WhatsApp 🍰
             </a>
             <button
               type="button"
