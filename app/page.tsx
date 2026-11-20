@@ -12,7 +12,7 @@ export default function AtelierWelcome() {
       <div className="relative overflow-hidden border-y border-[#edcddd] bg-[#fff8fb] py-2.5">
         <div className="whitespace-nowrap text-[9px] font-black uppercase tracking-[0.28em] text-[#c9689b] sm:text-[10px]">
           <span className="inline-block min-w-full animate-[marquee_28s_linear_infinite]">
-            ✳ made for collectors ✳ photocards & little treasures ✳ group orders ✳ korean proxy ✳ made for collectors ✳ photocards & little treasures ✳ group orders ✳ korean proxy ✳
+            ✳ un rincón para coleccionistas ✳ photocards y pequeños tesoros ✳ compras grupales ✳ compras en Corea ✳ un rincón para coleccionistas ✳ photocards y pequeños tesoros ✳
           </span>
         </div>
       </div>
@@ -27,7 +27,7 @@ export default function AtelierWelcome() {
           <div className="min-w-0">
             <div className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-[#c76d9d] sm:text-[10px]">
               <span className="h-px w-7 bg-[#e5a9c8]" />
-              your little k-pop corner
+              tu pequeño rincón de k-pop
               <span className="text-[#e5b94e]">✳</span>
             </div>
             <div className="flex flex-wrap items-end gap-x-2 gap-y-0">
@@ -38,14 +38,14 @@ export default function AtelierWelcome() {
               <span className="mb-1 inline-flex h-9 w-9 rotate-6 items-center justify-center rounded-full border border-[#f0d28a] bg-[#fff8df] text-xl text-[#d9ad45] shadow-sm sm:mb-2">✳</span>
             </div>
             <p className="mt-4 max-w-xl text-[13px] leading-6 text-[#827783] sm:text-[15px]">
-              A tiny universe for the things we love to collect — photocards, group orders, proxy finds & happy little surprises.
+              Un pequeño universo para coleccionar lo que más nos gusta: photocards, compras grupales, hallazgos de Corea y muchas sorpresas.
             </p>
           </div>
           <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:pt-2">
             <span className="rounded-full border border-[#edc9dc] bg-white/85 px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-[#c76d9d] shadow-[0_4px_14px_rgba(199,109,157,.08)] sm:text-[10px]">
-              a collector&apos;s daydream ✧
+              el sueño de toda coleccionista ✧
             </span>
-            <span className="hidden text-right font-serif text-sm italic text-[#a68c9c] sm:block">curated with love, always ♡</span>
+            <span className="hidden text-right font-serif text-sm italic text-[#a68c9c] sm:block">seleccionado con mucho cariño ♡</span>
           </div>
         </header>
 
@@ -53,55 +53,55 @@ export default function AtelierWelcome() {
         <div className="relative mt-5 grid grid-cols-1 items-center gap-4 sm:mt-7 md:grid-cols-[1fr_minmax(150px,190px)_1fr] md:gap-5 lg:gap-7">
           <figure className="group relative min-w-0 -rotate-[1deg] rounded-[1.65rem] border border-[#dcecf5] bg-white p-2 shadow-[0_12px_28px_-20px_rgba(72,128,163,.45)] transition duration-300 hover:-translate-y-1 hover:rotate-0">
             <figcaption className="mb-2 flex items-center justify-between px-1.5 text-[9px] font-black uppercase tracking-[0.19em] text-[#79b5d9]">
-              <span>little inspiration</span><span>✧ 01</span>
+              <span>un poquito de inspiración</span><span>✧ 01</span>
             </figcaption>
             <div className="relative overflow-hidden rounded-[1.15rem] bg-[#f4eee8]">
               <img
                 src="https://i.postimg.cc/FKZt0hDG/441894935b5b1026b720976faa08bc5e.jpg"
-                alt="Hyunjin — little inspiration"
+                alt="Hyunjin — un poquito de inspiración"
                 loading="lazy"
                 className="h-[270px] w-full object-cover object-center sm:h-[340px] lg:h-[390px]"
               />
-              <span className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.18em] text-[#827783] backdrop-blur-sm">mood: starlight</span>
+              <span className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.18em] text-[#827783] backdrop-blur-sm">estado: luz de estrellas</span>
             </div>
             <span className="pointer-events-none absolute -right-2 -top-4 rotate-12 text-3xl text-[#e7c66c] drop-shadow-sm">✦</span>
           </figure>
 
           <div className="relative z-10 mx-auto flex w-full max-w-[290px] flex-col items-center px-2 py-2 text-center md:max-w-none md:px-0">
             <span className="mb-2 font-serif text-4xl italic text-[#e4a5c8]">୨୧</span>
-            <p className="text-[9px] font-black uppercase tracking-[0.26em] text-[#d5a33e]">welcome, lovely</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.26em] text-[#d5a33e]">¡bienvenida!</p>
             <p className="mt-3 font-serif text-[1.55rem] italic leading-[1.18] text-[#655765] sm:text-[1.7rem]">
-              Find your next<br />favorite little<br /><span className="text-[#c76d9d]">treasure.</span>
+              Encuentra tu próximo<br />pequeño <span className="text-[#c76d9d]">tesoro.</span>
             </p>
-            <p className="mt-3 max-w-[210px] text-[10px] leading-5 text-[#9a8997]">A happy place for your wishlist to come true.</p>
+            <p className="mt-3 max-w-[210px] text-[10px] leading-5 text-[#9a8997]">Un lugar bonito para encontrar eso que tanto buscas.</p>
             <Link
               href="/shop"
               className="mt-5 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#d96fa7] to-[#e47c91] px-6 py-3.5 text-[10px] font-black uppercase tracking-[0.17em] text-white shadow-[0_9px_20px_-10px_rgba(207,91,145,.8)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_13px_24px_-10px_rgba(207,91,145,.75)]"
             >
-              enter the shop <span className="text-sm">↗</span>
+              entrar a la tienda <span className="text-sm">↗</span>
             </Link>
-            <span className="mt-4 text-[9px] font-bold uppercase tracking-[0.22em] text-[#b9a5b3]">browse • collect • adore</span>
+            <span className="mt-4 text-[9px] font-bold uppercase tracking-[0.22em] text-[#b9a5b3]">explora • colecciona • disfruta</span>
           </div>
 
           <figure className="group relative min-w-0 rotate-[1deg] rounded-[1.65rem] border border-[#eadcf8] bg-white p-2 shadow-[0_12px_28px_-20px_rgba(133,100,164,.4)] transition duration-300 hover:-translate-y-1 hover:rotate-0">
             <figcaption className="mb-2 flex items-center justify-between px-1.5 text-[9px] font-black uppercase tracking-[0.19em] text-[#ad8bd1]">
-              <span>collection moodboard</span><span>✧ 02</span>
+              <span>inspiración para tu colección</span><span>✧ 02</span>
             </figcaption>
             <div className="relative overflow-hidden rounded-[1.15rem] bg-[#f8e7aa]">
               <img
                 src="https://i.postimg.cc/C5fSGWZs/eca2f6969986d86cf77c8801c39c0026.jpg"
-                alt="Hyunjin — collection moodboard"
+                alt="Hyunjin — inspiración para tu colección"
                 loading="lazy"
                 className="h-[270px] w-full object-cover object-center sm:h-[340px] lg:h-[390px]"
               />
-              <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-[#fff8df]/90 px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.18em] text-[#ad8a3c]">the pretty things</span>
+              <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-[#fff8df]/90 px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.18em] text-[#ad8a3c]">cositas bonitas</span>
             </div>
             <span className="pointer-events-none absolute -left-2 -top-3 -rotate-12 text-3xl text-[#e7c66c] drop-shadow-sm">✦</span>
           </figure>
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-[#f0dce6] pt-4 text-[8px] font-black uppercase tracking-[0.22em] text-[#b59aaa] sm:justify-between sm:text-[9px]">
-          <span>indulge in the little things</span><span className="text-[#e0b65a]">✳ ✧ ✳</span><span>made for fellow collectors</span>
+          <span>disfruta de los pequeños detalles</span><span className="text-[#e0b65a]">✳ ✧ ✳</span><span>hecho para coleccionistas</span>
         </div>
       </section>
 
@@ -109,18 +109,18 @@ export default function AtelierWelcome() {
       <section className="relative overflow-hidden rounded-[2rem] border border-white bg-white/75 p-4 shadow-[0_16px_45px_-34px_rgba(174,91,135,.3)] sm:p-6">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#cf78a4]">the atelier directory</p>
-            <h2 className="mt-1 font-serif text-2xl italic text-[#635463] sm:text-3xl">Explore your little world<span className="text-[#d97ca8]">.</span></h2>
+            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#cf78a4]">explora hyuneatelier</p>
+            <h2 className="mt-1 font-serif text-2xl italic text-[#635463] sm:text-3xl">Explora nuestro pequeño mundo<span className="text-[#d97ca8]">.</span></h2>
           </div>
-          <span className="pb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-[#ad9ba9]">pick a destination ↘</span>
+          <span className="pb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-[#ad9ba9]">elige a dónde ir ↘</span>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
-          <AppShortcut href="/shop" icon="✳" title="the shop" detail="photocards & merch" tone="pink" index="01" />
-          <AppShortcut href="/gos" icon="▧" title="group orders" detail="join a GO" tone="mint" index="02" />
-          <AppShortcut href="/proxy-service" icon="↗" title="korea proxy" detail="proxy service" tone="butter" index="03" />
-          <AppShortcut href="/info-rules" icon="⌑" title="info & rules" detail="before ordering" tone="lilac" index="04" />
-          <AppShortcut href="/joiner-login" icon="♡" title="my account" detail="sign in / register" tone="blue" index="05" />
-          <AppShortcut href="/mi-escritorio" icon="⌂" title="my desk" detail="orders & warehouse" tone="lilac" index="06" />
+          <AppShortcut href="/shop" icon="🛒" title="tienda" detail="photocards y merch" tone="pink" index="01" />
+          <AppShortcut href="/gos" icon="🧸" title="compras grupales" detail="únete a una GO" tone="mint" index="02" />
+          <AppShortcut href="/proxy-service" icon="🇰🇷" title="proxy en Corea" detail="servicio de compras" tone="butter" index="03" />
+          <AppShortcut href="/info-rules" icon="⌑" title="información y reglas" detail="antes de comprar" tone="lilac" index="04" />
+          <AppShortcut href="/joiner-login" icon="👤" title="login" detail="inicia sesión / regístrate" tone="blue" index="05" />
+          <AppShortcut href="/mi-escritorio" icon="⭐" title="mi cuenta" detail="pedidos y almacén" tone="lilac" index="06" />
         </div>
       </section>
 
@@ -129,26 +129,26 @@ export default function AtelierWelcome() {
         <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-[#f7d9e8]/70 blur-3xl" />
         <div className="relative mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#ca73a1]">a little soundtrack</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#ca73a1]">un poquito de música</p>
             <h2 className="mt-1 font-serif text-3xl italic text-[#655665]">hyuneatelier radio <span className="text-[#d77ba8]">♫</span></h2>
-            <p className="mt-1 text-xs text-[#968694]">A playlist to keep you company while you browse.</p>
+            <p className="mt-1 text-xs text-[#968694]">Una lista para acompañarte mientras exploras la tienda.</p>
           </div>
-          <a href="https://open.spotify.com/playlist/6dcnCHcVUFWbS1sxJNGnCP" target="_blank" rel="noopener noreferrer" className="rounded-full border border-[#ecc8da] bg-white/90 px-4 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#c66e9b] transition hover:-translate-y-0.5 hover:bg-white">open in spotify ↗</a>
+          <a href="https://open.spotify.com/playlist/6dcnCHcVUFWbS1sxJNGnCP" target="_blank" rel="noopener noreferrer" className="rounded-full border border-[#ecc8da] bg-white/90 px-4 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#c66e9b] transition hover:-translate-y-0.5 hover:bg-white">abrir en Spotify ↗</a>
         </div>
         <div className="relative overflow-hidden rounded-[1.4rem] border border-white bg-white shadow-sm">
           <iframe title="Hyuneatelier Radio Spotify playlist" src={SPOTIFY_PLAYLIST} width="100%" height="352" style={{ border: 0, display: "block" }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" />
         </div>
-        <p className="mt-3 text-center text-[9px] font-medium tracking-wide text-[#aa96a5]">press play whenever you feel like it ♡</p>
+        <p className="mt-3 text-center text-[9px] font-medium tracking-wide text-[#aa96a5]">dale play cuando quieras ♡</p>
       </section>
 
       {/* Community links */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <ExternalShortcut href="https://instagram.com/maisonhyun" title="instagram" detail="follow the shop" tone="pink" />
-        <LinkShortcut href="/shop" title="in stock" detail="ready to ship" tone="mint" />
-        <ExternalShortcut href="https://chat.whatsapp.com/FMBE0gchYcMKkD7BPxd5q7" title="whatsapp" detail="join the community" tone="blue" />
-        <LinkShortcut href="/proxy-service" title="korea proxy" detail="need help from korea?" tone="butter" />
+        <ExternalShortcut href="https://instagram.com/maisonhyun" title="instagram" detail="follow tienda" tone="pink" />
+        <LinkShortcut href="/shop" title="disponible" detail="listo para enviar" tone="mint" />
+        <ExternalShortcut href="https://chat.whatsapp.com/FMBE0gchYcMKkD7BPxd5q7" title="whatsapp" detail="únete a la comunidad" tone="blue" />
+        <LinkShortcut href="/proxy-service" title="proxy en Corea" detail="¿necesitas ayuda desde Corea?" tone="butter" />
       </section>
-      <footer className="pb-2 text-center text-[9px] font-bold uppercase tracking-[0.24em] text-[#b69aaa]">hyuneatelier · made with love for collectors ♡</footer>
+      <footer className="pb-2 text-center text-[9px] font-bold uppercase tracking-[0.24em] text-[#b69aaa]">hyuneatelier · hecho con amor para coleccionistas ♡</footer>
     </div>
   );
 }
