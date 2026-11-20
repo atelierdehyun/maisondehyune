@@ -57,6 +57,48 @@ type ProductoAdmin = {
   badge_especial?: string | null;
   variantes?: { nombre: string; precio: number; stock: number }[] | null;
 };
+async function optimizarImagenParaSubida(file: File): Promise<File> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Selecciona un archivo de imagen.');
+  }
+
+  // Conservamos GIF animados; el resto se convierte a WebP.
+  if (file.type === 'image/gif') return file;
+
+  const bitmap = await createImageBitmap(file);
+  const maxDimension = 1600;
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    bitmap.close();
+    throw new Error('No se pudo preparar la imagen. Inténtalo con otra foto.');
+  }
+
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (resultado) => resultado ? resolve(resultado) : reject(new Error('No se pudo comprimir la imagen.')),
+      'image/webp',
+      0.82
+    );
+  });
+
+  const nombreBase = file.name.replace(/\.[^.]+$/, '') || 'imagen';
+  return new File([blob], `${nombreBase}.webp`, {
+    type: 'image/webp',
+    lastModified: Date.now(),
+  });
+}
+
 export default function AdminPanelPremium() {
   const [pestanaAdmin, setPestanaAdmin] = useState<'joiners' | 'envios' | 'stock' | 'lanzar' | 'items'>('joiners');
   const [solicitudesEnvio, setSolicitudesEnvio] = useState<any[]>([]);
@@ -126,20 +168,41 @@ export default function AdminPanelPremium() {
   const [fotoIntegNombre, setFotoIntegNombre] = useState('');
   const [fotoIntegUrl, setFotoIntegUrl] = useState('');
   async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra' | 'integ') {
-    const file = e.target.files ? Array.from(e.target.files).at(0) : null;
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
+
     setSubiendoImagen(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = Date.now() + '-' + Math.random().toString(36).substring(2) + '.' + fileExt;
-    const { error } = await supabase.storage.from('fotos-productos').upload(fileName, file);
-    if (error) { alert('Error: ' + error.message); setSubiendoImagen(false); return; }
-    const { data: { publicUrl } } = supabase.storage.from('fotos-productos').getPublicUrl(fileName);
-    if (targetForm === 'go') setNewGoImage(publicUrl);
-    else if (targetForm === 'prod') setNewProdImage(publicUrl);
-    else if (targetForm === 'shop') setNewShopImage(publicUrl);
-    else if (targetForm === 'integ') setFotoIntegUrl(publicUrl);
-    else setNewShopExtraImages((prev) => [...prev, publicUrl]);
-    setSubiendoImagen(false);
+    try {
+      const imagenOptimizada = await optimizarImagenParaSubida(file);
+      const extension = imagenOptimizada.type === 'image/webp' ? 'webp' : (imagenOptimizada.name.split('.').pop() || 'gif');
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+
+      const { error } = await supabase.storage
+        .from('fotos-productos')
+        .upload(fileName, imagenOptimizada, {
+          cacheControl: '31536000',
+          contentType: imagenOptimizada.type,
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage.from('fotos-productos').getPublicUrl(fileName);
+      if (targetForm === 'go') setNewGoImage(publicUrl);
+      else if (targetForm === 'prod') setNewProdImage(publicUrl);
+      else if (targetForm === 'shop') setNewShopImage(publicUrl);
+      else if (targetForm === 'integ') setFotoIntegUrl(publicUrl);
+      else setNewShopExtraImages((prev) => [...prev, publicUrl]);
+
+      const ahorro = Math.max(0, Math.round((1 - imagenOptimizada.size / file.size) * 100));
+      alert(`¡Imagen subida! ${imagenOptimizada.type === 'image/webp' ? `Optimizada a WebP${ahorro > 0 ? ` (aprox. ${ahorro}% menos peso)` : ''}.` : 'Se conservó su formato original.'}`);
+    } catch (error: any) {
+      alert('No se pudo subir la imagen: ' + (error?.message || 'Error inesperado.'));
+    } finally {
+      setSubiendoImagen(false);
+      input.value = '';
+    }
   }
 
   async function cargarDatosHibridos() {
@@ -1025,7 +1088,7 @@ export default function AdminPanelPremium() {
                           return (
                             <div key={it.idUnico} className="bg-zinc-50/90 border border-zinc-200/80 rounded-2xl p-3 space-y-2.5 text-xs">
                               <div className="flex items-start gap-2.5">
-                                {it.imagenUrl ? <img src={it.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" /> : <span className="w-11 h-11 rounded-xl bg-white border flex items-center justify-center text-sm shrink-0">🧸</span>}
+                                {it.imagenUrl ? <img loading="lazy" decoding="async" src={it.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" /> : <span className="w-11 h-11 rounded-xl bg-white border flex items-center justify-center text-sm shrink-0">🧸</span>}
                                 <div className="flex-1 min-w-0 space-y-1.5">
                                   {Object.entries(gruposPorPost).map(([tituloPost, subItems], idxPost) => (
                                     <div key={idxPost} className="space-y-1">
@@ -1237,7 +1300,7 @@ export default function AdminPanelPremium() {
               {productosStockFiltrados.map((prod) => (
                 <div key={prod.id} className="bg-white border rounded-2xl p-5 space-y-4 shadow-2xs">
                   <div className="flex items-center gap-3 border-b pb-3">
-                    {prod.imagen_producto && <img src={prod.imagen_producto} alt="" className="w-12 h-12 rounded-xl object-contain bg-white border p-1" />}
+                    {prod.imagen_producto && <img loading="lazy" decoding="async" src={prod.imagen_producto} alt="" className="w-12 h-12 rounded-xl object-contain bg-white border p-1" />}
                     <div>
                       <h3 className="text-sm font-extrabold text-zinc-900">{prod.nombre_producto}</h3>
                       <p className="text-xs text-zinc-500">${Number(prod.precio).toFixed(2)} USD</p>
@@ -1275,13 +1338,13 @@ export default function AdminPanelPremium() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-5 space-y-3">
                   <div className="w-full h-56 rounded-2xl bg-zinc-50 border-2 border-dashed flex flex-col items-center justify-center p-3">
-                    {newShopImage ? <img src={newShopImage} alt="Portada" className="max-h-full max-w-full object-contain rounded-xl" /> : <p className="text-xs text-zinc-400">📸 Foto principal (Portada)</p>}
+                    {newShopImage ? <img loading="lazy" decoding="async" src={newShopImage} alt="Portada" className="max-h-full max-w-full object-contain rounded-xl" /> : <p className="text-xs text-zinc-400">📸 Foto principal (Portada)</p>}
                     <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'shop')} className="mt-2 text-[11px]" />
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     {newShopExtraImages.map((url, i) => (
                       <div key={i} className="relative h-16 rounded-xl border overflow-hidden">
-                        <img src={url} alt="" className="w-full h-full object-cover" />
+                        <img loading="lazy" decoding="async" src={url} alt="" className="w-full h-full object-cover" />
                         <button type="button" onClick={() => setNewShopExtraImages((prev) => prev.filter((_, idx) => idx !== i))} className="absolute top-0.5 right-0.5 bg-rose-600 text-white text-[9px] w-4 h-4 rounded-full">✕</button>
                       </div>
                     ))}
@@ -1354,7 +1417,7 @@ export default function AdminPanelPremium() {
                 <label className="block space-y-1"><span className="text-[10px] font-bold text-zinc-500">Nombre del GO</span><input type="text" placeholder="Ej. SKZ 6TH FANMEETING MD" value={newGoTitle} onChange={(e) => setNewGoTitle(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" /></label>
                 <label className="block space-y-1"><span className="text-[10px] font-bold text-zinc-500">Grupo / artista</span><input type="text" placeholder="Stray Kids, Enhypen..." value={newGoGroup} onChange={(e) => setNewGoGroup(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs w-full" /></label>
                 <label className="block space-y-1"><span className="text-[10px] font-bold text-zinc-500">Imagen de portada (opcional)</span><input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'go')} className="text-xs w-full" /></label>
-                {newGoImage && <img src={newGoImage} alt="Vista previa del GO" className="h-28 w-full rounded-xl border border-pink-100 bg-pink-50 object-contain" />}
+                {newGoImage && <img loading="lazy" decoding="async" src={newGoImage} alt="Vista previa del GO" className="h-28 w-full rounded-xl border border-pink-100 bg-pink-50 object-contain" />}
                 <button type="submit" disabled={loadingForm || subiendoImagen} className="w-full bg-[#776a79] text-white font-bold text-xs py-3 rounded-xl">➕ Crear GO</button>
               </form>
 
@@ -1442,7 +1505,7 @@ export default function AdminPanelPremium() {
               <form onSubmit={handleGuardarEdicion} className="bg-amber-50 border-2 border-amber-300 p-5 rounded-3xl space-y-3 shadow-sm">
                 <div className="flex items-center gap-3 border-b border-amber-200/70 pb-3">
                   {editandoProducto.imagen_producto && (
-                    <img src={editandoProducto.imagen_producto} alt="" className="w-12 h-12 rounded-xl object-cover border bg-white" />
+                    <img loading="lazy" decoding="async" src={editandoProducto.imagen_producto} alt="" className="w-12 h-12 rounded-xl object-cover border bg-white" />
                   )}
                   <div>
                     <span className="text-[10px] font-bold uppercase text-amber-800">Editando artículo:</span>
@@ -1538,7 +1601,7 @@ export default function AdminPanelPremium() {
                       <div>
                         <div className="w-full h-36 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100 relative flex items-center justify-center mb-2.5">
                           {p.imagen_producto ? (
-                            <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-contain p-2" />
+                            <img loading="lazy" decoding="async" src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-contain p-2" />
                           ) : (
                             <span className="text-2xl">{p.isShop ? '🛍️' : '🧸'}</span>
                           )}
