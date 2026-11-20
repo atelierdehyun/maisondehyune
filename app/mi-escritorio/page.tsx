@@ -637,12 +637,7 @@ export default function MiEscritorioJoiner() {
                   </p>
                 </div>
 
-                {itemsPagadosEnBodega.length === 0 ? (
-                  <p className="text-xs text-zinc-400 text-center py-8 bg-zinc-50 rounded-2xl border border-dashed">
-                    Aún no tienes artículos con pago confirmado en tu bodega 🌸 Cuando Lia confirme tu pago aparecerán aquí.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
+                <div className="space-y-2">
                                  {itemsPagadosEnBodega.length > 0 && (
                <div className="flex items-center justify-between gap-2 bg-zinc-50 border border-zinc-200/80 rounded-xl px-3 py-2 text-xs">
                  <div className="flex gap-1.5">
@@ -759,6 +754,7 @@ export default function MiEscritorioJoiner() {
                     </button>
                   </form>
                 )}
+              </div>
               </div>
 
               {solicitudesPrevias.length > 0 && (
