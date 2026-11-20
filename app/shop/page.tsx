@@ -129,7 +129,21 @@ export default function AtelierShop() {
     if (filtroIntegrante !== 'TODOS' && integProd !== filtroIntegrante) return false;
     if (filtroEra !== 'TODOS' && eraProd !== filtroEra) return false;
     if (filtroTipoPc !== 'TODOS' && tipoProd !== filtroTipoPc) return false;
-    if (busqueda && !p.nombre_producto.toLowerCase().includes(busqueda.toLowerCase())) return false;
+    if (busqueda) {
+      const termino = busqueda.toLowerCase().trim();
+      const camposBusqueda = [
+        p.nombre_producto,
+        p.grupo,
+        p.integrante,
+        p.era,
+        p.tipo_pc,
+        p.categoria,
+        p.badge_especial,
+        p.descripcion,
+        p.due_date,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!camposBusqueda.includes(termino)) return false;
+    }
     if (soloWishlist && !wishlistIds.includes(p.id)) return false;
     return true;
   });
@@ -267,7 +281,7 @@ export default function AtelierShop() {
   const todasFotosDetalle = [productoDetalle?.imagen_producto, ...(productoDetalle?.fotos_extra || [])].filter(Boolean) as string[];
 
   return (
-    <main className="min-h-screen bg-[#FFF8FA] text-[#3F3540] pb-28 selection:bg-pink-200">
+    <main className="min-h-screen overflow-x-clip bg-[#FFF8FA] text-[#3F3540] pb-28 selection:bg-pink-200">
       {/* Identidad de la tienda: no repetimos el menú global del sitio */}
       <header className="sticky top-0 z-40 border-b border-[#F3DCE7] bg-[#FFF9FB]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
@@ -288,13 +302,13 @@ export default function AtelierShop() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl space-y-5 px-3 pt-5 sm:px-6 sm:pt-8">
+      <div className="mx-auto w-full max-w-6xl space-y-5 px-3 pt-4 sm:px-6 sm:pt-8">
         <section className="overflow-hidden rounded-[28px] border border-[#F2D8E5] bg-gradient-to-br from-[#FCEAF2] via-[#FFF9F5] to-[#EAF5EF] p-4 shadow-[0_8px_30px_rgba(190,104,146,0.07)] sm:p-7">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="mb-1 text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#B87998]">THE ATELIER EDIT</p>
-              <h1 className="text-[25px] font-black tracking-[-0.055em] text-[#B83E78] sm:text-3xl">Shop your favourites<span className="ml-1 text-[#D9AFC3]">♡</span></h1>
-              <p className="mt-1 text-[11px] text-[#8F7885]">Photocards, albums & little treasures.</p>
+              <h1 className="text-[25px] font-extrabold tracking-[-0.045em] text-[#B83E78] sm:text-3xl">Hyuneatelier Shop<span className="ml-1 text-[#D9AFC3]">♡</span></h1>
+              <p className="mt-1 text-[10px] font-medium tracking-[0.12em] text-[#8F7885]">K-POP COLLECTIBLES · PHOTOCARDS · MERCH</p>
             </div>
             <button type="button" onClick={() => setMostrarGuia(true)} className="rounded-xl border border-white/90 bg-white/75 px-3 py-2 text-[10px] font-bold text-[#9C6480] shadow-sm">Guía de compra ↗</button>
           </div>
@@ -383,22 +397,25 @@ export default function AtelierShop() {
             {productosFiltrados.map((p) => {
               const tieneVars = Array.isArray(p.variantes) && p.variantes.length > 0;
               const agotado = p.estado_pago === 'SOLD OUT' || p.cantidad_disponible <= 0;
-              return <article key={p.id} className="overflow-hidden rounded-[21px] border border-[#F0E0E7] bg-white p-2 shadow-[0_4px_18px_rgba(160,100,130,0.055)] transition hover:-translate-y-0.5 hover:shadow-md">
-                <button type="button" onClick={() => abrirModalProducto(p)} className="relative block w-full overflow-hidden rounded-[15px] bg-[#F7F1F4] text-left">
-                  <div className="aspect-[4/5] w-full">{p.imagen_producto ? <img src={p.imagen_producto} alt={p.nombre_producto} loading="lazy" decoding="async" className="h-full w-full object-cover"/> : <div className="flex h-full items-center justify-center text-3xl text-[#D5A8BD]">♡</div>}</div>
-                  <span className="absolute left-2 top-2 max-w-[75%] truncate rounded-full bg-white/90 px-2 py-1 text-[8px] font-extrabold text-[#856779]">{p.badge_especial || p.tipo_pc || p.categoria || 'Photocard'}</span>
-                  {agotado && <span className="absolute inset-0 flex items-center justify-center bg-[#45343F]/45 text-[11px] font-black tracking-[0.12em] text-white">SOLD OUT</span>}
-                  {!agotado && p.cantidad_disponible === 1 && <span className="absolute bottom-2 left-2 rounded-full bg-[#C43D7D] px-2 py-1 text-[8px] font-bold text-white">Última unidad</span>}
-                </button>
-                <div className="px-1 pb-1 pt-2">
-                  <div className="flex min-h-[14px] items-center gap-1 overflow-hidden text-[8px] font-extrabold uppercase tracking-wide text-[#B45A83]"><span className="truncate">{p.grupo || p.due_date}</span>{p.integrante && p.integrante !== 'Grupal / Todos' && <span className="truncate">· {p.integrante}</span>}</div>
-                  <button type="button" onClick={() => abrirModalProducto(p)} className="mt-1 line-clamp-2 min-h-[34px] w-full text-left text-[11px] font-bold leading-snug text-[#51444D]">{p.nombre_producto}</button>
+              return <article key={p.id} className="group min-w-0 overflow-hidden rounded-[22px] border border-[#F1E2E9] bg-white p-2 shadow-[0_5px_20px_rgba(160,100,130,0.045)] transition duration-200 hover:shadow-[0_8px_24px_rgba(160,100,130,0.09)]">
+                <div className="relative">
+                  <button type="button" onClick={() => abrirModalProducto(p)} className="relative block w-full overflow-hidden rounded-[16px] bg-[#F6F0F3] text-left">
+                    <div className="aspect-[4/5] w-full">{p.imagen_producto ? <img src={p.imagen_producto} alt={p.nombre_producto} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"/> : <div className="flex h-full items-center justify-center text-3xl text-[#D5A8BD]">♡</div>}</div>
+                    {agotado && <span className="absolute inset-0 flex items-center justify-center bg-[#45343F]/40 text-[10px] font-extrabold tracking-[0.14em] text-white">SOLD OUT</span>}
+                    {!agotado && p.cantidad_disponible === 1 && <span className="absolute bottom-2 left-2 rounded-full bg-[#C43D7D] px-2.5 py-1 text-[8px] font-bold text-white shadow-sm">Última unidad</span>}
+                  </button>
+                  <button type="button" onClick={() => toggleWishlist(p.id)} aria-label="Guardar en wishlist" className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border border-white/80 shadow-sm backdrop-blur-md transition ${wishlistIds.includes(p.id) ? 'bg-[#FCE5EF]/95 text-[#C43D7D]' : 'bg-white/90 text-[#9B7F8D]'}`}>{wishlistIds.includes(p.id) ? '♥' : '♡'}</button>
+                  <span className="absolute left-2 top-2 max-w-[68%] truncate rounded-full bg-[#FFFCFD]/95 px-2.5 py-1 text-[8px] font-bold text-[#856779] shadow-sm">{p.badge_especial || p.tipo_pc || p.categoria || 'Photocard'}</span>
+                </div>
+                <div className="px-1 pb-1 pt-2.5">
+                  <div className="flex min-h-[15px] items-center gap-1 overflow-hidden text-[8px] font-extrabold uppercase tracking-[0.11em] text-[#B45A83]"><span className="truncate">{p.grupo || p.due_date}</span>{p.integrante && p.integrante !== 'Grupal / Todos' && <span className="truncate text-[#7E9A83]">· {p.integrante}</span>}</div>
+                  <button type="button" onClick={() => abrirModalProducto(p)} className="mt-1.5 line-clamp-2 min-h-[36px] w-full text-left text-[11px] font-bold leading-[1.35] text-[#51444D]">{p.nombre_producto}</button>
                   {p.era && <p className="mt-1 truncate text-[9px] text-[#9B8992]">{p.era}</p>}
-                  <div className="mt-2 flex items-center justify-between gap-1 border-t border-[#F4EAF0] pt-2">
-                    <span className="text-[12px] font-black text-[#C43D7D]">{tieneVars ? `Desde $${Number(p.precio).toFixed(2)}` : `$${Number(p.precio).toFixed(2)}`}</span>
-                    <button type="button" onClick={() => toggleWishlist(p.id)} aria-label="Guardar en wishlist" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-base ${wishlistIds.includes(p.id) ? 'border-[#F3C7D9] bg-[#FCE8F0] text-[#C43D7D]' : 'border-[#F0E4EA] bg-[#FFFAFC] text-[#A88B9A]'}`}>{wishlistIds.includes(p.id) ? '♥' : '♡'}</button>
+                  <div className="mt-2 flex min-h-[34px] items-center justify-between gap-1 border-t border-[#F4EAF0] pt-2">
+                    <span className="text-[13px] font-extrabold tracking-tight text-[#C43D7D]">{tieneVars ? `Desde $${Number(p.precio).toFixed(2)}` : `$${Number(p.precio).toFixed(2)}`}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-bold ${agotado ? 'bg-[#F3F0F2] text-[#A99DA4]' : 'bg-[#EDF5EE] text-[#6F9276]'}`}>{agotado ? 'Agotado' : `Stock ${p.cantidad_disponible}`}</span>
                   </div>
-                  <button type="button" disabled={agotado} onClick={() => (tieneVars ? abrirModalProducto(p) : agregarAlCarrito(p, null))} className={`mt-2 w-full rounded-xl py-2.5 text-[10px] font-extrabold transition ${agotado ? 'bg-[#F2EFF1] text-[#B7ADB3]' : 'bg-[#C43D7D] text-white hover:bg-[#A92F68]'}`}>{agotado ? 'Agotado' : tieneVars ? 'Elegir opción' : 'Añadir al carrito'}</button>
+                  <button type="button" disabled={agotado} onClick={() => (tieneVars ? abrirModalProducto(p) : agregarAlCarrito(p, null))} className={`mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-[13px] py-2.5 text-[10px] font-extrabold transition ${agotado ? 'bg-[#F2EFF1] text-[#B7ADB3]' : 'bg-[#F9E7EF] text-[#B43D77] active:scale-[0.98] hover:bg-[#F4D9E5]'}`}>{agotado ? 'No disponible' : tieneVars ? 'Elegir opción  ↗' : 'Añadir al carrito  +'}</button>
                 </div>
               </article>;
             })}
@@ -409,10 +426,10 @@ export default function AtelierShop() {
       {/* Navegación inferior pensada para pulgar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#F0DCE6] bg-white/95 px-2 pt-2 shadow-[0_-6px_24px_rgba(140,90,115,0.08)] backdrop-blur-xl" style={{paddingBottom:'max(env(safe-area-inset-bottom), 8px)'}}>
         <div className="mx-auto grid max-w-xl grid-cols-5 gap-1">
-          <Link href="/shop" className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[#C43D7D]"><span className="text-[19px]">▦</span><span className="text-[9px] font-extrabold">Tienda</span></Link>
-          <Link href="/gos" className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[#8E7C86]"><span className="text-[19px]">✿</span><span className="text-[9px] font-bold">GOs</span></Link>
+          <Link href="/shop" className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[#C43D7D]"><span className="text-[19px]">▤</span><span className="text-[9px] font-extrabold">Tienda</span></Link>
+          <Link href="/gos" className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[#8E7C86]"><span className="text-[19px]">🎀</span><span className="text-[9px] font-bold">GOs</span></Link>
           <button type="button" onClick={() => setSoloWishlist(!soloWishlist)} className={`flex flex-col items-center gap-1 rounded-xl py-1.5 ${soloWishlist ? 'text-[#C43D7D]' : 'text-[#8E7C86]'}`}><span className="text-[19px]">♡</span><span className="text-[9px] font-bold">Wishlist</span></button>
-          <Link href="/mi-escritorio" className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[#8E7C86]"><span className="text-[19px]">▣</span><span className="text-[9px] font-bold">Bodega</span></Link>
+          <Link href="/mi-escritorio" className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[#8E7C86]"><span className="text-[19px]">📦</span><span className="text-[9px] font-bold">Bodega</span></Link>
           <button type="button" onClick={() => setMostrarCarrito(true)} className="relative flex flex-col items-center gap-1 rounded-xl py-1.5 text-[#8E7C86]"><span className="text-[19px]">🛒</span><span className="text-[9px] font-bold">Carrito{totalItemsCarrito > 0 ? ` (${totalItemsCarrito})` : ''}</span></button>
         </div>
       </nav>
