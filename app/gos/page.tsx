@@ -291,7 +291,7 @@ export default function Masterlist() {
                 <p className="text-xs text-zinc-500 mt-1">Prueba otra pestaña para ver más Group Orders.</p>
               </div>
             ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
               {gosFiltrados.map((g) => (
                 <button
                   key={g.id}
@@ -301,12 +301,15 @@ export default function Masterlist() {
                     const firstP = productos.find((p) => p.go_id === g.id);
                     setProductoSeleccionado(firstP ? firstP.id : null);
                   }}
-                  className="p-3.5 sm:p-4 rounded-2xl border border-pink-100 text-left bg-white hover:border-pink-300 hover:shadow-md transition-all flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-pink-200"
+                  className="min-w-0 h-full p-3 sm:p-4 rounded-2xl border border-pink-100 text-left bg-white hover:border-pink-300 hover:shadow-md transition-all flex flex-col gap-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
                 >
-                  <div className="w-full h-36 sm:h-40 bg-[#FAF8F9] rounded-xl flex items-center justify-center overflow-hidden mb-3 border border-pink-50">
-                    {g.imagen_general ? <img src={g.imagen_general} alt="GO" className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-zinc-300 font-bold">Sin fotografía</span>}
+                  <div className="w-full aspect-[4/3] bg-[#FAF8F9] rounded-xl flex items-center justify-center p-2 sm:p-3 border border-pink-50">
+                    {g.imagen_general ? <img src={g.imagen_general} alt={g.title} loading="lazy" className="block w-full h-full object-contain object-center" /> : <span className="text-xs text-zinc-300 font-bold">Sin fotografía</span>}
                   </div>
-                  <p className="text-xs sm:text-sm font-black uppercase text-zinc-900 line-clamp-2 leading-snug">{g.title}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm font-black uppercase text-zinc-900 leading-snug break-words">{g.title}</p>
+                    <p className="text-[10px] text-pink-500 font-bold mt-1">Ver catálogo →</p>
+                  </div>
                 </button>
               ))}
             </div>
@@ -319,8 +322,8 @@ export default function Masterlist() {
                 ⬅️ Ver otros catálogos (tu carrito se mantiene)
               </button>
               <div className="bg-white rounded-2xl p-4 border border-zinc-200/80 flex flex-col gap-3 shadow-2xs">
-                <div className="w-full h-52 bg-zinc-50 rounded-xl flex items-center justify-center p-2 border">
-                  <img src={activeProducto?.imagen_producto || activeGo?.imagen_general || ''} alt="Preview" className="max-h-full object-contain rounded-lg" />
+                <div className="w-full min-h-[220px] sm:min-h-[280px] max-h-[440px] bg-zinc-50 rounded-xl flex items-center justify-center p-3 sm:p-5 border overflow-hidden">
+                  {(activeProducto?.imagen_producto || activeGo?.imagen_general) && <img src={activeProducto?.imagen_producto || activeGo?.imagen_general || ''} alt={activeProducto?.nombre_producto || activeGo?.title || 'Imagen del catálogo'} className="block w-full h-full max-h-[400px] object-contain object-center rounded-lg" />}
                 </div>
                 <div>
                   <span className="bg-pink-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">{activeGo?.status || 'ABIERTO'}</span>
@@ -361,7 +364,7 @@ export default function Masterlist() {
                     <span className="text-xs font-extrabold text-zinc-900 uppercase">Elige tus slots — {activeProducto.nombre_producto}</span>
                     <span className="text-xs font-black text-pink-600">${activeProducto.precio} USD c/u</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pr-1">
                     {activeProducto.lista_slots?.split(',').map((s) => s.trim()).map((int) => {
                       const totalC = activeProducto.claims_integrantes?.[int] ? Object.values(activeProducto.claims_integrantes[int]).reduce((a, b) => a + b, 0) : 0;
                       const stockD = Math.max(0, (activeProducto.stock_slots?.[int] ?? 0) - totalC);
