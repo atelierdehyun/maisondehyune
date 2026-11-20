@@ -6,8 +6,9 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic';
 
 const PRECIOS_ENVIO: Record<string, number> = {
-  'Quito (+$3.50)': 3.5,
-  'Otras Provincias (+$6.50)': 6.5,
+  'Quito ($3.50)': 3.5,
+  'Provincias ($6.50)': 6.5,
+  'Selva o Galápagos ($7.50)': 7.5,
 };
 
 function abrirChatLia(texto: string) {
@@ -61,7 +62,7 @@ export default function MiEscritorioJoiner() {
   const [envioTelefono, setEnvioTelefono] = useState('');
   const [envioCiudad, setEnvioCiudad] = useState('');
   const [envioDireccion, setEnvioDireccion] = useState('');
-  const [envioMetodo, setEnvioMetodo] = useState('Quito (+$3.50)');
+  const [envioMetodo, setEnvioMetodo] = useState('Quito ($3.50)');
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
   async function cargarMisPedidos() {
     setLoading(true);
@@ -276,8 +277,8 @@ export default function MiEscritorioJoiner() {
         '• *Destino:* ' + envioCiudad + ' — ' + envioDireccion + '\n' +
         '• *Método:* ' + envioMetodo + '\n\n' +
         '*Artículos a enviar:*\n' + listaTexto + '\n\n' +
-        '• *Costo de envío:* $' + costoEnvioElegido.toFixed(2) + ' USD\n\n' +
-        'Confirmo que sigo a @hyuneatelier.';
+        '• *Costo de envío:* ' + ('$' + costoEnvioElegido.toFixed(2) + ' USD') + '\n\n' +
+        'Confirmo que sigo a @atelierdehyun.';
 
       setSeleccionadosEnvio({});
       await cargarMisPedidos();
@@ -354,9 +355,6 @@ export default function MiEscritorioJoiner() {
           <nav className="flex items-center gap-2 text-xs font-bold">
             <Link href="/gos" className="rounded-full border border-[#EADCE5] bg-white px-3 py-2 text-[#8B647A] transition hover:border-[#D98EB0] hover:text-[#B85E89]">🧸 Explorar GOs</Link>
             <Link href="/shop" className="rounded-full border border-[#EADCE5] bg-white px-3 py-2 text-[#8B647A] transition hover:border-[#D98EB0] hover:text-[#B85E89]">🛍️ Tienda</Link>
-            {usuarioEmail.toLowerCase().trim() === 'liahwang1852@gmail.com' && (
-              <Link href="/admin" className="rounded-full border border-[#E6DDF3] bg-[#F4F0FA] px-3 py-2 text-[#806D9F] transition hover:border-[#CFC0E8] hover:bg-[#EEE8F8]">👑 Admin</Link>
-            )}
           </nav>
         </div>
       </header>
@@ -511,7 +509,7 @@ export default function MiEscritorioJoiner() {
                 <p>CI: 1752806388</p>
               </div>
               <p className="mt-3 rounded-xl border border-[#E7DDF0] bg-white/80 p-2.5 text-[10px] leading-4 text-[#8A7190]">
-                Recuerda seguir a <strong>@hyuneatelier</strong> en Instagram para poder enviar tus proofs.
+                Recuerda seguir a <strong>@atelierdehyun</strong> en Instagram para poder enviar tus proofs.
               </p>
             </section>
           </aside>
@@ -579,7 +577,7 @@ export default function MiEscritorioJoiner() {
                           itemsAPagarHoy.map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2)).join('\n') +
                           (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
                           '\n\n• *Total Transferido:* $' + totalPendientePagar.toFixed(2) + ' USD\n\n' +
-                          'Confirmo que sigo a @hyuneatelier y adjunto mi comprobante.'
+                          'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
                       )} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6EAA8D] px-4 py-3.5 text-xs font-black text-white shadow-sm transition hover:bg-[#5D987C]">
                         💬 Enviar resumen y comprobante · ${totalPendientePagar.toFixed(2)}
                       </a>
@@ -714,34 +712,122 @@ export default function MiEscritorioJoiner() {
                   )}
 
                   {itemsPagadosEnBodega.length > 0 && (
-                    <form onSubmit={handleSolicitarEnvioAcumulado} className="mt-5 space-y-4 border-t border-[#EDF1ED] pt-5">
-                      <div>
-                        <h3 className="text-sm font-black text-[#52685A]">Solicitar mi envío</h3>
-                        <p className="mt-1 text-[10px] leading-4 text-[#94A197]">Completa los datos de entrega. Se enviará el resumen de tu solicitud por WhatsApp.</p>
+                    <form onSubmit={handleSolicitarEnvioAcumulado} className="mt-5 border-t border-[#EDF1ED] pt-5">
+                      <div className="mb-4">
+                        <span className="inline-flex rounded-full bg-[#F9EAF1] px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-[#BD789B]">✦ último paso</span>
+                        <h3 className="mt-2 text-base font-black text-[#52685A]">Confirma tus artículos y solicita tu envío</h3>
+                        <p className="mt-1 max-w-2xl text-[10px] leading-5 text-[#94A197]">Revisa qué compras quieres recibir, elige cómo deseas recibirlas y completa tus datos de entrega.</p>
                       </div>
-                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                        <input type="text" required placeholder="Nombre de quien recibe" value={envioNombre} onChange={(e) => setEnvioNombre(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-[#FBFDFC] px-3 py-3 text-xs outline-none focus:border-[#78A997]" />
-                        <input type="tel" required placeholder="Teléfono / WhatsApp" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-[#FBFDFC] px-3 py-3 text-xs outline-none focus:border-[#78A997]" />
-                        <input type="text" required placeholder="Ciudad / Provincia" value={envioCiudad} onChange={(e) => setEnvioCiudad(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-[#FBFDFC] px-3 py-3 text-xs outline-none focus:border-[#78A997]" />
-                        <select value={envioMetodo} onChange={(e) => setEnvioMetodo(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-[#FBFDFC] px-3 py-3 text-xs font-bold text-[#607468] outline-none focus:border-[#78A997]">
-                          <option value="Quito (+$3.50)">Quito (+$3.50)</option>
-                          <option value="Otras Provincias (+$6.50)">Otras Provincias (+$6.50)</option>
-                          <option value="Perú Internacional ($0.00)">Perú Internacional ($0.00)</option>
-                          <option value="Retiro en Cumbayá ($0.00)">Retiro en Cumbayá ($0.00)</option>
-                        </select>
-                      </div>
-                      <input type="text" required placeholder="Dirección exacta y referencia" value={envioDireccion} onChange={(e) => setEnvioDireccion(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-[#FBFDFC] px-3 py-3 text-xs outline-none focus:border-[#78A997]" />
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#DDEBE2] bg-[#F2F9F4] p-3.5">
-                        <div>
-                          <p className="text-[10px] font-bold text-[#7E9384]">{itemsMarcados.length} artículo(s) seleccionados</p>
-                          <p className="text-xs font-black text-[#52685A]">Costo de envío</p>
+
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+                        <div className="space-y-3 rounded-[22px] border border-[#E7E1EF] bg-[#FAF9FD] p-4 sm:p-5">
+                          <div className="flex items-center justify-between gap-2 border-b border-[#ECE7F1] pb-3">
+                            <div>
+                              <h4 className="text-xs font-black text-[#625978]">1. Artículos que recibirás</h4>
+                              <p className="mt-1 text-[10px] text-[#9A91AA]">Solo se incluirán los que marcaste arriba.</p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#8276A5]">{itemsMarcados.length} seleccionado(s)</span>
+                          </div>
+                          {itemsMarcados.length === 0 ? (
+                            <p className="rounded-xl border border-dashed border-[#DED8E9] bg-white p-4 text-center text-[10px] text-[#A098AA]">Selecciona al menos un artículo de tu bodega para continuar.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {itemsMarcados.map((item) => (
+                                <div key={item.idUnico} className="flex items-center gap-2.5 rounded-xl border border-[#ECE7F1] bg-white p-2.5">
+                                  {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg bg-[#FAF9FD] object-contain p-1" /> : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F7F4FA]">🧸</span>}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-[10px] font-black text-[#625978]">{item.goTitulo}</p>
+                                    <p className="truncate text-[10px] text-[#9188A0]">{item.productoNombre} · {item.detalleSlot}</p>
+                                  </div>
+                                  <span className="shrink-0 rounded-full bg-[#FCEAF1] px-2 py-1 text-[8px] font-black text-[#C17B9D]">Listo</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="border-t border-[#ECE7F1] pt-3">
+                            <label className="mb-2 block text-xs font-black text-[#625978]">2. ¿Cómo quieres recibir tu paquete?</label>
+                            <div className="space-y-2">
+                              {[
+                                { value: 'Quito ($3.50)', title: 'Envío dentro de Quito', detail: 'Entrega local', price: '$3.50' },
+                                { value: 'Provincias ($6.50)', title: 'Envío a provincias', detail: 'Resto del país', price: '$6.50' },
+                                { value: 'Selva o Galápagos ($7.50)', title: 'Envío a la Selva o Galápagos', detail: 'Cobertura especial', price: '$7.50' },
+                              ].map((opcion) => (
+                                <label key={opcion.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${envioMetodo === opcion.value ? 'border-[#9FC9B0] bg-[#F0F8F3]' : 'border-[#E9E5EF] bg-white hover:border-[#C7DDD0]'}`}>
+                                  <input type="radio" name="metodo-envio" value={opcion.value} checked={envioMetodo === opcion.value} onChange={(e) => setEnvioMetodo(e.target.value)} className="h-4 w-4 accent-[#78A997]" />
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block text-[10px] font-black text-[#5E6F63]">{opcion.title}</span>
+                                    <span className="block text-[9px] text-[#9AA79E]">{opcion.detail}</span>
+                                  </span>
+                                  <span className="shrink-0 text-[10px] font-black text-[#648D76]">{opcion.price}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between rounded-xl border border-[#DDEBE2] bg-white p-3">
+                            <div>
+                              <p className="text-[9px] font-bold text-[#8A9C90]">Costo estimado del método seleccionado</p>
+                              <p className="text-xs font-black text-[#52685A]">Total de envío</p>
+                            </div>
+                            <p className="text-lg font-black text-[#5B9076]">{`$${costoEnvioElegido.toFixed(2)} USD`}</p>
+                          </div>
                         </div>
-                        <p className="text-lg font-black text-[#5B9076]">${costoEnvioElegido.toFixed(2)} USD</p>
+
+                        <div className="space-y-3 rounded-[22px] border border-[#DCEBE2] bg-gradient-to-br from-[#F4FAF6] via-white to-[#F9F5FB] p-4 sm:p-5">
+                          <div className="border-b border-[#E7EEE8] pb-3">
+                            <h4 className="text-xs font-black text-[#52685A]">3. Datos de entrega</h4>
+                            <p className="mt-1 text-[10px] leading-4 text-[#94A197]">Usaremos estos datos para preparar y coordinar tu paquete.</p>
+                          </div>
+                          <div className="space-y-3">
+                            <label className="block space-y-1">
+                              <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-[#89998D]">Nombre completo *</span>
+                              <input type="text" required placeholder="Nombre de quien recibe" value={envioNombre} onChange={(e) => setEnvioNombre(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-white px-3 py-3 text-xs outline-none transition focus:border-[#78A997] focus:ring-2 focus:ring-[#E4F2E9]" />
+                            </label>
+                            <label className="block space-y-1">
+                              <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-[#89998D]">Teléfono / WhatsApp *</span>
+                              <input type="tel" required placeholder="099 123 4567" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-white px-3 py-3 text-xs outline-none transition focus:border-[#78A997] focus:ring-2 focus:ring-[#E4F2E9]" />
+                            </label>
+                            <label className="block space-y-1">
+                              <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-[#89998D]">Ciudad / Provincia *</span>
+                              <input type="text" required placeholder="Ej. Quito, Pichincha" value={envioCiudad} onChange={(e) => setEnvioCiudad(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-white px-3 py-3 text-xs outline-none transition focus:border-[#78A997] focus:ring-2 focus:ring-[#E4F2E9]" />
+                            </label>
+                            <label className="block space-y-1">
+                              <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-[#89998D]">Dirección y referencia *</span>
+                              <textarea required rows={3} placeholder="Calle principal, número, edificio, sector y referencias" value={envioDireccion} onChange={(e) => setEnvioDireccion(e.target.value)} className="w-full resize-y rounded-xl border border-[#DFEAE2] bg-white px-3 py-3 text-xs outline-none transition focus:border-[#78A997] focus:ring-2 focus:ring-[#E4F2E9]" />
+                            </label>
+                          </div>
+                          <p className="rounded-xl border border-[#E8E1F0] bg-white/80 p-3 text-[9px] leading-4 text-[#948BA1]">♡ Antes de confirmar, revisa que tu dirección, ciudad y número estén correctos. El costo se calcula según la zona de entrega seleccionada.</p>
+                        </div>
                       </div>
-                      <button type="submit" disabled={enviandoSolicitud || itemsMarcados.length === 0} className="w-full rounded-xl bg-[#78A997] px-4 py-3.5 text-xs font-black text-white shadow-sm transition hover:bg-[#639781] disabled:cursor-not-allowed disabled:opacity-50">
-                        {enviandoSolicitud ? 'Enviando solicitud…' : '🚚 Solicitar envío y continuar por WhatsApp'}
+
+                      <div className="mt-4 rounded-[22px] border border-[#E6E1EF] bg-white p-4 sm:p-5">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <h4 className="text-xs font-black text-[#625978]">¿Qué sucede después?</h4>
+                            <p className="mt-1 text-[10px] text-[#9A91AA]">Te iremos informando sobre el avance de tu solicitud.</p>
+                          </div>
+                          <span className="text-lg">📦 ✈️</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {[
+                            { n: '01', title: 'Solicitud recibida', desc: 'Recibimos tus datos.', color: 'bg-[#FCEAF1] text-[#BD789B]' },
+                            { n: '02', title: 'Preparación', desc: 'Preparamos tu paquete.', color: 'bg-[#FFF3D9] text-[#B28A42]' },
+                            { n: '03', title: 'Enviado', desc: 'Te compartimos la guía si aplica.', color: 'bg-[#EAF2FC] text-[#7396BD]' },
+                            { n: '04', title: 'Entregado', desc: '¡Tu paquete llegó!', color: 'bg-[#E7F5EC] text-[#67977A]' },
+                          ].map((paso) => (
+                            <div key={paso.n} className="rounded-xl bg-[#FAFAFC] p-3">
+                              <span className={`inline-flex rounded-full px-2 py-1 text-[8px] font-black ${paso.color}`}>{paso.n}</span>
+                              <p className="mt-2 text-[10px] font-black text-[#625978]">{paso.title}</p>
+                              <p className="mt-1 text-[9px] leading-4 text-[#9A91AA]">{paso.desc}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button type="submit" disabled={enviandoSolicitud || itemsMarcados.length === 0} className="mt-4 w-full rounded-full bg-[#78A997] px-4 py-4 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-[#639781] disabled:cursor-not-allowed disabled:opacity-50">
+                        {enviandoSolicitud ? 'Enviando solicitud…' : 'Confirmar solicitud de envío ♡'}
                       </button>
-                      {itemsMarcados.length === 0 && <p className="text-center text-[10px] text-[#A18B99]">Selecciona al menos un artículo para continuar.</p>}
+                      <p className="mt-2 text-center text-[9px] text-[#A18B99]">Al confirmar, guardaremos tu solicitud y podrás continuar por WhatsApp.</p>
                     </form>
                   )}
                 </section>
