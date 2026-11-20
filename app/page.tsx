@@ -1,174 +1,259 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useState, useRef } from 'react';
+import Link from "next/link";
+
+const SPOTIFY_PLAYLIST =
+  "https://open.spotify.com/embed/playlist/6dcnCHcVUFWbS1sxJNGnCP?utm_source=generator";
 
 export default function AtelierWelcome() {
-  const [loading, setLoading] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    setLoading(false);
-  }, []);
-
-  const togglePlay = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play().catch(e => console.log("Audio bloqueado"));
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="w-full min-h-[40vh] flex flex-col items-center justify-center font-mono text-xs text-pink-400 tracking-widest">
-        <span>✧ LOADING_DATABASE.SYS ...</span>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full flex flex-col items-center animate-[fadeIn_0.3s_ease-out]">
-      
-      {/* ⚡ CINTA MARQUEE CON ESTILO SOFT POP */}
-      <div className="w-full bg-white/90 rounded-full border border-pink-200/50 py-2.5 overflow-hidden whitespace-nowrap select-none flex text-[11px] font-black tracking-widest text-pink-400 uppercase shadow-xs">
-        <div className="flex gap-12 animate-[marquee_25s_linear_infinite]">
-          <span>Stray Kids! ✦ Enhypen! ✦ Cosas nuevas en stock ✦ Gos abiertos y nuevos ✦ Stray Kids! ✦ Enhypen! ✦ Cosas nuevas en stock ✦ Gos abiertos y nuevos</span>
+    <div className="w-full space-y-6 pb-10">
+      {/* Welcome marquee */}
+      <div className="overflow-hidden rounded-full border border-pink-200/70 bg-white/90 py-3 shadow-sm">
+        <div className="whitespace-nowrap text-[10px] font-extrabold uppercase tracking-[0.22em] text-pink-500">
+          <div className="inline-block min-w-full animate-[marquee_28s_linear_infinite]">
+            ✦ welcome to hyuneatelier ✦ stray kids ✦ enhypen ✦ photocards &amp; official merch ✦ group orders ✦ proxy service ✦ welcome to hyuneatelier ✦
+          </div>
         </div>
       </div>
 
-      {/* 🖥️ SECCIÓN DEL ESCRITORIO VIRTUAL CYBER-CUTE MULTICOLOR */}
-      <section className="w-full max-w-5xl px-6 py-8 grid grid-cols-1 md:grid-cols-12 gap-6 bg-white/40 relative min-h-[440px] mt-6 rounded-3xl border border-white/60 shadow-[0_15px_30px_-15px_rgba(255,182,193,0.1)]">
-        
-        {/* COLUMNA IZQUIERDA: ICONOS */}
-        <div className="md:col-span-1 flex md:flex-col gap-6 justify-center md:justify-start pt-4 items-center">
-          <Link href="/gos" className="flex flex-col items-center cursor-pointer group">
-            <span className="text-3xl group-hover:scale-105 transition-transform duration-150">📁</span>
-            <span className="text-[10px] font-extrabold text-sky-400 mt-1.5 text-center tracking-wider">gos.sys</span>
-          </Link>
-          <Link href="/info-rules" className="flex flex-col items-center cursor-pointer group">
-            <span className="text-3xl group-hover:scale-105 transition-transform duration-150">📝</span>
-            <span className="text-[10px] font-extrabold text-purple-400 mt-1.5 text-center tracking-wider">rules.txt</span>
-          </Link>
+      {/* App-style welcome area */}
+      <section className="relative overflow-hidden rounded-[2rem] border border-white bg-white/65 p-4 shadow-[0_18px_55px_-35px_rgba(219,39,119,0.35)] sm:p-6">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-pink-200/35 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-12 h-52 w-52 rounded-full bg-emerald-100/50 blur-3xl" />
+
+        <div className="relative mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-pink-400">
+              your little k-pop corner
+            </p>
+            <h1 className="mt-1 text-3xl font-black lowercase tracking-tight text-[#D85D98] sm:text-4xl">
+              hyuneatelier<span className="text-amber-400"> ♡</span>
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-500">
+              A little space for photocards, group orders, proxy finds and the
+              things we love collecting.
+            </p>
+          </div>
+          <span className="rounded-full border border-pink-200 bg-white/90 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-pink-400">
+            made with love ✧
+          </span>
         </div>
 
-        {/* VENTANA 1 (Izquierda - Detalle Azul Cielo Pastel 🩵) */}
-        <div className="bg-white/95 rounded-2xl overflow-hidden shadow-xs border border-sky-100 md:col-span-4 self-start transform md:-rotate-1 hover:rotate-0 transition-transform duration-200">
-          <div className="bg-sky-50/50 border-b border-sky-100 px-3 py-1.5 flex items-center justify-between text-[9px] text-sky-400 font-mono font-bold">
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-300"/> preview_01.jpg</span>
-            <span>✕ ⏤</span>
+        {/* Keep the existing community / Hyunjin images */}
+        <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-12">
+          <div className="overflow-hidden rounded-[1.4rem] border border-sky-100 bg-white p-2 shadow-sm md:col-span-5 md:-rotate-1">
+            <div className="mb-2 flex items-center justify-between px-1 text-[9px] font-bold uppercase tracking-widest text-sky-400">
+              <span>little inspiration</span>
+              <span>✧ 01</span>
+            </div>
+            <img
+              src="https://i.postimg.cc/FKZt0hDG/441894935b5b1026b720976faa08bc5e.jpg"
+              alt="Hyunjin inspiration"
+              loading="lazy"
+              className="h-72 w-full rounded-xl object-cover object-center sm:h-80"
+            />
           </div>
-          <div className="p-2.5 bg-white">
-            <img src="https://i.postimg.cc/FKZt0hDG/441894935b5b1026b720976faa08bc5e.jpg" alt="Kpop Inspo" loading="lazy" className="w-full h-64 object-cover rounded-xl" />
+
+          <div className="flex flex-col items-center rounded-[1.5rem] border border-amber-100 bg-[#FFFCF3] p-6 text-center shadow-sm md:col-span-2">
+            <span className="text-3xl text-pink-300">୨୧</span>
+            <p className="mt-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-amber-500">
+              welcome!
+            </p>
+            <p className="mt-3 font-serif text-lg italic leading-6 text-zinc-600">
+              Find your next favorite little treasure.
+            </p>
+            <Link
+              href="/shop"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-pink-400 to-rose-400 px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              enter the shop →
+            </Link>
+          </div>
+
+          <div className="relative overflow-hidden rounded-[1.4rem] border border-purple-100 bg-white p-2 shadow-sm md:col-span-5 md:rotate-1">
+            <div className="mb-2 flex items-center justify-between px-1 text-[9px] font-bold uppercase tracking-widest text-purple-400">
+              <span>collection moodboard</span>
+              <span>✧ 02</span>
+            </div>
+            <img
+              src="https://i.postimg.cc/C5fSGWZs/eca2f6969986d86cf77c8801c39c0026.jpg"
+              alt="K-pop collection moodboard"
+              loading="lazy"
+              className="h-72 w-full rounded-xl object-cover object-center sm:h-80"
+            />
+            <span className="absolute right-4 top-10 text-xl text-amber-400">✦</span>
           </div>
         </div>
-
-        {/* VENTANA 2 (Centro - Crema y Amarillo Retro Pop 💛) */}
-        <div className="bg-white rounded-2xl overflow-hidden shadow-xs md:col-span-3 self-center p-5 text-center space-y-4 border border-amber-100 relative z-10 md:-translate-y-2">
-          <div className="text-[9px] font-mono text-amber-400 font-bold uppercase tracking-widest text-left border-b border-amber-50 pb-1.5 flex justify-between">
-            <span>msg_window.sys</span>
-            <span className="text-pink-400">✦</span>
-          </div>
-          <p className="font-serif italic text-amber-500 text-xl tracking-tight lowercase">atelierdehyun</p>
-          <h2 className="text-xs font-black uppercase tracking-widest text-zinc-500 leading-tight">Gos & Proxy Help</h2>
-          <Link href="/shop" className="bg-gradient-to-r from-amber-300 to-amber-400 hover:from-amber-400 hover:to-amber-500 text-white text-[10px] uppercase font-black tracking-wildest py-2.5 rounded-full transition-all duration-150 w-full inline-block text-center shadow-xs">Enter Shop</Link>
-        </div>
-
-        {/* VENTANA 3 (Derecha - Lavanda/Morado Soft 💜) */}
-        <div className="bg-white/95 rounded-2xl overflow-hidden shadow-xs border border-purple-100 md:col-span-4 self-end transform md:rotate-1 hover:rotate-0 transition-transform duration-200 relative">
-          <div className="bg-purple-50/50 border-b border-purple-100 px-3 py-1.5 flex items-center justify-between text-[9px] text-purple-400 font-mono font-bold">
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-300"/> preview_02.jpg</span>
-            <span>✕ ⏤</span>
-          </div>
-          <div className="p-2.5 bg-white">
-            <img src="https://i.postimg.cc/C5fSGWZs/eca2f6969986d86cf77c8801c39c0026.jpg" alt="Merch Inspo" loading="lazy" className="w-full h-64 object-cover rounded-xl" />
-          </div>
-          <span className="absolute -top-2.5 -left-2.5 text-amber-400 text-2xl drop-shadow-sm">✦</span>
-        </div>
-
       </section>
-      {/* 🎹 NUEVO REPRODUCTOR NATIVO CYBER-CUTE MULTICOLOR */}
-      <div className="w-full max-w-5xl mt-5 px-2">
-        <div className="w-full bg-gradient-to-r from-pink-100/90 via-purple-50/90 to-sky-100/90 border border-pink-200/60 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-          
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-pink-200 text-xl animate-[spin_8s_linear_infinite]">
-              夹
-            </div>
-            <div className="font-mono text-left">
-              <p className="text-[10px] font-black text-pink-500 uppercase tracking-widest">now_playing.mp3</p>
-              <p className="text-[11px] font-bold text-zinc-500 lowercase">after you by skz ✦</p>
-            </div>
-          </div>
 
-{/* 🎹 Elemento de audio nativo */}
-<audio ref={audioRef} loop preload="auto">
-<source src="https://files.catbox.moe/4394lb.mp3" type="audio/mpeg" />
-  Tu navegador no soporta el elemento de audio.
-</audio>
-          {/* Botón de reproducción retro pop */}
-          <button 
-            onClick={togglePlay}
-            className="bg-white text-pink-500 border border-pink-200 coding-font text-xs uppercase tracking-widest px-5 py-2 rounded-full shadow-xs hover:scale-102 active:scale-98 transition-all cursor-pointer flex items-center gap-2 font-bold"
+      {/* App-style shortcuts */}
+      <section className="rounded-[1.8rem] border border-white bg-white/65 p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-pink-400">
+              explore hyuneatelier
+            </p>
+            <h2 className="mt-1 text-lg font-black lowercase text-zinc-700">
+              open an app <span className="text-pink-400">♡</span>
+            </h2>
+          </div>
+          <span className="text-[10px] text-zinc-400">choose where to go</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <AppShortcut href="/shop" icon="🛍️" title="shop" detail="photocards & merch" tone="pink" />
+          <AppShortcut href="/gos" icon="📦" title="group orders" detail="join a GO" tone="mint" />
+          <AppShortcut href="/proxy-service" icon="✈️" title="proxy kr" detail="proxy service" tone="butter" />
+          <AppShortcut href="/info-rules" icon="📝" title="info & rules" detail="before ordering" tone="lilac" />
+          <AppShortcut href="/joiner-login" icon="♡" title="my account" detail="sign in / register" tone="blue" />
+        </div>
+      </section>
+
+      {/* Spotify official playlist embed */}
+      <section className="overflow-hidden rounded-[1.8rem] border border-pink-200/70 bg-gradient-to-br from-[#FFF0F6] via-white to-[#F0FBF5] p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-pink-400">
+              soundtrack for your visit
+            </p>
+            <h2 className="mt-1 text-xl font-black lowercase text-zinc-700">
+              hyuneatelier radio <span className="text-pink-400">♫</span>
+            </h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Your K-pop playlist, playing through Spotify.
+            </p>
+          </div>
+          <a
+            href="https://open.spotify.com/playlist/6dcnCHcVUFWbS1sxJNGnCP"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full border border-pink-200 bg-white px-4 py-2 text-[10px] font-extrabold uppercase tracking-widest text-pink-500 transition hover:bg-pink-50"
           >
-            {isPlaying ? '⏸ PAUSE' : '▶ PLAY '}
-          </button>
+            open in spotify ↗
+          </a>
         </div>
-      </div>
-
-      {/* 🤍 SECCIÓN INFERIOR DE ACCESOS RÁPIDOS POR CATEGORÍA MULTICOLOR */}
-      <section className="w-full max-w-5xl p-6 bg-white/40 grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 rounded-3xl border border-white/60 shadow-xs mb-12">
-        
-        {/* 📸 1. INSTAGRAM */}
-        <a href="https://instagram.com/maisonhyun" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center group cursor-pointer">
-          <div className="w-full aspect-[4/3] rounded-2xl bg-[#FFF2F4] border border-pink-100 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-transform duration-150 group-hover:-translate-y-0.5">
-            <span className="text-[10px] font-black tracking-widest uppercase text-pink-500 bg-white border border-pink-200 px-3 py-1.5 rounded-full shadow-xs">
-              instagram
-            </span>
-            <span className="absolute bottom-2 right-2 text-pink-300 text-xs opacity-40">✧</span>
-          </div>
-          <p className="text-[10px] font-bold text-zinc-400 mt-2.5 text-center tracking-wide">Sigue mi cuenta principal</p>
-        </a>
-
-        {/* 📦 2. IN STOCK ITEMS */}
-        <Link href="/shop" className="flex flex-col items-center group cursor-pointer">
-          <div className="w-full aspect-[4/3] rounded-2xl bg-[#E3FFF3] border border-emerald-100 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-transform duration-150 group-hover:-translate-y-0.5">
-            <span className="text-[10px] font-black tracking-widest uppercase text-emerald-600 bg-white border border-emerald-200 px-3 py-1.5 rounded-full shadow-xs">
-              in stock items
-            </span>
-            <span className="absolute bottom-2 right-2 text-emerald-300 text-xs opacity-40">✦</span>
-          </div>
-          <p className="text-[10px] font-bold text-zinc-400 mt-2.5 text-center tracking-wide">Listos para enviar</p>
-        </Link>
-
-        {/* 💬 3. WHATSAPP */}
-        <a href="https://chat.whatsapp.com/FMBE0gchYcMKkD7BPxd5q7" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center group cursor-pointer">
-          <div className="w-full aspect-[4/3] rounded-2xl bg-[#E0F2FE] border border-sky-100 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-transform duration-150 group-hover:-translate-y-0.5">
-            <span className="text-[10px] font-black tracking-widest uppercase text-sky-600 bg-white border border-sky-200 px-3 py-1.5 rounded-full shadow-xs">
-              whatsapp
-            </span>
-            <span className="absolute bottom-2 right-2 text-sky-300 text-xs opacity-40">✧</span>
-          </div>
-          <p className="text-[10px] font-bold text-zinc-400 mt-2.5 text-center tracking-wide">Ingresa a la comunidad</p>
-        </a>
-
-        {/* ✈️ 4. PROXY KR */}
-        <Link href="/proxy-service" className="flex flex-col items-center group cursor-pointer">
-          <div className="w-full aspect-[4/3] rounded-2xl bg-[#FEF3C7] border border-amber-100 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-transform duration-150 group-hover:-translate-y-0.5">
-            <span className="text-[10px] font-black tracking-widest uppercase text-amber-600 bg-white border border-amber-200 px-3 py-1.5 rounded-full shadow-xs">
-              proxy kr
-            </span>
-            <span className="absolute bottom-2 right-2 text-amber-300 text-xs opacity-40">✦</span>
-          </div>
-          <p className="text-[10px] font-bold text-zinc-400 mt-2.5 text-center tracking-wide">¿Ayuda desde Corea?</p>
-        </Link>
-
+        <div className="overflow-hidden rounded-2xl border border-white bg-white shadow-sm">
+          <iframe
+            title="Hyuneatelier Radio Spotify playlist"
+            src={SPOTIFY_PLAYLIST}
+            width="100%"
+            height="352"
+            style={{ border: 0, display: "block" }}
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+          />
+        </div>
+        <p className="mt-3 text-center text-[10px] text-zinc-400">
+          Press play whenever you feel like listening ♡
+        </p>
       </section>
 
+      {/* Community links */}
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <ExternalShortcut
+          href="https://instagram.com/maisonhyun"
+          title="instagram"
+          detail="follow the shop"
+          tone="pink"
+        />
+        <LinkShortcut href="/shop" title="in stock" detail="ready to ship" tone="mint" />
+        <ExternalShortcut
+          href="https://chat.whatsapp.com/FMBE0gchYcMKkD7BPxd5q7"
+          title="whatsapp"
+          detail="join the community"
+          tone="blue"
+        />
+        <LinkShortcut
+          href="/proxy-service"
+          title="proxy kr"
+          detail="need help from korea?"
+          tone="butter"
+        />
+      </section>
     </div>
+  );
+}
+
+type ShortcutTone = "pink" | "mint" | "butter" | "lilac" | "blue";
+
+const toneClasses: Record<ShortcutTone, string> = {
+  pink: "border-pink-200 bg-[#FFF0F5] text-pink-600",
+  mint: "border-emerald-200 bg-[#EDFFF6] text-emerald-700",
+  butter: "border-amber-200 bg-[#FFFAE8] text-amber-700",
+  lilac: "border-purple-200 bg-[#F7F1FF] text-purple-600",
+  blue: "border-sky-200 bg-[#EFF8FF] text-sky-700",
+};
+
+function AppShortcut({
+  href,
+  icon,
+  title,
+  detail,
+  tone,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  detail: string;
+  tone: ShortcutTone;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group flex min-h-32 flex-col items-center justify-center rounded-2xl border p-4 text-center shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md ${toneClasses[tone]}`}
+    >
+      <span className="text-2xl transition group-hover:scale-110">{icon}</span>
+      <span className="mt-2 text-[11px] font-extrabold uppercase tracking-wider">
+        {title}
+      </span>
+      <span className="mt-1 text-[10px] opacity-70">{detail}</span>
+    </Link>
+  );
+}
+
+function LinkShortcut({
+  href,
+  title,
+  detail,
+  tone,
+}: {
+  href: string;
+  title: string;
+  detail: string;
+  tone: ShortcutTone;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex min-h-24 flex-col items-center justify-center rounded-2xl border p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${toneClasses[tone]}`}
+    >
+      <span className="text-[11px] font-extrabold uppercase tracking-widest">{title}</span>
+      <span className="mt-1 text-[10px] opacity-70">{detail}</span>
+    </Link>
+  );
+}
+
+function ExternalShortcut({
+  href,
+  title,
+  detail,
+  tone,
+}: {
+  href: string;
+  title: string;
+  detail: string;
+  tone: ShortcutTone;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`flex min-h-24 flex-col items-center justify-center rounded-2xl border p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${toneClasses[tone]}`}
+    >
+      <span className="text-[11px] font-extrabold uppercase tracking-widest">{title}</span>
+      <span className="mt-1 text-[10px] opacity-70">{detail}</span>
+    </a>
   );
 }
