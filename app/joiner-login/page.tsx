@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation'; // 🌟 Agregamos useSearchParams
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../supabase';
 
 export default function JoinerLogin() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // 📡 Hook para leer la URL
+  const searchParams = useSearchParams();
 
   const [esRegistro, setEsRegistro] = useState(false);
   const [email, setEmail] = useState('');
@@ -15,7 +15,6 @@ export default function JoinerLogin() {
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  // 🔀 LA CLAVE: Si viene de la tienda guardará '/shop'. Si entra normal, irá a '/gos' por defecto.
   const redirectTo = searchParams.get('redirect') || '/gos';
 
   const manejarSubmit = async (e: React.FormEvent) => {
@@ -30,18 +29,12 @@ export default function JoinerLogin() {
 
     try {
       if (esRegistro) {
-        // 🔐 REGISTRO EN EL PANEL DE USUARIOS DE SUPABASE
-        const { data, error } = await supabase.auth.signUp({
-          email: email,
-          password: password,
-        });
+        const { error } = await supabase.auth.signUp({ email, password });
 
         if (error) {
           setMensaje(`Error: ${error.message} ✕`);
         } else {
-          setMensaje(
-            '¡Cuenta creada con éxito! Ya puedes iniciar sesión... ✨'
-          );
+          setMensaje('¡Cuenta creada con éxito! Ya puedes iniciar sesión... ✨');
           setTimeout(() => {
             setEsRegistro(false);
             setMensaje('');
@@ -49,23 +42,16 @@ export default function JoinerLogin() {
           }, 2000);
         }
       } else {
-        // 🔑 LOGUEO EN EL PANEL DE USUARIOS DE SUPABASE
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: password,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
           setMensaje(`Error: ${error.message} ✕`);
         } else {
           setMensaje('¡Sesión iniciada con éxito! Redirigiendo... ✨');
-          setTimeout(() => {
-            // 🚀 INTERRUPTOR INTELIGENTE: Te devuelve exactamente a donde venías
-            router.push(redirectTo);
-          }, 1500);
+          setTimeout(() => router.push(redirectTo), 1500);
         }
       }
-    } catch (err) {
+    } catch {
       setMensaje('Error: Falla de red o conexión bloqueada ✕');
     } finally {
       setCargando(false);
@@ -78,121 +64,109 @@ export default function JoinerLogin() {
     setEmail('');
     setPassword('');
   };
-  // 🌸 INTERFAZ MULTICOLOR SUAVE RETRO
+
+  const esError = mensaje.includes('Error') || mensaje.includes('Por favor');
+
   return (
-    <div className="min-h-screen bg-[#FFF0F4] bg-[linear-gradient(to_right,rgba(255,255,255,0.4)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.4)_1px,transparent_1px)] bg-[size:30px_30px] font-sans text-zinc-700 w-full flex flex-col items-center justify-center antialiased pb-12 p-4">
-      {/* 🖥️ CAJITA DE LOGIN / REGISTRO (Estilo Miniventana del Sistema Operativo Suave) */}
-      <div className="w-full max-w-sm bg-white/80 backdrop-blur-md border border-purple-100 rounded-3xl overflow-hidden shadow-[0_20px_40px_-15px_rgba(168,85,247,0.15)]">
-        {/* Barra superior de ventana fina */}
-        <div className="bg-purple-50/50 border-b border-purple-100 px-5 py-3 flex items-center justify-between text-[10px] text-purple-400 font-mono font-bold select-none">
-          <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-300" />
-            <span>
-              {esRegistro ? 'register_auth.sys' : 'security_auth.sys'}
-            </span>
+    <main className="relative flex min-h-[calc(100vh-7rem)] w-full items-center justify-center overflow-hidden bg-[#FFF0F4] bg-[linear-gradient(to_right,rgba(255,255,255,0.48)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.48)_1px,transparent_1px)] bg-[size:30px_30px] px-4 py-8 pb-28 font-sans text-[#594653] antialiased">
+      <div className="pointer-events-none absolute left-[8%] top-[12%] h-40 w-40 rounded-full bg-[#F8DCE8]/70 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-[12%] right-[8%] h-44 w-44 rounded-full bg-[#E5DDF5]/70 blur-3xl" />
+
+      <section className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-[#EBD5E1] bg-white/90 shadow-[0_22px_65px_-35px_rgba(157,91,125,.45)] backdrop-blur-xl">
+        <div className="flex items-center justify-between border-b border-[#F0E1E9] bg-[#FFF8FB] px-5 py-3">
+          <span className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.17em] text-[#B77B9C]">
+            <span className="h-2 w-2 rounded-full bg-[#CDE8D8]" />
+            {esRegistro ? 'joiner_register.sys' : 'joiner_access.sys'}
           </span>
-          <span>✕ ⏤</span>
+          <span className="text-xs text-[#C6A6B8]" aria-hidden="true">✿ · · ·</span>
         </div>
 
-        {/* CONTENIDO INTERIOR */}
-        <div className="p-6 space-y-6">
-          {/* HEADER DEL LOGIN / REGISTRO */}
-          <div className="text-center space-y-1 relative">
-            <span className="font-serif italic text-xl text-purple-400 lowercase block">
-              welcome back, joiner... ✨
-            </span>
-            <h1 className="text-2xl font-black tracking-tight text-zinc-600 lowercase">
-              {esRegistro ? 'joiner register' : 'joiner login'}
-              <span className="text-pink-400 font-serif">✿</span>
-            </h1>
-            <p className="text-[10px] text-zinc-400 tracking-wide uppercase font-medium mt-1">
-              {esRegistro
-                ? 'Regístrate para empezar a coleccionar 🎀'
-                : 'Ingresa para revisar tus photocards y claims 🎀'}
+        <div className="p-6 sm:p-8">
+          <header className="mb-7 text-center">
+            <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-[1.25rem] border border-[#F0D9E5] bg-[#FBEAF1] text-2xl shadow-sm">
+              🎀
+            </div>
+            <p className="font-serif text-lg italic text-[#C47EA2]">
+              {esRegistro ? 'tu pequeño rincón te espera...' : 'welcome back, joiner...'} ✨
             </p>
-          </div>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-[#594653]">
+              {esRegistro ? 'Crear cuenta' : 'Joiner login'} <span className="text-[#D98FB4]">♡</span>
+            </h1>
+            <p className="mx-auto mt-2 max-w-xs text-[10px] font-semibold uppercase leading-5 tracking-[0.12em] text-[#A3919F]">
+              {esRegistro
+                ? 'Regístrate para empezar a coleccionar'
+                : 'Ingresa para revisar tus photocards y claims'}
+            </p>
+          </header>
 
-          {/* FORMULARIO */}
-          <form
-            onSubmit={manejarSubmit}
-            className="space-y-4 text-left font-mono text-xs"
-          >
-            {/* Campo de Correo */}
+          <form onSubmit={manejarSubmit} className="space-y-4 text-left">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block ml-1">
-                correo electrónico:
+              <label htmlFor="joiner-email" className="ml-1 block text-[10px] font-extrabold uppercase tracking-[0.13em] text-[#9A8292]">
+                Correo electrónico
               </label>
               <input
+                id="joiner-email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu_correo@ejemplo.com"
                 disabled={cargando}
-                className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:outline-none focus:border-purple-300 bg-white placeholder-zinc-300 text-xs font-sans font-medium transition-all text-center disabled:opacity-50"
+                className="w-full rounded-2xl border border-[#EAD9E3] bg-[#FFFCFE] px-4 py-3.5 text-sm text-[#594653] outline-none transition placeholder:text-[#C6B8C1] focus:border-[#D58FB2] focus:ring-4 focus:ring-[#F8DCE8]/70 disabled:opacity-50"
               />
             </div>
 
-            {/* Campo de Contraseña */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block ml-1">
-                contraseña secreta:
+              <label htmlFor="joiner-password" className="ml-1 block text-[10px] font-extrabold uppercase tracking-[0.13em] text-[#9A8292]">
+                Contraseña
               </label>
               <input
+                id="joiner-password"
                 type="password"
+                autoComplete={esRegistro ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 disabled={cargando}
-                className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:outline-none focus:border-purple-300 bg-white placeholder-zinc-300 text-xs font-sans font-medium transition-all text-center disabled:opacity-50"
+                className="w-full rounded-2xl border border-[#EAD9E3] bg-[#FFFCFE] px-4 py-3.5 text-sm text-[#594653] outline-none transition placeholder:text-[#C6B8C1] focus:border-[#D58FB2] focus:ring-4 focus:ring-[#F8DCE8]/70 disabled:opacity-50"
               />
             </div>
 
-            {/* Mensajes de Alerta */}
             {mensaje && (
               <p
-                className={`text-[10px] font-bold px-4 py-2 rounded-full border text-center ${
-                  mensaje.includes('Error') || mensaje.includes('Por favor')
-                    ? 'bg-rose-50 border-rose-100 text-rose-500'
-                    : 'bg-emerald-50 border-emerald-100 text-emerald-600'
+                role="status"
+                className={`rounded-2xl border px-4 py-3 text-center text-xs font-semibold ${
+                  esError
+                    ? 'border-[#F2C9D4] bg-[#FFF0F3] text-[#B75B75]'
+                    : 'border-[#CDE7D9] bg-[#EFF8F2] text-[#638D76]'
                 }`}
               >
                 {mensaje}
               </p>
             )}
 
-            {/* Botón Píldora de Envío */}
             <button
               type="submit"
               disabled={cargando}
-              className="w-full bg-gradient-to-r from-purple-400 to-pink-400 text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-full shadow-xs hover:from-purple-500 hover:to-pink-500 transition-all cursor-pointer mt-2 disabled:opacity-50 text-center active:scale-[0.98]"
+              className="mt-2 w-full rounded-2xl bg-gradient-to-r from-[#C66D99] to-[#DF91B5] px-5 py-3.5 text-xs font-extrabold uppercase tracking-[0.13em] text-white shadow-[0_8px_18px_-10px_rgba(182,79,131,.75)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_22px_-10px_rgba(182,79,131,.7)] active:translate-y-0 disabled:cursor-wait disabled:opacity-60"
             >
-              {cargando
-                ? 'Conectando...'
-                : esRegistro
-                ? 'crear mi cuenta ➔'
-                : 'entrar al escritorio ➔'}
+              {cargando ? 'Conectando...' : esRegistro ? 'Crear mi cuenta →' : 'Entrar a mi escritorio →'}
             </button>
           </form>
 
-          {/* ENLACES SECUNDARIOS EXTRA */}
-          <div className="text-center pt-4 border-t border-purple-50 flex justify-between text-[9px] text-zinc-400 font-bold uppercase tracking-wide">
-            <Link
-              href="/shop"
-              className="hover:text-purple-400 transition-colors"
-            >
-              ⏤ volver a la tienda
+          <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#F0E3EA] pt-5 text-[9px] font-extrabold uppercase tracking-wide text-[#A58D9D]">
+            <Link href="/shop" className="transition hover:text-[#B64F83]">
+              ← Volver a la tienda
             </Link>
-            <span
-              onClick={alternarModo}
-              className="cursor-pointer hover:text-purple-400 transition-colors"
-            >
-              {esRegistro
-                ? '¿ya tienes cuenta? logueate'
-                : '¿nuevo joiner? crear cuenta'}
-            </span>
+            <button type="button" onClick={alternarModo} className="text-right transition hover:text-[#B64F83]">
+              {esRegistro ? '¿Ya tienes cuenta? Ingresa' : '¿Nuevo joiner? Crear cuenta'}
+            </button>
           </div>
         </div>
-      </div>
-    </div>
+        <div className="border-t border-[#F0E3EA] bg-[#FFFAFC] px-5 py-3 text-center text-[9px] font-bold uppercase tracking-[0.18em] text-[#C3A7B7]">
+          Hyuneatelier · hecho para coleccionistas ♡
+        </div>
+      </section>
+    </main>
   );
 }
