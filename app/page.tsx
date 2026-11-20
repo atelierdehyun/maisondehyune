@@ -106,6 +106,22 @@ export default function AtelierWelcome() {
         </div>
       </section>
 
+      {/* Acceso visible a la guía para nuevos joiners */}
+      <Link
+        href="/guia"
+        className="group flex flex-col gap-3 rounded-[1.6rem] border border-[#dcecdf] bg-gradient-to-r from-[#f0faf3] via-[#fffafd] to-[#f7f1fc] p-4 shadow-[0_12px_30px_-24px_rgba(100,130,110,.45)] transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:px-6"
+      >
+        <span className="flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#d8eadc] bg-white text-2xl">📖</span>
+          <span>
+            <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-[#71967c]">¿primera vez en hyuneatelier?</span>
+            <span className="mt-1 block text-sm font-bold text-[#655765]">Aprende a comprar, reclamar y solicitar tu envío</span>
+            <span className="mt-1 block text-[10px] text-[#968694]">Te explicamos todo paso a paso ♡</span>
+          </span>
+        </span>
+        <span className="inline-flex items-center justify-center rounded-full bg-[#71967c] px-5 py-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-white transition group-hover:bg-[#5e8269]">ver tutorial ↗</span>
+      </Link>
+
       {/* Escritorio digital de Hyuneatelier */}
       <DesktopDirectory />
 
@@ -154,6 +170,7 @@ const desktopItems: DesktopItem[] = [
   { href: "/proxy-service", icon: "🇰🇷", title: "Proxy", subtitle: "Compras en Corea", tone: "butter" },
   { href: "/joiner-login", icon: "👤", title: "Login", subtitle: "Ingresar o registrarte", tone: "blue" },
   { href: "/mi-escritorio", icon: "⭐", title: "Mi cuenta", subtitle: "Pedidos y paquetes", tone: "lilac" },
+  { href: "/guia", icon: "📖", title: "Guía de uso", subtitle: "Cómo funciona la página", tone: "blue" },
 ];
 
 function DesktopDirectory() {
