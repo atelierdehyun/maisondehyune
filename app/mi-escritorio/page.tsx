@@ -11,9 +11,9 @@ const PRECIOS_ENVIO: Record<string, number> = {
 };
 
 function abrirChatLia(texto: string) {
-  const miNumero = ['593', '999', '530', '327'].join('');
-  const datos = new URLSearchParams({ phone: miNumero, text: texto });
-  return 'https://whatsapp.com?' + datos.toString();
+  // Número de WhatsApp de Lia en formato internacional, sin + ni espacios.
+  const miNumero = '5939995303278';
+  return 'https://wa.me/' + miNumero + '?text=' + encodeURIComponent(texto);
 }
 
 type ItemEscritorio = {
