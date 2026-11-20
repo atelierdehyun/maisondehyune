@@ -8,8 +8,7 @@ export const dynamic = 'force-dynamic';
 const PRECIOS_ENVIO: Record<string, number> = {
   'Quito (+$3.50)': 3.5,
   'Otras Provincias (+$6.50)': 6.5,
-  'Perú Internacional ($0.00)': 0.0,
-  'Retiro en Cumbayá ($0.00)': 0.0,
+  
 };
 
 function abrirChatLia(texto: string) {
@@ -222,12 +221,20 @@ export default function MiEscritorioJoiner() {
   }
 
   const todosLosItems = grupos.flatMap((g) => g.items);
-  const itemsPagadosEnBodega = todosLosItems.filter(
-    (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.estadoEnvio !== 'Enviado'
-  );
+  const itemsPagadosTodos = todosLosItems.filter(
+  (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.estadoEnvio !== 'Enviado'
+);
 
-  const itemsMarcados = itemsPagadosEnBodega.filter((i) => seleccionadosEnvio[i.idUnico]);
-  const costoEnvioElegido = PRECIOS_ENVIO[envioMetodo] ?? 0;
+const itemsPagadosEnBodega = itemsPagadosTodos.filter(
+  (i) => i.origen === 'SHOP' || i.estadoLogistica === 'Llegó a hyuneatelier'
+);
+
+const itemsPagadosEnCamino = itemsPagadosTodos.filter(
+  (i) => i.origen === 'GO' && i.estadoLogistica !== 'Llegó a hyuneatelier'
+);
+
+const itemsMarcados = itemsPagadosEnBodega.filter((i) => seleccionadosEnvio[i.idUnico]);
+const costoEnvioElegido = PRECIOS_ENVIO[envioMetodo] ?? 0;
 
   async function handleSolicitarEnvioAcumulado(e: React.FormEvent) {
     e.preventDefault();
@@ -634,37 +641,95 @@ export default function MiEscritorioJoiner() {
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {itemsPagadosEnBodega.map((item) => {
-                      const marcado = !!seleccionadosEnvio[item.idUnico];
-                      return (
-                        <label
-                          key={item.idUnico}
-                          className={`flex items-center justify-between gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${marcado ? 'bg-pink-50/70 border-pink-400' : 'bg-zinc-50/60 border-zinc-200/80'}`}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={marcado}
-                              onChange={(e) => setSeleccionadosEnvio((prev) => ({ ...prev, [item.idUnico]: e.target.checked }))}
-                              className="w-4 h-4 accent-pink-600 rounded"
-                            />
-                            {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" /> : <span className="w-11 h-11 rounded-xl bg-white border flex items-center justify-center shrink-0">🧸</span>}
-                            <div className="min-w-0">
-                              <p className="text-[10px] font-bold text-zinc-400 uppercase">{item.goTitulo}</p>
-                              <p className="text-xs font-bold text-zinc-900 truncate">{item.productoNombre}</p>
-                              <p className="text-[11px] text-pink-600 font-semibold">{item.detalleSlot}</p>
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full shrink-0">
-                            Listo para envío
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
+                                 {itemsPagadosEnBodega.length > 0 && (
+               <div className="flex items-center justify-between gap-2 bg-zinc-50 border border-zinc-200/80 rounded-xl px-3 py-2 text-xs">
+                 <div className="flex gap-1.5">
+                   <button
+                     type="button"
+                     onClick={() => {
+                       const todos: Record<string, boolean> = {};
+                       itemsPagadosEnBodega.forEach((it) => { todos[it.idUnico] = true; });
+                       setSeleccionadosEnvio(todos);
+                     }}
+                     className="px-2.5 py-1 rounded-lg bg-zinc-900 text-white text-[11px] font-bold"
+                   >
+                     Seleccionar todos
+                   </button>
+                   <button
+                     type="button"
+                     onClick={() => setSeleccionadosEnvio({})}
+                     className="px-2.5 py-1 rounded-lg bg-white border border-zinc-200 text-zinc-600 text-[11px] font-bold"
+                   >
+                     Limpiar
+                   </button>
+                 </div>
+                 <span className="font-extrabold text-pink-600">{itemsMarcados.length} seleccionado(s)</span>
+               </div>
+             )}
 
-                {itemsPagadosEnBodega.length > 0 && (
+             {itemsPagadosEnBodega.length === 0 ? (
+               <p className="text-xs text-zinc-400 text-center py-6 bg-zinc-50 rounded-2xl border border-dashed">
+                 Aún no tienes artículos pagados que hayan llegado a hyuneatelier 🌸 Cuando lleguen aparecerán aquí listos para enviar.
+               </p>
+             ) : (
+               <div className="space-y-2">
+                 {itemsPagadosEnBodega.map((item) => {
+                   const marcado = !!seleccionadosEnvio[item.idUnico];
+                   return (
+                     <label
+                       key={item.idUnico}
+                       className={`flex items-center justify-between gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${marcado ? 'bg-pink-50/70 border-pink-400' : 'bg-zinc-50/60 border-zinc-200/80'}`}
+                     >
+                       <div className="flex items-center gap-3 min-w-0">
+                         <input
+                           type="checkbox"
+                           checked={marcado}
+                           onChange={(e) => setSeleccionadosEnvio((prev) => ({ ...prev, [item.idUnico]: e.target.checked }))}
+                           className="w-4 h-4 accent-pink-600 rounded"
+                         />
+                         {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" /> : <span className="w-11 h-11 rounded-xl bg-white border flex items-center justify-center shrink-0">🧸</span>}
+                         <div className="min-w-0">
+                           <p className="text-[10px] font-bold text-zinc-400 uppercase">{item.goTitulo}</p>
+                           <p className="text-xs font-bold text-zinc-900 truncate">{item.productoNombre}</p>
+                           <p className="text-[11px] text-pink-600 font-semibold">{item.detalleSlot}</p>
+                         </div>
+                       </div>
+                       <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full shrink-0">
+                         ✅ Arrived · Listo
+                       </span>
+                     </label>
+                   );
+                 })}
+               </div>
+             )}
+
+             {itemsPagadosEnCamino.length > 0 && (
+               <div className="space-y-2 pt-2">
+                 <p className="text-[11px] font-extrabold text-zinc-500">⏳ Pagados en camino (aún no disponibles para envío):</p>
+                 {itemsPagadosEnCamino.map((item) => (
+                   <div
+                     key={item.idUnico}
+                     className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-zinc-200/70 bg-zinc-100/70 opacity-65"
+                   >
+                     <div className="flex items-center gap-3 min-w-0">
+                       <input type="checkbox" disabled className="w-4 h-4 rounded" />
+                       {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="w-10 h-10 rounded-xl object-cover border shrink-0 grayscale" /> : <span className="w-10 h-10 rounded-xl bg-white border flex items-center justify-center shrink-0">✈️</span>}
+                       <div className="min-w-0">
+                         <p className="text-[10px] font-bold text-zinc-400 uppercase">{item.goTitulo}</p>
+                         <p className="text-xs font-bold text-zinc-700 truncate">{item.productoNombre}</p>
+                         <p className="text-[10px] font-semibold text-zinc-500">{item.detalleSlot}</p>
+                       </div>
+                     </div>
+                     <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full shrink-0">
+                       {item.estadoLogistica || 'En camino'}
+                     </span>
+                   </div>
+                 ))}
+               </div>
+             )}
+
+             {itemsPagadosEnBodega.length > 0 && (
+
                   <form onSubmit={handleSolicitarEnvioAcumulado} className="space-y-3 pt-4 border-t border-zinc-100">
                     <p className="text-xs font-extrabold text-zinc-800">🚚 Datos de Despacho ({itemsMarcados.length} seleccionados)</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
