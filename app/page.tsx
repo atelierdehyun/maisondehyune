@@ -13,7 +13,7 @@ export default function AtelierWelcome() {
       <div className="relative overflow-hidden border-y border-[#edcddd] bg-[#fff8fb] py-2.5">
         <div className="whitespace-nowrap text-[9px] font-black uppercase tracking-[0.28em] text-[#c9689b] sm:text-[10px]">
           <span className="inline-block min-w-full animate-[marquee_28s_linear_infinite]">
-            ✳ un rincón para coleccionistas ✳ photocards y pequeños tesoros ✳ compras grupales ✳ compras en Corea ✳ un rincón para coleccionistas ✳ photocards y pequeños tesoros ✳
+            ✳ bienvenidx a mi página ✳ únete a gos, compra cosas que tenga conmigo ✳ arma tu wishlist ✳ compras en Corea ✳ completa tu colección ✳ photocards y pequeños tesoros ✳
           </span>
         </div>
       </div>
