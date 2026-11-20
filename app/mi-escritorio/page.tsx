@@ -337,10 +337,9 @@ export default function MiEscritorioJoiner() {
     (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.precioTotal >= 20
   ).length;
   const estampitasActuales = estampitasGanadas % 10;
-  const premiosDisponibles = Math.floor(estampitasGanadas / 10);
+    const premiosDisponibles = Math.floor(estampitasGanadas / 10);
 
   return (
-
     <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
       <div className="bg-white border-b border-zinc-200/80 px-4 py-3">
         <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-3">
