@@ -11,8 +11,8 @@ const PRECIOS_ENVIO: Record<string, number> = {
 };
 
 function abrirChatLia(texto: string) {
-  // Número de WhatsApp de Lia en formato internacional, sin + ni espacios.
-  const miNumero = '5939995303278';
+  // Número correcto de WhatsApp en formato internacional: 593 + 999530327.
+  const miNumero = '593999530327';
   return 'https://wa.me/' + miNumero + '?text=' + encodeURIComponent(texto);
 }
 
