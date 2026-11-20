@@ -126,20 +126,78 @@ export default function AdminPanelPremium() {
   const [fotoIntegNombre, setFotoIntegNombre] = useState('');
   const [fotoIntegUrl, setFotoIntegUrl] = useState('');
   async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra' | 'integ') {
-    const file = e.target.files ? Array.from(e.target.files).at(0) : null;
+    const file = e.target.files?.[0];
     if (!file) return;
+
     setSubiendoImagen(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = Date.now() + '-' + Math.random().toString(36).substring(2) + '.' + fileExt;
-    const { error } = await supabase.storage.from('fotos-productos').upload(fileName, file);
-    if (error) { alert('Error: ' + error.message); setSubiendoImagen(false); return; }
-    const { data: { publicUrl } } = supabase.storage.from('fotos-productos').getPublicUrl(fileName);
-    if (targetForm === 'go') setNewGoImage(publicUrl);
-    else if (targetForm === 'prod') setNewProdImage(publicUrl);
-    else if (targetForm === 'shop') setNewShopImage(publicUrl);
-    else if (targetForm === 'integ') setFotoIntegUrl(publicUrl);
-    else setNewShopExtraImages((prev) => [...prev, publicUrl]);
-    setSubiendoImagen(false);
+
+    try {
+      if (!file.type.startsWith('image/')) {
+        throw new Error('El archivo seleccionado no es una imagen.');
+      }
+
+      // Reduce el peso sin recortar ni deformar la fotografía.
+      const bitmap = await createImageBitmap(file);
+      const maxSide = 1200;
+      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        bitmap.close();
+        throw new Error('No se pudo preparar la imagen en este navegador.');
+      }
+
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+
+      // WebP conserva la proporción original y reduce el tamaño del archivo.
+      const compressedBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/webp', 0.84);
+      });
+
+      if (!compressedBlob || compressedBlob.type !== 'image/webp') {
+        throw new Error('Este navegador no pudo convertir la imagen a WebP. Prueba con JPG o PNG en otro navegador.');
+      }
+
+      const fileName =
+        Date.now() + '-' +
+        Math.random().toString(36).substring(2) +
+        '.webp';
+
+      const compressedFile = new File([compressedBlob], fileName, {
+        type: 'image/webp',
+      });
+
+      const { error } = await supabase.storage
+        .from('fotos-productos')
+        .upload(fileName, compressedFile, {
+          contentType: 'image/webp',
+          cacheControl: '3600',
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('fotos-productos')
+        .getPublicUrl(fileName);
+
+      if (targetForm === 'go') setNewGoImage(publicUrl);
+      else if (targetForm === 'prod') setNewProdImage(publicUrl);
+      else if (targetForm === 'shop') setNewShopImage(publicUrl);
+      else if (targetForm === 'integ') setFotoIntegUrl(publicUrl);
+      else setNewShopExtraImages((prev) => [...prev, publicUrl]);
+
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error desconocido.';
+      alert('No se pudo subir la imagen: ' + message);
+    } finally {
+      setSubiendoImagen(false);
+      e.target.value = '';
+    }
   }
 
   async function cargarDatosHibridos() {
