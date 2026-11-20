@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-type Go = { id: number; title: string; group_name: string; estado_logistica?: string };
+type Go = { id: number; title: string; group_name: string; status?: string; estado_logistica?: string };
 
 type ItemTarjeta = {
   idUnico: string;
@@ -161,7 +161,7 @@ export default function AdminPanelPremium() {
         if (dataEnvios) setSolicitudesEnvio(dataEnvios);
 
         if (dataGos) {
-          setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name, estado_logistica: g.estado_logistica || 'Esperando cierre' })));
+          setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name, status: g.status || 'OPEN', estado_logistica: g.estado_logistica || 'Esperando cierre' })));
           const primerGo = dataGos.at(0);
           if (primerGo && !selectedGoId) setSelectedGoId(primerGo.id);
           if (primerGo && goStockFiltro === 'TODOS') setGoStockFiltro(primerGo.id);
@@ -329,10 +329,23 @@ export default function AdminPanelPremium() {
   }
 
   async function actualizarEstadoLogisticaGO(goId: number, nuevoEstado: string) {
-    await supabase.from('gos').update({ estado_logistica: nuevoEstado }).eq('id', goId);
-    setGosAdmin((prev) => prev.map((g) => (g.id === goId ? { ...g, estado_logistica: nuevoEstado } : g)));
+    const { error } = await supabase.from('gos').update({ estado_logistica: nuevoEstado }).eq('id', goId);
+    if (error) {
+      alert('Error al actualizar estado: ' + error.message);
+    } else {
+      setGosAdmin((prev) => prev.map((g) => (g.id === goId ? { ...g, estado_logistica: nuevoEstado } : g)));
+      alert('✈️ ¡Estado del GO actualizado a: ' + nuevoEstado + '!');
+    }
   }
 
+  async function toggleVisibilidadGO(goId: number, estadoActual?: string) {
+    const nuevoStatus = estadoActual === 'HIDDEN' ? 'OPEN' : 'HIDDEN';
+    const { error } = await supabase.from('gos').update({ status: nuevoStatus }).eq('id', goId);
+    if (!error) {
+      setGosAdmin((prev) => prev.map((g) => (g.id === goId ? { ...g, status: nuevoStatus } : g)));
+      alert(nuevoStatus === 'HIDDEN' ? '🙈 GO ocultado del catálogo público.' : '🟢 GO visible nuevamente en el catálogo.');
+    }
+  }
   async function actualizarTarjetaCompleta(tarjeta: TarjetaJoiner, campo: 'estadoConfirmacion' | 'estadoPago' | 'fechaPago', valor: string) {
     const hoyIso = new Date().toISOString().split('T').at(0) || '';
     const fechaAuto = campo === 'estadoPago' && valor === 'Pagado' ? hoyIso : null;
@@ -376,6 +389,7 @@ export default function AdminPanelPremium() {
       }
     }
   }
+
   async function handleMarcarEnviado(solId: number) {
     const guia = (guiasTemp[solId] || '').trim();
     const { error } = await supabase
@@ -392,7 +406,6 @@ export default function AdminPanelPremium() {
     if (!confirm('¿Marcar el pedido de ' + tarjeta.nombreReal + ' como CANCELADO por falta de pago?')) return;
     await actualizarTarjetaCompleta(tarjeta, 'estadoConfirmacion', 'Cancelado');
   }
-
   async function handleEliminarUnSoloItem(tarjeta: TarjetaJoiner, item: ItemTarjeta) {
     if (!confirm('¿Quitar "' + item.productoNombre + '" (' + item.detalleSlot + ') del pedido de ' + tarjeta.nombreReal + '?')) return;
 
@@ -1037,11 +1050,11 @@ export default function AdminPanelPremium() {
         {pestanaAdmin === 'stock' && (
           <div className="space-y-5">
             <div className="bg-white border rounded-2xl p-4 space-y-3">
-              <h2 className="text-base font-extrabold text-zinc-900">📦 Gestor de Stock y Estado Logístico por GO</h2>
+              <h2 className="text-base font-extrabold text-zinc-900">📦 Gestor de Stock, Estatus y Visibilidad por GO</h2>
               <div className="flex flex-wrap gap-2">
                 {gosAdmin.map((g) => (
                   <button key={g.id} type="button" onClick={() => setGoStockFiltro(g.id)} className={`px-3.5 py-2 rounded-xl text-xs font-bold ${goStockFiltro === g.id ? 'bg-pink-600 text-white' : 'bg-zinc-100 text-zinc-700'}`}>
-                    🧸 {g.title}
+                    {g.status === 'HIDDEN' ? '🙈 ' : '🧸 '}{g.title}
                   </button>
                 ))}
               </div>
@@ -1051,18 +1064,31 @@ export default function AdminPanelPremium() {
                 if (!goSel) return null;
                 return (
                   <div className="bg-pink-50/80 border border-pink-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span className="font-extrabold text-pink-800">✈️ Estado logístico de este GO:</span>
-                    <select
-                      value={goSel.estado_logistica || 'Esperando cierre'}
-                      onChange={(e) => actualizarEstadoLogisticaGO(goSel.id, e.target.value)}
-                      className="border border-pink-300 bg-white rounded-xl px-3 py-1.5 font-extrabold text-zinc-900"
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-extrabold text-pink-800">✈️ Estado logístico:</span>
+                      <select
+                        value={goSel.estado_logistica || 'Esperando cierre'}
+                        onChange={(e) => actualizarEstadoLogisticaGO(goSel.id, e.target.value)}
+                        className="border border-pink-300 bg-white rounded-xl px-3 py-1.5 font-extrabold text-zinc-900"
+                      >
+                        <option value="Esperando cierre">⏳ Esperando cierre (Not secured)</option>
+                        <option value="Pedido realizado">🟡 Pedido realizado (Secured)</option>
+                        <option value="En bodega Corea / Japón">🇰🇷 En bodega Corea / Japón</option>
+                        <option value="En camino a Ecuador">✈️ En camino a Ecuador</option>
+                        <option value="Llegó a hyuneatelier">📦 ¡Llegó a hyuneatelier! (Listo para envío)</option>
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleVisibilidadGO(goSel.id, goSel.status)}
+                      className={`px-3.5 py-1.5 rounded-xl font-extrabold border ${
+                        goSel.status === 'HIDDEN'
+                          ? 'bg-emerald-600 text-white border-emerald-700'
+                          : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100'
+                      }`}
                     >
-                      <option value="Esperando cierre">⏳ Esperando cierre (Not secured)</option>
-                      <option value="Pedido realizado">🟡 Pedido realizado (Secured)</option>
-                      <option value="En bodega Corea / Japón">🇰🇷 En bodega Corea / Japón</option>
-                      <option value="En camino a Ecuador">✈️ En camino a Ecuador</option>
-                      <option value="Llegó a hyuneatelier">📦 ¡Llegó a hyuneatelier! (Listo para envío)</option>
-                    </select>
+                      {goSel.status === 'HIDDEN' ? '🟢 Mostrar GO en catálogo' : '🙈 Ocultar GO del catálogo'}
+                    </button>
                   </div>
                 );
               })()}
@@ -1137,7 +1163,7 @@ export default function AdminPanelPremium() {
                     <input type="text" placeholder="Grupo (Stray Kids, Enhypen...)" value={newShopGroup} onChange={(e) => setNewShopGroup(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <select value={newShopCategoria} onChange={(e) => setNewShopCategoria(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold">
+                    <select value={newShopCategoria} onChange={(e) => setNewShopCategoria(e.target.value)} className="border rounded-xl px-3 py-2.5 text-xs font-bold">
                       <option value="Photocards">🃏 Photocards</option>
                       <option value="Álbumes">💿 Álbumes</option>
                       <option value="Plushies">🧸 Plushies</option>
@@ -1149,7 +1175,7 @@ export default function AdminPanelPremium() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <input type="text" placeholder="Era / Serie (ej: ATE, HOP)" value={newShopEra} onChange={(e) => setNewShopEra(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs uppercase" />
-                    <select value={newShopTipoPc} onChange={(e) => setNewShopTipoPc(e.target.value)} className="border rounded-xl px-3.5 py-2.5 text-xs font-bold">
+                    <select value={newShopTipoPc} onChange={(e) => setNewShopTipoPc(e.target.value)} className="border rounded-xl px-3 py-2.5 text-xs font-bold">
                       <option value="Álbum PC">💿 Álbum PC</option>
                       <option value="POB">🎁 POB (Pre-Order Benefit)</option>
                       <option value="Lucky Draw">🎰 Lucky Draw</option>
