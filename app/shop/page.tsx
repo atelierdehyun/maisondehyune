@@ -48,6 +48,7 @@ export default function AtelierShop() {
   const [filtroIntegrante, setFiltroIntegrante] = useState<string>('TODOS');
   const [filtroEra, setFiltroEra] = useState<string>('TODOS');
   const [filtroTipoPc, setFiltroTipoPc] = useState<string>('TODOS');
+  const [filtroAbierto, setFiltroAbierto] = useState<'era' | 'tipo' | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [loading, setLoading] = useState(true);
   const [procesando, setProcesando] = useState(false);
@@ -120,7 +121,12 @@ export default function AtelierShop() {
   );
   const tiposPcDisponibles = Array.from(
     new Set(prodsDelGrupo.map((p) => p.tipo_pc || p.categoria || 'Álbum PC'))
-  );
+  ).sort((a, b) => a.localeCompare(b, 'es'));
+
+  const cantidadFiltrosActivos = Number(filtroEra !== 'TODOS') + Number(filtroTipoPc !== 'TODOS');
+  const opcionesFiltro = filtroAbierto === 'era' ? erasDisponibles : tiposPcDisponibles;
+  const tituloFiltro = filtroAbierto === 'era' ? 'Elige una era o serie' : 'Elige un tipo de producto';
+  const valorFiltroActual = filtroAbierto === 'era' ? filtroEra : filtroTipoPc;
 
   const productosFiltrados = prodsDelGrupo.filter((p) => {
     const integProd = p.integrante || 'Grupal / Todos';
@@ -264,18 +270,18 @@ export default function AtelierShop() {
 
   if (loading) return <div className="min-h-screen bg-[#fff7fb] flex items-center justify-center text-sm font-bold text-pink-500">🎀 Preparando tu rinconcito de compras...</div>;
   return (
-    <div className="min-h-screen bg-[#fff7fb] font-sans text-zinc-800 pb-32 sm:pb-16 selection:bg-pink-200">
-      <div className="bg-white/95 backdrop-blur-xl border-b border-pink-100 px-3 py-2.5 sticky top-0 z-30 shadow-[0_3px_18px_rgba(236,72,153,0.06)]">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+    <div className="min-h-screen bg-[#fff9fb] font-sans text-zinc-800 pb-32 sm:pb-16 selection:bg-pink-200">
+      <div className="bg-white/95 backdrop-blur-xl border-b border-[#f1dce5] px-3 py-2 sticky top-0 z-30 shadow-[0_2px_12px_rgba(190,70,120,0.045)]">
+        <div className="max-w-7xl mx-auto flex flex-nowrap justify-between items-center gap-2">
           <Link href="/gos" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">← Ver Group Orders</Link>
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
-            <button type="button" onClick={() => setMostrarGuia(true)} className="text-xs font-bold text-pink-600 bg-pink-50 border border-pink-200 px-3 py-1.5 rounded-full hover:bg-pink-100">
+          <div className="flex flex-nowrap items-center justify-end gap-1.5 overflow-x-auto [scrollbar-width:none]">
+            <button type="button" onClick={() => setMostrarGuia(true)} className="shrink-0 text-[10px] sm:text-xs font-bold text-[#ad4772] bg-[#fff3f7] border border-[#f0d4e0] px-3 py-2 rounded-full">
               ❓ ¿Cómo comprar?
             </button>
             <button
               type="button"
               onClick={() => setSoloWishlist(!soloWishlist)}
-              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all ${
+              className={`shrink-0 text-[10px] sm:text-xs font-bold px-3 py-2 rounded-full border transition-all ${
                 soloWishlist
                   ? 'bg-rose-600 text-white border-rose-600'
                   : 'bg-white text-rose-600 border-rose-200 hover:bg-rose-50'
@@ -283,8 +289,8 @@ export default function AtelierShop() {
             >
               {soloWishlist ? `🩷 Viendo Wishlist (${wishlistIds.length})` : `🤍 Wishlist (${wishlistIds.length})`}
             </button>
-            <Link href="/mi-escritorio" className="text-xs font-bold text-zinc-600 hover:text-pink-600">Mis Pedidos / Bodega</Link>
-            <button type="button" onClick={() => setMostrarCarrito(true)} className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-extrabold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-2xs">
+            <Link href="/mi-escritorio" className="shrink-0 text-[10px] sm:text-xs font-bold text-zinc-600 hover:text-pink-600 whitespace-nowrap">Mis Pedidos / Bodega</Link>
+            <button type="button" onClick={() => setMostrarCarrito(true)} className="shrink-0 bg-[#c83d80] hover:bg-[#b83270] text-white text-[10px] sm:text-xs font-extrabold px-3 py-2 rounded-full flex items-center gap-1.5">
               <span>🛒 Carrito</span>
               <span className="bg-white text-pink-600 px-1.5 rounded-full text-[11px]">{totalItemsCarrito}</span>
             </button>
@@ -292,18 +298,19 @@ export default function AtelierShop() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-5 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
-        <div className="relative overflow-hidden bg-gradient-to-br from-pink-100 via-[#fffafd] to-[#e8f8ef] border border-pink-200/80 rounded-[1.7rem] p-4 sm:p-7 text-center space-y-3 shadow-[0_8px_30px_rgba(236,72,153,0.09)]">
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-pink-600">Hyune Atelier Shop ♡</h1>
-          <p className="text-[11px] font-semibold text-pink-700 bg-pink-50 border border-pink-200/80 rounded-full px-3.5 py-1 inline-block">
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 pt-3 sm:pt-6 space-y-4 sm:space-y-6">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#fff0f5] via-[#fffdfb] to-[#eff9f2] border border-[#f2dce5] rounded-[1.45rem] p-3.5 sm:p-7 text-center space-y-3 shadow-[0_5px_22px_rgba(190,70,120,0.055)]">
+          <h1 className="text-[1.65rem] sm:text-4xl font-extrabold tracking-[-0.04em] text-[#b83d76]" style={{ fontFamily: 'Trebuchet MS, Avenir Next, sans-serif' }}>Hyuneatelier <span className="font-medium">♡</span></h1>
+          <p className="-mt-2 text-[9px] sm:text-[10px] tracking-[0.22em] font-semibold text-[#a77b8c]">K-POP COLLECTIBLES · PHOTOCARDS · MERCH</p>
+          <p className="text-[10px] sm:text-[11px] font-semibold text-[#a34b70] bg-white/80 border border-[#f1d7e2] rounded-full px-3 py-1.5 inline-block">
             📲 Tip: Toca <strong>Compartir / Menú ➔ Agregar a pantalla de inicio</strong> para instalar Hyune Atelier como App ✨
           </p>
 
-          <div className="flex flex-wrap justify-center gap-1.5">
+          <div className="flex items-center justify-start sm:justify-center gap-2 overflow-x-auto whitespace-nowrap pb-1 -mx-1 px-1 [scrollbar-width:none]">
             <button
               type="button"
-              onClick={() => { setFiltroGrupo('TODOS'); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); }}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all ${filtroGrupo === 'TODOS' ? 'bg-[#c83d80] text-white shadow-sm' : 'bg-[#fff1f7] text-[#a92d68]'}`}
+              onClick={() => { setFiltroGrupo('TODOS'); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); setFiltroTipoPc('TODOS'); }}
+              className={`shrink-0 px-4 py-2 rounded-full text-[11px] sm:text-xs font-extrabold tracking-wide transition-all border ${filtroGrupo === 'TODOS' ? 'bg-[#c83d80] text-white border-[#c83d80] shadow-sm' : 'bg-white/80 text-[#a34b70] border-[#f0dce4]'}`}
             >
               Todos los Grupos
             </button>
@@ -311,15 +318,15 @@ export default function AtelierShop() {
               <button
                 key={g}
                 type="button"
-                onClick={() => { setFiltroGrupo(g); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); }}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all ${filtroGrupo === g ? 'bg-pink-600 text-white' : 'bg-pink-50 text-pink-700'}`}
+                onClick={() => { setFiltroGrupo(g); setFiltroIntegrante('TODOS'); setFiltroEra('TODOS'); setFiltroTipoPc('TODOS'); }}
+                className={`shrink-0 px-4 py-2 rounded-full text-[11px] sm:text-xs font-extrabold tracking-wide transition-all border ${filtroGrupo === g ? 'bg-[#c83d80] text-white border-[#c83d80]' : 'bg-white/80 text-[#a34b70] border-[#f0dce4]'}`}
               >
                 {g}
               </button>
             ))}
           </div>
 
-          <div className="flex items-center justify-start sm:justify-center gap-3 overflow-x-auto py-2 px-1">
+          <div className="flex items-center justify-start sm:justify-center gap-3 overflow-x-auto py-2 px-1 [scrollbar-width:none]">
             <button type="button" onClick={() => setFiltroIntegrante('TODOS')} className="flex flex-col items-center gap-1.5 shrink-0">
               <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${filtroIntegrante === 'TODOS' ? 'border-[#c83d80] bg-[#c83d80] text-white scale-105 shadow-sm' : 'border-[#bfe8d0] bg-[#effaf3] text-zinc-600'}`}>
                 ALL
@@ -345,16 +352,41 @@ export default function AtelierShop() {
             })}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left">
-            <input type="text" placeholder="🔍 Buscar por nombre..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="border border-pink-100 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-pink-200" />
-            <select value={filtroEra} onChange={(e) => setFiltroEra(e.target.value)} className="border border-[#cdebd9] rounded-xl px-3 py-2.5 text-xs bg-[#f5fcf7] font-bold focus:outline-none focus:ring-2 focus:ring-[#bde8ce]">
-              <option value="TODOS">💿 Era / Serie: Todas</option>
-              {erasDisponibles.map((er) => <option key={er} value={er}>{er}</option>)}
-            </select>
-            <select value={filtroTipoPc} onChange={(e) => setFiltroTipoPc(e.target.value)} className="border border-[#cdebd9] rounded-xl px-3 py-2.5 text-xs bg-[#f5fcf7] font-bold focus:outline-none focus:ring-2 focus:ring-[#bde8ce]">
-              <option value="TODOS">🃏 Tipo: Todos (Álbum, POB, Merch)</option>
-              {tiposPcDisponibles.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
-            </select>
+          <div className="space-y-2.5 text-left">
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#bd7191] text-base">⌕</span>
+              <input
+                type="text"
+                placeholder="Buscar photocards, álbumes, integrantes..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="w-full border border-[#f0dce5] rounded-2xl pl-10 pr-4 py-3 text-[13px] bg-white/90 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#f4c9dc] shadow-[0_2px_8px_rgba(190,70,120,0.035)]"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setFiltroAbierto('era')} className={`min-w-0 flex items-center gap-2 rounded-2xl border px-3 py-3 text-left transition-all ${filtroEra !== 'TODOS' ? 'bg-[#eaf6ee] border-[#b9dfc7]' : 'bg-white/90 border-[#d8eadf]'}`}>
+                <span className="text-base">◉</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[9px] uppercase tracking-[0.12em] font-bold text-[#6d947b]">Era / serie</span>
+                  <span className="block truncate text-[11px] font-extrabold text-zinc-700">{filtroEra === 'TODOS' ? 'Todas las eras' : filtroEra}</span>
+                </span>
+                <span className="text-[#6d947b] text-xs">⌄</span>
+              </button>
+              <button type="button" onClick={() => setFiltroAbierto('tipo')} className={`min-w-0 flex items-center gap-2 rounded-2xl border px-3 py-3 text-left transition-all ${filtroTipoPc !== 'TODOS' ? 'bg-[#fff2d9] border-[#efd79e]' : 'bg-white/90 border-[#f0e2bd]'}`}>
+                <span className="text-base">▧</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[9px] uppercase tracking-[0.12em] font-bold text-[#a1844c]">Tipo</span>
+                  <span className="block truncate text-[11px] font-extrabold text-zinc-700">{filtroTipoPc === 'TODOS' ? 'Todos los productos' : filtroTipoPc}</span>
+                </span>
+                <span className="text-[#a1844c] text-xs">⌄</span>
+              </button>
+            </div>
+            {(cantidadFiltrosActivos > 0 || busqueda) && (
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] text-zinc-500">{productosFiltrados.length} resultado(s) · {cantidadFiltrosActivos} filtro(s) activo(s)</span>
+                <button type="button" onClick={() => { setFiltroEra('TODOS'); setFiltroTipoPc('TODOS'); setBusqueda(''); }} className="text-[10px] font-bold text-[#b83d76] underline underline-offset-2">Limpiar filtros</button>
+              </div>
+            )}
           </div>
         </div>
         {productosDestacados.length > 0 && (
@@ -450,6 +482,32 @@ export default function AtelierShop() {
           })}
         </div>
       </div>
+      {filtroAbierto && (
+        <div className="fixed inset-0 z-[60] bg-[#321526]/35 backdrop-blur-[2px] flex items-end sm:items-center justify-center" onClick={() => setFiltroAbierto(null)}>
+          <div className="w-full sm:max-w-md bg-[#fffdfd] rounded-t-[1.7rem] sm:rounded-[1.7rem] border border-[#f0dce5] shadow-2xl p-4 sm:p-5 max-h-[78dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="w-10 h-1 rounded-full bg-[#ead4de] mx-auto mb-3 sm:hidden" />
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f3e5eb]">
+              <div>
+                <p className="text-[9px] uppercase tracking-[0.16em] font-bold text-[#b87891]">Personaliza tu búsqueda</p>
+                <h3 className="text-base font-extrabold text-[#604452]">{tituloFiltro}</h3>
+              </div>
+              <button type="button" onClick={() => setFiltroAbierto(null)} className="w-8 h-8 rounded-full bg-[#fbedf2] text-[#a34b70] font-bold">✕</button>
+            </div>
+            <div className="overflow-y-auto py-3 space-y-2">
+              <button type="button" onClick={() => { filtroAbierto === 'era' ? setFiltroEra('TODOS') : setFiltroTipoPc('TODOS'); setFiltroAbierto(null); }} className={`w-full rounded-xl border px-3.5 py-3 text-left text-xs font-bold flex justify-between items-center ${valorFiltroActual === 'TODOS' ? 'bg-[#fbeaf1] border-[#e7b7cc] text-[#a83e70]' : 'bg-white border-[#eee3e8] text-zinc-700'}`}>
+                <span>{filtroAbierto === 'era' ? 'Todas las eras y series' : 'Todos los tipos'}</span><span>{valorFiltroActual === 'TODOS' ? '✓' : ''}</span>
+              </button>
+              {opcionesFiltro.map((opcion) => (
+                <button key={opcion} type="button" onClick={() => { filtroAbierto === 'era' ? setFiltroEra(opcion) : setFiltroTipoPc(opcion); setFiltroAbierto(null); }} className={`w-full rounded-xl border px-3.5 py-3 text-left text-xs font-semibold flex justify-between items-center ${valorFiltroActual === opcion ? 'bg-[#edf7f0] border-[#b9dfc7] text-[#47765c]' : 'bg-white border-[#eee3e8] text-zinc-700 hover:bg-[#fff7fa]'}`}>
+                  <span className="pr-3">{opcion}</span><span>{valorFiltroActual === opcion ? '✓' : ''}</span>
+                </button>
+              ))}
+              {opcionesFiltro.length === 0 && <p className="text-xs text-zinc-400 text-center py-8">No hay opciones disponibles para este grupo.</p>}
+            </div>
+            <button type="button" onClick={() => setFiltroAbierto(null)} className="mt-2 w-full rounded-xl bg-[#c83d80] text-white py-3 text-xs font-extrabold">Ver {productosFiltrados.length} resultados</button>
+          </div>
+        </div>
+      )}
       {productoDetalle && (
         <div className="fixed inset-0 bg-[#321526]/55 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
           <div className="bg-[#fffafd] border border-pink-100 rounded-t-[1.8rem] sm:rounded-[1.8rem] p-4 sm:p-6 max-w-lg w-full space-y-4 shadow-2xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto">
