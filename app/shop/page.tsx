@@ -262,13 +262,13 @@ export default function AtelierShop() {
     router.push('/mi-escritorio');
   }
 
-  if (loading) return <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando Hyune Atelier Shop... 🛍️</div>;
+  if (loading) return <div className="min-h-screen bg-[#fff7fb] flex items-center justify-center text-sm font-bold text-pink-500">🎀 Preparando tu rinconcito de compras...</div>;
   return (
-    <div className="min-h-screen bg-[#FAF8F9] font-sans text-zinc-800 pb-16">
-      <div className="bg-white border-b border-zinc-200/80 px-4 py-3 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-2">
+    <div className="min-h-screen bg-[#fff7fb] font-sans text-zinc-800 pb-28 selection:bg-pink-200">
+      <div className="bg-white/95 backdrop-blur-xl border-b border-pink-100 px-3 py-2.5 sticky top-0 z-30 shadow-[0_3px_18px_rgba(236,72,153,0.06)]">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <Link href="/gos" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">← Ver Group Orders</Link>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             <button type="button" onClick={() => setMostrarGuia(true)} className="text-xs font-bold text-pink-600 bg-pink-50 border border-pink-200 px-3 py-1.5 rounded-full hover:bg-pink-100">
               ❓ ¿Cómo comprar?
             </button>
@@ -292,9 +292,9 @@ export default function AtelierShop() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 pt-6 space-y-5">
-        <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 text-center space-y-4 shadow-2xs">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 uppercase">Hyune Atelier Shop</h1>
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+        <div className="relative overflow-hidden bg-gradient-to-br from-pink-100 via-[#fffafd] to-violet-100 border border-pink-200/80 rounded-[1.7rem] p-4 sm:p-7 text-center space-y-3 shadow-[0_8px_30px_rgba(236,72,153,0.09)]">
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-pink-600">Hyune Atelier Shop ♡</h1>
           <p className="text-[11px] font-semibold text-pink-700 bg-pink-50 border border-pink-200/80 rounded-full px-3.5 py-1 inline-block">
             📲 Tip: Toca <strong>Compartir / Menú ➔ Agregar a pantalla de inicio</strong> para instalar Hyune Atelier como App ✨
           </p>
@@ -334,7 +334,7 @@ export default function AtelierShop() {
                 <button key={integ} type="button" onClick={() => setFiltroIntegrante(activo ? 'TODOS' : integ)} className="flex flex-col items-center gap-1.5 shrink-0 group">
                   <div className={`w-14 h-14 rounded-full overflow-hidden flex items-center justify-center border-2 transition-all ${activo ? 'border-pink-600 ring-2 ring-pink-200 scale-105 shadow-sm' : 'border-zinc-200 bg-pink-50/60 group-hover:border-pink-400'}`}>
                     {fotoMember ? (
-                      <img src={fotoMember} alt={integ} className="w-full h-full object-cover" />
+                      <img src={fotoMember} alt={integ} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-sm font-black text-pink-600">{integ.slice(0, 2).toUpperCase()}</span>
                     )}
@@ -358,7 +358,7 @@ export default function AtelierShop() {
           </div>
         </div>
         {productosDestacados.length > 0 && (
-          <div className="bg-gradient-to-r from-amber-50 via-pink-50 to-indigo-50 border-2 border-amber-200/80 rounded-3xl p-5 space-y-3 shadow-2xs">
+          <div className="bg-gradient-to-br from-[#fff4d9] via-[#fff0f7] to-[#f3efff] border border-pink-200/80 rounded-[1.6rem] p-3.5 sm:p-5 space-y-3 shadow-[0_5px_20px_rgba(236,72,153,0.07)]">
             <div className="flex flex-wrap justify-between items-center gap-2">
               <div>
                 <span className="text-[10px] font-black uppercase bg-amber-400 text-zinc-950 px-2.5 py-0.5 rounded-full">✨ Vitrina Especial</span>
@@ -367,14 +367,14 @@ export default function AtelierShop() {
               <span className="text-[11px] font-semibold text-zinc-500">¡Agrégalos a tus pedidos sin pagar envío extra!</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
               {productosDestacados.slice(0, 4).map((dest) => {
                 const tieneVarsDest = Array.isArray(dest.variantes) && dest.variantes.length > 0;
                 return (
-                  <div key={dest.id} className="bg-white border border-amber-200 rounded-2xl p-2.5 flex flex-col justify-between shadow-2xs hover:shadow-md transition-all">
+                  <div key={dest.id} className="bg-white border border-pink-100 rounded-2xl p-2 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
                     <div>
-                      <div onClick={() => abrirModalProducto(dest)} className="w-full h-32 bg-zinc-50 rounded-xl overflow-hidden relative cursor-pointer mb-2">
-                        {dest.imagen_producto && <img src={dest.imagen_producto} alt="" className="w-full h-full object-cover" />}
+                      <div onClick={() => abrirModalProducto(dest)} className="w-full rounded-xl overflow-hidden relative cursor-pointer mb-2 bg-pink-50/40">
+                        {dest.imagen_producto && <img src={dest.imagen_producto} alt="" loading="lazy" decoding="async" className="block w-full h-auto object-contain" />}
                         <span className="absolute top-1.5 left-1.5 bg-amber-400 text-zinc-950 text-[9px] font-black px-2 py-0.5 rounded-full shadow-2xs">
                           {dest.badge_especial || '✨ Destacado'}
                         </span>
@@ -395,14 +395,14 @@ export default function AtelierShop() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 items-start">
           {productosFiltrados.map((p) => {
             const tieneVars = Array.isArray(p.variantes) && p.variantes.length > 0;
             return (
-              <div key={p.id} className="bg-white border border-zinc-200/80 rounded-2xl p-3.5 flex flex-col justify-between hover:shadow-md transition-all group">
+              <div key={p.id} className="bg-white border border-pink-100 rounded-[1.25rem] p-2 sm:p-3 flex flex-col justify-between shadow-[0_3px_14px_rgba(236,72,153,0.055)] hover:shadow-md transition-all group">
                 <div>
-                  <div onClick={() => abrirModalProducto(p)} className="w-full h-44 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100 relative cursor-pointer flex items-center justify-center">
-                    {p.imagen_producto ? <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <span className="text-2xl">🛍️</span>}
+                  <div onClick={() => abrirModalProducto(p)} className="w-full rounded-xl overflow-hidden relative cursor-pointer bg-pink-50/30">
+                    {p.imagen_producto ? <img src={p.imagen_producto} alt={p.nombre_producto} loading="lazy" decoding="async" className="block w-full h-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]" /> : <span className="text-2xl">🛍️</span>}
                     <span className="absolute top-2 left-2 bg-white/95 text-[10px] font-extrabold px-2 py-0.5 rounded-full text-zinc-700 border border-zinc-200">
                       {p.badge_especial || p.tipo_pc || p.categoria || 'Álbum PC'}
                     </span>
@@ -425,17 +425,17 @@ export default function AtelierShop() {
                       <span className="absolute bottom-2 right-2 bg-zinc-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">Stock: {p.cantidad_disponible}</span>
                     )}
                   </div>
-                  <div className="pt-3 space-y-1">
+                  <div className="pt-2.5 space-y-1">
                     <div className="flex flex-wrap gap-1 text-[10px] font-bold text-pink-600 uppercase">
                       <span>{p.grupo || p.due_date}</span>
                       {p.integrante && p.integrante !== 'Grupal / Todos' && <span>· {p.integrante}</span>}
                       {p.era && <span className="bg-pink-50 text-pink-700 px-1.5 rounded">{p.era}</span>}
                     </div>
-                    <h2 onClick={() => abrirModalProducto(p)} className="text-xs font-extrabold text-zinc-900 line-clamp-2 cursor-pointer hover:text-pink-600">{p.nombre_producto}</h2>
+                    <h2 onClick={() => abrirModalProducto(p)} className="text-[11px] sm:text-sm font-extrabold text-zinc-900 line-clamp-2 cursor-pointer hover:text-pink-600 leading-snug">{p.nombre_producto}</h2>
                   </div>
                 </div>
-                <div className="pt-3 mt-3 border-t border-zinc-100 flex justify-between items-center">
-                  <span className="text-sm font-black text-zinc-900">{tieneVars ? `Desde $${Number(p.precio).toFixed(2)}` : `$${Number(p.precio).toFixed(2)}`}</span>
+                <div className="pt-2.5 mt-2 border-t border-pink-100 flex justify-between items-center gap-1">
+                  <span className="text-xs sm:text-sm font-black text-zinc-900">{tieneVars ? `Desde $${Number(p.precio).toFixed(2)}` : `$${Number(p.precio).toFixed(2)}`}</span>
                   <button
                     type="button"
                     disabled={p.estado_pago === 'SOLD OUT' || p.cantidad_disponible <= 0}
@@ -451,8 +451,8 @@ export default function AtelierShop() {
         </div>
       </div>
       {productoDetalle && (
-        <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#321526]/55 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+          <div className="bg-[#fffafd] border border-pink-100 rounded-t-[1.8rem] sm:rounded-[1.8rem] p-4 sm:p-6 max-w-lg w-full space-y-4 shadow-2xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-[10px] font-bold uppercase text-pink-600 bg-pink-50 px-2.5 py-0.5 rounded-full">
@@ -463,8 +463,8 @@ export default function AtelierShop() {
               <button type="button" onClick={() => setProductoDetalle(null)} className="text-zinc-400 font-bold text-sm">✕</button>
             </div>
 
-            <div className="w-full h-60 bg-zinc-50 rounded-2xl border overflow-hidden flex items-center justify-center">
-              {fotoActivaDetalle ? <img src={fotoActivaDetalle} alt="" className="max-h-full max-w-full object-contain" /> : <span className="text-4xl">🛍️</span>}
+            <div className="w-full overflow-hidden flex items-center justify-center">
+              {fotoActivaDetalle ? <img src={fotoActivaDetalle} alt={productoDetalle.nombre_producto} className="block w-full h-auto max-h-[58dvh] object-contain rounded-2xl" /> : <span className="text-4xl">🛍️</span>}
             </div>
 
             {Array.isArray(productoDetalle.variantes) && productoDetalle.variantes.length > 0 && (
@@ -493,15 +493,15 @@ export default function AtelierShop() {
             <p className="text-xs text-zinc-600">{productoDetalle.descripcion || 'Artículo disponible en Hyune Atelier Shop.'}</p>
 
             {relacionadosMismaEra.length > 0 && (
-              <div className="bg-pink-50/50 border border-pink-200/80 rounded-2xl p-3 space-y-2">
+              <div className="bg-gradient-to-br from-pink-50 to-violet-50 border border-pink-200/80 rounded-2xl p-3 space-y-2">
                 <p className="text-[11px] font-extrabold text-pink-700">
                   🃏 Más de esta misma Serie / Beneficio ({productoDetalle.era || productoDetalle.tipo_pc || 'Colección'}):
                 </p>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {relacionadosMismaEra.map((rel) => (
                     <button key={rel.id} type="button" onClick={() => abrirModalProducto(rel)} className="bg-white border border-pink-100 rounded-xl p-1.5 text-left hover:border-pink-400 transition-all">
-                      <div className="w-full h-16 bg-zinc-50 rounded-lg overflow-hidden mb-1">
-                        {rel.imagen_producto && <img src={rel.imagen_producto} alt="" className="w-full h-full object-cover" />}
+                      <div className="w-full rounded-lg overflow-hidden mb-1 bg-pink-50/30">
+                        {rel.imagen_producto && <img src={rel.imagen_producto} alt="" loading="lazy" className="block w-full h-auto object-contain" />}
                       </div>
                       <p className="text-[10px] font-extrabold text-pink-600 truncate">{rel.integrante || 'Integrante'}</p>
                       <p className="text-[10px] font-bold text-zinc-800">${Number(rel.precio).toFixed(2)}</p>
@@ -528,7 +528,7 @@ export default function AtelierShop() {
         </div>
       )}
       {mostrarGuia && (
-        <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-[#321526]/55 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
           <div className="bg-white border border-pink-200 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="text-base font-black text-zinc-900">🎀 ¿Cómo funciona Hyune Atelier?</h3>
@@ -559,8 +559,8 @@ export default function AtelierShop() {
         </div>
       )}
       {mostrarCarrito && (
-        <div className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs flex justify-end z-50">
-          <div className="bg-white w-full max-w-md h-full overflow-y-auto p-5 flex flex-col justify-between shadow-2xl">
+        <div className="fixed inset-0 bg-[#321526]/55 backdrop-blur-sm flex justify-end z-50">
+          <div className="bg-[#fffafd] border-l border-pink-100 w-full max-w-md h-full overflow-y-auto p-4 sm:p-5 flex flex-col justify-between shadow-2xl">
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b pb-3">
                 <h3 className="text-base font-black text-zinc-900">🛒 Tu Carrito ({totalItemsCarrito})</h3>
