@@ -102,6 +102,7 @@ export default function Masterlist() {
     inicializarPagina();
   }, []);
     const gosFiltrados = gos.filter((g) => {
+      if (g.status === 'HIDDEN') return false;
     const n = (g.group_name || '').toLowerCase().replace(/\s+/g, '');
     return bandaSeleccionada === 'stray kids'
       ? n.includes('straykids') || n.includes('skz')
