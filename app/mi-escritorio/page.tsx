@@ -4,11 +4,6 @@ import { supabase } from '../supabase';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
-function crearLinkMiWhatsApp(mensaje: string) {
-  const telefono = ['593', '999', '530', '327'].join('');
-  const params = new URLSearchParams({ phone: telefono, text: mensaje });
-  return 'https://whatsapp.com?' + params.toString();
-}
 
 const PRECIOS_ENVIO: Record<string, number> = {
   'Quito (+$3.50)': 3.5,
@@ -16,6 +11,12 @@ const PRECIOS_ENVIO: Record<string, number> = {
   'Perú Internacional ($0.00)': 0.0,
   'Retiro en Cumbayá ($0.00)': 0.0,
 };
+
+function abrirChatLia(texto: string) {
+  const miNumero = ['593', '999', '530', '327'].join('');
+  const datos = new URLSearchParams({ phone: miNumero, text: texto });
+  return 'https://whatsapp.com?' + datos.toString();
+}
 
 type ItemEscritorio = {
   idUnico: string;
@@ -86,19 +87,19 @@ export default function MiEscritorioJoiner() {
           setInstagramJoiner(perfil.usuario_red || '');
           if (perfil.telefono) setEnvioTelefono(perfil.telefono);
         }
-        if (sols) setSolicitudesPrevias(sols);
+        if (Array.isArray(sols)) setSolicitudesPrevias(sols);
 
-        if (wishRows && wishRows.length > 0) {
+        if (Array.isArray(wishRows) && wishRows.length > 0) {
           const ids = wishRows.map((w: any) => w.producto_id);
           const { data: prodsW } = await supabase
             .from('tienda_productos')
             .select('id, nombre_producto, imagen_producto, integrante')
             .in('id', ids);
-          setWishlistProds(prodsW || []);
+          setWishlistProds(Array.isArray(prodsW) ? prodsW : []);
         }
 
         const mapaSeg: Record<string, any> = {};
-        if (segs) segs.forEach((s: any) => { mapaSeg[s.claim_key] = s; });
+        if (Array.isArray(segs)) segs.forEach((s: any) => { if (s?.claim_key) mapaSeg[s.claim_key] = s; });
 
         const mapaGrupos: Record<string, GrupoGoEscritorio> = {};
         const agregarItem = (tituloGrupo: string, origen: 'GO' | 'SHOP', item: ItemEscritorio) => {
@@ -108,11 +109,12 @@ export default function MiEscritorioJoiner() {
           mapaGrupos[tituloGrupo].items.push(item);
           mapaGrupos[tituloGrupo].totalGrupo += item.precioTotal;
         };
-        if (prods) {
+        if (Array.isArray(prods)) {
           prods.forEach((p: any) => {
-            const claims = p.claims_integrantes || {};
-            const goTitle = p.gos?.title || 'Group Order';
-            const goEstadoLog = p.gos?.estado_logistica || 'Esperando cierre';
+            const claims = p?.claims_integrantes || {};
+            const goObj = Array.isArray(p?.gos) ? p.gos.at(0) : p?.gos;
+            const goTitle = goObj?.title || 'Group Order';
+            const goEstadoLog = goObj?.estado_logistica || 'Esperando cierre';
 
             Object.entries(claims).forEach(([integrante, dataClaim]: [string, any]) => {
               if (!dataClaim) return;
@@ -124,7 +126,7 @@ export default function MiEscritorioJoiner() {
                   idUnico: claimKey,
                   origen: 'GO',
                   goTitulo: goTitle,
-                  productoNombre: p.nombre_producto,
+                  productoNombre: p.nombre_producto || 'Artículo GO',
                   imagenUrl: p.imagen_producto || null,
                   detalleSlot: integrante,
                   cantidad: 1,
@@ -136,14 +138,14 @@ export default function MiEscritorioJoiner() {
                   montoAbonado: Number(seg?.monto_abonado || 0),
                   estadoLogistica: goEstadoLog,
                 });
-              } else if (typeof dataClaim === 'object') {
+              } else if (typeof dataClaim === 'object' && dataClaim !== null) {
                 Object.entries(dataClaim).forEach(([mailC, cant]: [string, any]) => {
-                  if (mailC.toLowerCase().trim() === email && Number(cant) > 0) {
+                  if (String(mailC).toLowerCase().trim() === email && Number(cant) > 0) {
                     agregarItem(goTitle, 'GO', {
                       idUnico: claimKey + '-' + mailC,
                       origen: 'GO',
                       goTitulo: goTitle,
-                      productoNombre: p.nombre_producto,
+                      productoNombre: p.nombre_producto || 'Artículo GO',
                       imagenUrl: p.imagen_producto || null,
                       detalleSlot: integrante,
                       cantidad: Number(cant),
@@ -162,7 +164,7 @@ export default function MiEscritorioJoiner() {
           });
         }
 
-        if (peds) {
+        if (Array.isArray(peds)) {
           peds.forEach((ped: any) => {
             agregarItem('Tienda / Shop', 'SHOP', {
               idUnico: 'shop-' + ped.id,
@@ -383,7 +385,7 @@ export default function MiEscritorioJoiner() {
               </button>
             </form>
 
-            <div className="bg-pink-5/70 border border-pink-200 rounded-2xl p-4 text-[11px] text-zinc-700 space-y-1.5">
+            <div className="bg-pink-50/70 border border-pink-200 rounded-2xl p-4 text-[11px] text-zinc-700 space-y-1.5">
               <p className="font-extrabold text-pink-700">🏦 Datos de Transferencia</p>
               <p><strong>Banco Pichincha (Ahorros):</strong> #2213367970</p>
               <p><strong>Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
@@ -430,8 +432,14 @@ export default function MiEscritorioJoiner() {
 
             {premiosDisponibles > 0 && (
               <a
-                href={abrirChatLia('¡Holis, Lia! 🎉 Completé mis 10 estampitas en hyuneatelier y quiero reclamar mi PC de Wishlist.')}
-
+                href={abrirChatLia(
+                  '¡Holis, Lia! 🎉 Completé mis 10 estampitas en hyuneatelier y quiero reclamar mi PC de Wishlist / sorpresa extra:\n\n' +
+                    '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + ' (' + (instagramJoiner || usuarioEmail) + ')\n' +
+                    '• *Mi Wishlist guardada:* ' +
+                    (wishlistProds.length > 0
+                      ? wishlistProds.map((w) => w.nombre_producto).join(', ')
+                      : 'Sorpresa del Atelier ✨')
+                )}
                 className="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-zinc-950 font-black text-[11px] uppercase rounded-xl flex items-center justify-center gap-1.5 shadow-2xs"
               >
                 🎁 ¡Reclamar mi PC de Wishlist por WhatsApp!
@@ -537,13 +545,19 @@ export default function MiEscritorioJoiner() {
 
                   <a
                     href={abrirChatLia(
-  '¡Hola, Lia! Quiero reportar mi pago en hyuneatelier:\n' +
-  '• Nombre: ' + (nombreJoiner || usuarioEmail) + '\n' +
-  '• Titular cuenta: ' + (titularTransferencia || nombreJoiner || usuarioEmail) + '\n' +
-  '• Total transferido: $' + totalPendientePagar.toFixed(2) + ' USD\n' +
-  'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
-)}
-
+                      '¡Hola, Lia! Quiero reportar el pago de mis pedidos en hyuneatelier:\n\n' +
+                        '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + '\n' +
+                        '• *Titular transferencia:* ' + (titularTransferencia || nombreJoiner || usuarioEmail) + '\n' +
+                        '• *Instagram:* ' + (instagramJoiner || 'No registrado') + '\n' +
+                        '• *Correo:* ' + usuarioEmail + '\n\n' +
+                        '*Artículos a pagar:*\n' +
+                        itemsAPagarHoy
+                          .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2))
+                          .join('\n') +
+                        (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
+                        '\n\n• *Total Transferido:* $' + totalPendientePagar.toFixed(2) + ' USD\n\n' +
+                        'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
+                    )}
                     className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase rounded-2xl flex items-center justify-center gap-2 shadow-sm transition-all"
                   >
                     💬 Enviar Resumen de Pago y Comprobante por WhatsApp (${totalPendientePagar.toFixed(2)})
