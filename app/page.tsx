@@ -13,7 +13,7 @@ export default function AtelierWelcome() {
       <div className="relative overflow-hidden border-y border-[#edcddd] bg-[#fff8fb] py-2.5">
         <div className="whitespace-nowrap text-[9px] font-black uppercase tracking-[0.28em] text-[#c9689b] sm:text-[10px]">
           <span className="inline-block min-w-full animate-[marquee_28s_linear_infinite]">
-            ✳ bienvenidx a mi página ✳ únete a gos, compra cosas que tenga conmigo ✳ arma tu wishlist ✳ compras en Corea ✳ completa tu colección ✳ photocards y pequeños tesoros ✳
+            ✳ bienvenidx a mi página ✳ únete a gos, compra cosas que tenga conmigo ✳ arma tu wishlist ✳ compras en Corea ✳ completa tu colección ✳ descuentos sorpresa ✳
           </span>
         </div>
       </div>
@@ -28,7 +28,7 @@ export default function AtelierWelcome() {
           <div className="min-w-0">
             <div className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-[#c76d9d] sm:text-[10px]">
               <span className="h-px w-7 bg-[#e5a9c8]" />
-              tu pequeño rincón de k-pop
+              todo en una sola plataforma
               <span className="text-[#e5b94e]">✳</span>
             </div>
             <div className="flex flex-wrap items-end gap-x-2 gap-y-0">
@@ -39,12 +39,12 @@ export default function AtelierWelcome() {
               <span className="mb-1 inline-flex h-9 w-9 rotate-6 items-center justify-center rounded-full border border-[#f0d28a] bg-[#fff8df] text-xl text-[#d9ad45] shadow-sm sm:mb-2">✳</span>
             </div>
             <p className="mt-4 max-w-xl text-[13px] leading-6 text-[#827783] sm:text-[15px]">
-              Un pequeño universo para coleccionar lo que más nos gusta: photocards, compras grupales, hallazgos de Corea y muchas sorpresas.
+              Completa tu colección, encuentra tus prios, únete a gos y lleva contigo tu felicidad :3
             </p>
           </div>
           <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:pt-2">
             <span className="rounded-full border border-[#edc9dc] bg-white/85 px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-[#c76d9d] shadow-[0_4px_14px_rgba(199,109,157,.08)] sm:text-[10px]">
-              el sueño de toda coleccionista ✧
+              ¿te falta algo? echa un vistazo ;3 ✧
             </span>
             <span className="hidden text-right font-serif text-sm italic text-[#a68c9c] sm:block">seleccionado con mucho cariño ♡</span>
           </div>
@@ -54,12 +54,12 @@ export default function AtelierWelcome() {
         <div className="relative mt-5 grid grid-cols-1 items-center gap-4 sm:mt-7 md:grid-cols-[1fr_minmax(150px,190px)_1fr] md:gap-5 lg:gap-7">
           <figure className="group relative min-w-0 -rotate-[1deg] rounded-[1.65rem] border border-[#dcecf5] bg-white p-2 shadow-[0_12px_28px_-20px_rgba(72,128,163,.45)] transition duration-300 hover:-translate-y-1 hover:rotate-0">
             <figcaption className="mb-2 flex items-center justify-between px-1.5 text-[9px] font-black uppercase tracking-[0.19em] text-[#79b5d9]">
-              <span>un poquito de inspiración</span><span>✧ 01</span>
+              <span>de lia para hyune</span><span>✧ 01</span>
             </figcaption>
             <div className="relative overflow-hidden rounded-[1.15rem] bg-[#f4eee8]">
               <img
                 src="https://i.postimg.cc/FKZt0hDG/441894935b5b1026b720976faa08bc5e.jpg"
-                alt="Hyunjin — un poquito de inspiración"
+                alt="Hyunjin — de lia para hyune"
                 loading="lazy"
                 className="h-[270px] w-full object-cover object-center sm:h-[340px] lg:h-[390px]"
               />
@@ -70,11 +70,11 @@ export default function AtelierWelcome() {
 
           <div className="relative z-10 mx-auto flex w-full max-w-[290px] flex-col items-center px-2 py-2 text-center md:max-w-none md:px-0">
             <span className="mb-2 font-serif text-4xl italic text-[#e4a5c8]">୨୧</span>
-            <p className="text-[9px] font-black uppercase tracking-[0.26em] text-[#d5a33e]">¡bienvenida!</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.26em] text-[#d5a33e]">¡bienvenidx!</p>
             <p className="mt-3 font-serif text-[1.55rem] italic leading-[1.18] text-[#655765] sm:text-[1.7rem]">
-              Encuentra tu próximo<br />pequeño <span className="text-[#c76d9d]">tesoro.</span>
+              Encuentra tu próximo<br />item <span className="text-[#c76d9d]">favorito.</span>
             </p>
-            <p className="mt-3 max-w-[210px] text-[10px] leading-5 text-[#9a8997]">Un lugar bonito para encontrar eso que tanto buscas.</p>
+            <p className="mt-3 max-w-[210px] text-[10px] leading-5 text-[#9a8997]">Descubre todo en un solo lugar.</p>
             <Link
               href="/shop"
               className="mt-5 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#d96fa7] to-[#e47c91] px-6 py-3.5 text-[10px] font-black uppercase tracking-[0.17em] text-white shadow-[0_9px_20px_-10px_rgba(207,91,145,.8)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_13px_24px_-10px_rgba(207,91,145,.75)]"
@@ -86,7 +86,7 @@ export default function AtelierWelcome() {
 
           <figure className="group relative min-w-0 rotate-[1deg] rounded-[1.65rem] border border-[#eadcf8] bg-white p-2 shadow-[0_12px_28px_-20px_rgba(133,100,164,.4)] transition duration-300 hover:-translate-y-1 hover:rotate-0">
             <figcaption className="mb-2 flex items-center justify-between px-1.5 text-[9px] font-black uppercase tracking-[0.19em] text-[#ad8bd1]">
-              <span>inspiración para tu colección</span><span>✧ 02</span>
+              <span>de lia para hyune</span><span>✧ 02</span>
             </figcaption>
             <div className="relative overflow-hidden rounded-[1.15rem] bg-[#f8e7aa]">
               <img
@@ -102,7 +102,7 @@ export default function AtelierWelcome() {
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-[#f0dce6] pt-4 text-[8px] font-black uppercase tracking-[0.22em] text-[#b59aaa] sm:justify-between sm:text-[9px]">
-          <span>disfruta de los pequeños detalles</span><span className="text-[#e0b65a]">✳ ✧ ✳</span><span>hecho para coleccionistas</span>
+          <span>encuentra cosas para tu bolsillo</span><span className="text-[#e0b65a]">✳ ✧ ✳</span><span>o paga en partes</span>
         </div>
       </section>
 
