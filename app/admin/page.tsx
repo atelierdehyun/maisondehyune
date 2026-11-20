@@ -693,31 +693,71 @@ export default function AdminPanelPremium() {
   const productosStockFiltrados = goStockFiltro === 'TODOS' ? productosAdmin : productosAdmin.filter((p) => p.go_id === goStockFiltro);
   const coloresAvatar = ['bg-teal-700', 'bg-pink-600', 'bg-amber-600', 'bg-indigo-600', 'bg-emerald-700', 'bg-purple-700'];
 
-  return (
-    <div className="min-h-screen bg-[#F6F7F9] font-sans text-zinc-800 pb-16">
-      <div className="bg-white border-b border-zinc-200 px-5 py-3.5">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
-          <div className="flex items-center gap-4">
-            <span className="font-black text-base tracking-tight text-zinc-900">🎀 hyuneatelier Admin</span>
-            <div className="flex flex-wrap gap-1 bg-zinc-100 p-1 rounded-xl">
-              {[
-                { id: 'joiners', label: '📋 Órdenes por Joiner' },
-                { id: 'envios', label: '🚚 Envíos (' + solicitudesEnvio.filter((s) => s.estado_despacho !== 'Enviado').length + ')' },
-                { id: 'stock', label: '📦 Stock por GO' },
-                { id: 'lanzar', label: '➕ Crear GO / Tienda' },
-                { id: 'items', label: '🛠️ Editar Ítems' },
-              ].map((tab) => (
-                <button key={tab.id} type="button" onClick={() => setPestanaAdmin(tab.id as any)} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${pestanaAdmin === tab.id ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500 hover:text-zinc-800'}`}>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <Link href="/gos" className="text-xs font-semibold text-zinc-500 hover:text-pink-600">← Ir al catálogo</Link>
+  if (loading) {
+    return <div className="min-h-screen bg-[#fff8fb] flex items-center justify-center text-sm font-semibold text-pink-700">🎀 Preparando tu Atelier...</div>;
+  }
+
+  if (usuarioEmail.toLowerCase() !== correoAdmin.toLowerCase()) {
+    return (
+      <div className="min-h-screen bg-[#fff8fb] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-3xl border border-pink-100 bg-white p-8 text-center shadow-sm">
+          <div className="text-4xl mb-3">🔒</div>
+          <h1 className="text-xl font-black text-zinc-900">Área privada</h1>
+          <p className="mt-2 text-sm text-zinc-500">Esta sección está reservada para la administración de hyuneatelier.</p>
+          <Link href="/mi-escritorio" className="inline-flex mt-5 rounded-xl bg-pink-600 px-5 py-2.5 text-xs font-bold text-white">Volver a Mi escritorio</Link>
         </div>
       </div>
+    );
+  }
 
-      <div className="max-w-7xl mx-auto px-5 pt-6">
+  const tabsAdmin = [
+    { id: 'joiners', label: 'Órdenes por Joiner', icon: '📋', note: 'Pedidos y pagos' },
+    { id: 'envios', label: 'Envíos', icon: '🚚', note: 'Solicitudes de bodega' },
+    { id: 'stock', label: 'Stock por GO', icon: '📦', note: 'Disponibilidad y logística' },
+    { id: 'lanzar', label: 'Crear GO / Tienda', icon: '➕', note: 'Publicar novedades' },
+    { id: 'items', label: 'Editar ítems', icon: '🛠️', note: 'Catálogo y productos' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#fff9fc] font-sans text-zinc-800 pb-8">
+      <header className="sticky top-0 z-30 border-b border-pink-100 bg-white/95 backdrop-blur px-4 sm:px-6 py-3">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-xl">🎀</div>
+            <div><p className="text-sm font-black tracking-tight text-zinc-900">hyuneatelier</p><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-pink-500">Panel de administración</p></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-[11px] text-zinc-400">{usuarioEmail}</span>
+            <Link href="/gos" className="rounded-xl border border-pink-100 bg-pink-50 px-3 py-2 text-[11px] font-bold text-pink-700 hover:bg-pink-100">← Catálogo</Link>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto flex max-w-[1500px] gap-5 px-3 sm:px-5 pt-4 lg:pt-6">
+        <aside className="hidden lg:block w-64 shrink-0">
+          <div className="sticky top-24 rounded-3xl border border-pink-100 bg-white p-3 shadow-sm">
+            <p className="px-3 pb-3 pt-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Espacio de trabajo</p>
+            <nav className="space-y-1">
+              {tabsAdmin.map((tab) => (
+                <button key={tab.id} type="button" onClick={() => setPestanaAdmin(tab.id as any)} className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${pestanaAdmin === tab.id ? 'bg-pink-50 text-pink-700 ring-1 ring-pink-100' : 'text-zinc-600 hover:bg-zinc-50'}`}>
+                  <span className="text-lg">{tab.icon}</span><span className="min-w-0 flex-1"><span className="block text-xs font-extrabold">{tab.label}{tab.id === 'envios' ? ` (${solicitudesEnvio.filter((s) => s.estado_despacho !== 'Enviado').length})` : ''}</span><span className="mt-0.5 block text-[10px] text-zinc-400">{tab.note}</span></span>
+                  {pestanaAdmin === tab.id && <span className="text-pink-500">●</span>}
+                </button>
+              ))}
+            </nav>
+            <div className="mt-4 rounded-2xl bg-[#fff8fb] p-3"><p className="text-[10px] font-bold text-pink-700">Tu Atelier, en orden ✨</p><p className="mt-1 text-[10px] leading-relaxed text-zinc-500">Gestiona pedidos, envíos, stock y publicaciones desde un solo lugar.</p></div>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1">
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+            {tabsAdmin.map((tab) => (
+              <button key={tab.id} type="button" onClick={() => setPestanaAdmin(tab.id as any)} className={`shrink-0 rounded-xl px-3 py-2 text-[11px] font-bold ${pestanaAdmin === tab.id ? 'bg-pink-600 text-white shadow-sm' : 'border border-pink-100 bg-white text-zinc-600'}`}>
+                {tab.icon} {tab.label}{tab.id === 'envios' ? ` (${solicitudesEnvio.filter((s) => s.estado_despacho !== 'Enviado').length})` : ''}
+              </button>
+            ))}
+          </div>
+          <div className="rounded-3xl border border-pink-100/80 bg-white/60 p-3 sm:p-5 shadow-[0_8px_35px_rgba(190,24,93,0.04)]">
         {pestanaAdmin === 'joiners' && (
           <div className="space-y-5">
             <div className="flex flex-wrap justify-between items-center gap-3">
@@ -872,7 +912,7 @@ export default function AdminPanelPremium() {
 
                                   return (
                                     <a
-                                      href={'https://whatsapp.com?' + datosCobro.toString()}
+                                      href={'https://wa.me/' + numeroWsp + '?text=' + encodeURIComponent(textoCobro)}
                                       className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-2xs"
                                     >
                                       💬 Cobrar por WhatsApp (${faltaPagar.toFixed(2)})
@@ -1433,7 +1473,7 @@ export default function AdminPanelPremium() {
                       <div>
                         <div className="w-full h-36 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100 relative flex items-center justify-center mb-2.5">
                           {p.imagen_producto ? (
-                            <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-cover" />
+                            <img src={p.imagen_producto} alt={p.nombre_producto} className="w-full h-full object-contain p-2" />
                           ) : (
                             <span className="text-2xl">{p.isShop ? '🛍️' : '🧸'}</span>
                           )}
@@ -1509,6 +1549,8 @@ export default function AdminPanelPremium() {
             </div>
           </div>
         )}
+          </div>
+        </main>
       </div>
     </div>
   );
