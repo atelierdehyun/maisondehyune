@@ -43,7 +43,7 @@ export default function AtelierWelcome() {
           </div>
           <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:pt-2">
             <span className="rounded-full border border-[#edc9dc] bg-white/85 px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-[#c76d9d] shadow-[0_4px_14px_rgba(199,109,157,.08)] sm:text-[10px]">
-              a collector's daydream ✧
+              a collector&apos;res daydream ✧
             </span>
             <span className="hidden text-right font-serif text-sm italic text-[#a68c9c] sm:block">curated with love, always ♡</span>
           </div>
