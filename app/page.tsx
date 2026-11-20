@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 const SPOTIFY_PLAYLIST =
@@ -27,7 +28,7 @@ export default function AtelierWelcome() {
           <div className="min-w-0">
             <div className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-[#c76d9d] sm:text-[10px]">
               <span className="h-px w-7 bg-[#e5a9c8]" />
-              tu pequeño rincón
+              tu pequeño rincón de k-pop
               <span className="text-[#e5b94e]">✳</span>
             </div>
             <div className="flex flex-wrap items-end gap-x-2 gap-y-0">
@@ -38,7 +39,7 @@ export default function AtelierWelcome() {
               <span className="mb-1 inline-flex h-9 w-9 rotate-6 items-center justify-center rounded-full border border-[#f0d28a] bg-[#fff8df] text-xl text-[#d9ad45] shadow-sm sm:mb-2">✳</span>
             </div>
             <p className="mt-4 max-w-xl text-[13px] leading-6 text-[#827783] sm:text-[15px]">
-              Un pequeño universo para coleccionar lo que más nos gusta.
+              Un pequeño universo para coleccionar lo que más nos gusta: photocards, compras grupales, hallazgos de Corea y muchas sorpresas.
             </p>
           </div>
           <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:pt-2">
@@ -105,24 +106,10 @@ export default function AtelierWelcome() {
         </div>
       </section>
 
-      {/* Main navigation */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-white bg-white/75 p-4 shadow-[0_16px_45px_-34px_rgba(174,91,135,.3)] sm:p-6">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#cf78a4]">explora hyuneatelier</p>
-            <h2 className="mt-1 font-serif text-2xl italic text-[#635463] sm:text-3xl">Explora nuestro pequeño mundo<span className="text-[#d97ca8]">.</span></h2>
-          </div>
-          <span className="pb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-[#ad9ba9]">elige a dónde ir ↘</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
-          <AppShortcut href="/shop" icon="🛒" title="tienda" detail="photocards y merch" tone="pink" index="01" />
-          <AppShortcut href="/gos" icon="🧸" title="compras grupales" detail="únete a una GO" tone="mint" index="02" />
-          <AppShortcut href="/proxy-service" icon="🇰🇷" title="proxy en Corea" detail="servicio de compras" tone="butter" index="03" />
-          <AppShortcut href="/info-rules" icon="⌑" title="información y reglas" detail="antes de comprar" tone="lilac" index="04" />
-          <AppShortcut href="/joiner-login" icon="👤" title="login" detail="inicia sesión / regístrate" tone="blue" index="05" />
-          <AppShortcut href="/mi-escritorio" icon="⭐" title="mi cuenta" detail="pedidos y almacén" tone="lilac" index="06" />
-        </div>
-      </section>
+      {/* Escritorio digital de Hyuneatelier */}
+      <DesktopDirectory />
+
+
 
       {/* Spotify */}
       <section className="relative overflow-hidden rounded-[2rem] border border-[#efcddd] bg-gradient-to-br from-[#fff0f6] via-[#fffafd] to-[#eff9f2] p-4 shadow-[0_16px_45px_-34px_rgba(174,91,135,.3)] sm:p-6">
@@ -143,13 +130,123 @@ export default function AtelierWelcome() {
 
       {/* Community links */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <ExternalShortcut href="https://instagram.com/maisonhyun" title="instagram" detail="follow tienda" tone="pink" />
+        <ExternalShortcut href="https://instagram.com/hyuneatelier" title="instagram" detail="follow tienda" tone="pink" />
         <LinkShortcut href="/shop" title="disponible" detail="listo para enviar" tone="mint" />
         <ExternalShortcut href="https://chat.whatsapp.com/FMBE0gchYcMKkD7BPxd5q7" title="whatsapp" detail="únete a la comunidad" tone="blue" />
         <LinkShortcut href="/proxy-service" title="proxy en Corea" detail="¿necesitas ayuda desde Corea?" tone="butter" />
       </section>
       <footer className="pb-2 text-center text-[9px] font-bold uppercase tracking-[0.24em] text-[#b69aaa]">hyuneatelier · hecho con amor para coleccionistas ♡</footer>
     </div>
+  );
+}
+
+type DesktopItem = {
+  href: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+  tone: ShortcutTone;
+};
+
+const desktopItems: DesktopItem[] = [
+  { href: "/shop", icon: "🛒", title: "Tienda", subtitle: "Photocards y merch", tone: "pink" },
+  { href: "/gos", icon: "🧸", title: "GOs", subtitle: "Compras grupales", tone: "mint" },
+  { href: "/proxy-service", icon: "🇰🇷", title: "Proxy", subtitle: "Compras en Corea", tone: "butter" },
+  { href: "/joiner-login", icon: "👤", title: "Login", subtitle: "Ingresar o registrarte", tone: "blue" },
+  { href: "/mi-escritorio", icon: "⭐", title: "Mi cuenta", subtitle: "Pedidos y paquetes", tone: "lilac" },
+];
+
+function DesktopDirectory() {
+  const [infoOpen, setInfoOpen] = useState(false);
+
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] border border-[#efdae5] bg-[#fffafd] p-4 shadow-[0_18px_50px_-36px_rgba(174,91,135,.38)] sm:p-6">
+      <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#e8bfd2_0.7px,transparent_0.7px)] [background-size:14px_14px]" />
+      <div className="relative mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#cf78a4]">tu escritorio virtual</p>
+          <h2 className="mt-1 font-serif text-2xl italic text-[#635463] sm:text-3xl">
+            ¿A dónde vamos hoy?<span className="text-[#d97ca8]"> ♡</span>
+          </h2>
+          <p className="mt-1 text-[11px] text-[#9a8997]">Abre una carpeta para explorar Hyuneatelier.</p>
+        </div>
+        <span className="rounded-full border border-[#edc9dc] bg-white/85 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.16em] text-[#c76d9d]">
+          HYUNEATELIER DESKTOP
+        </span>
+      </div>
+
+      <div className="relative grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <button
+          type="button"
+          onClick={() => setInfoOpen(true)}
+          aria-label="Abrir carpeta de información y reglas"
+          className="group flex min-h-[132px] flex-col items-center justify-center rounded-[1.35rem] border border-[#e5d9f1] bg-[#f8f3fc]/95 p-3 text-center shadow-[0_8px_20px_-17px_rgba(100,70,90,.4)] transition hover:-translate-y-1 hover:bg-white hover:shadow-md"
+        >
+          <span className="text-[38px] leading-none transition group-hover:scale-110">📁</span>
+          <span className="mt-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#9477b4]">Información</span>
+          <span className="mt-1 text-[9px] text-[#9a8997]">Reglas y ayuda</span>
+          <span className="mt-2 rounded-full bg-white/80 px-2 py-1 text-[8px] font-bold text-[#9477b4]">Abrir carpeta ↗</span>
+        </button>
+
+        {desktopItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`group flex min-h-[132px] flex-col items-center justify-center rounded-[1.35rem] border p-3 text-center shadow-[0_8px_20px_-17px_rgba(100,70,90,.4)] transition hover:-translate-y-1 hover:bg-white hover:shadow-md ${toneClasses[item.tone]}`}
+          >
+            <span className="text-[34px] leading-none transition group-hover:scale-110">{item.icon}</span>
+            <span className="mt-3 text-[10px] font-black uppercase tracking-[0.12em]">{item.title}</span>
+            <span className="mt-1 text-[9px] opacity-75">{item.subtitle}</span>
+            <span className="mt-2 text-[8px] font-bold opacity-60">Abrir ↗</span>
+          </Link>
+        ))}
+      </div>
+
+      {infoOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#493746]/35 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setInfoOpen(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="info-folder-title"
+            className="w-full max-w-md overflow-hidden rounded-[1.7rem] border border-white bg-[#fffafd] shadow-[0_25px_80px_-25px_rgba(70,40,60,.45)]"
+          >
+            <div className="flex items-center justify-between border-b border-[#f0dce6] bg-[#fff4f8] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📁</span>
+                <div>
+                  <h3 id="info-folder-title" className="text-[11px] font-black uppercase tracking-[0.15em] text-[#bd6393]">Información y ayuda</h3>
+                  <p className="text-[9px] text-[#a58e9d]">Carpeta de Hyuneatelier</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setInfoOpen(false)} aria-label="Cerrar carpeta" className="flex h-8 w-8 items-center justify-center rounded-full border border-[#edcddd] bg-white text-[#bd6393] transition hover:bg-[#fbe8f0]">✕</button>
+            </div>
+            <div className="space-y-3 p-4">
+              <p className="text-[11px] leading-5 text-[#827783]">
+                Antes de realizar tu pedido, visita nuestra sección de información para conocer las reglas y condiciones de compra.
+              </p>
+              <Link
+                href="/info-rules"
+                className="flex items-center gap-3 rounded-xl border border-[#eadcf3] bg-[#f8f3fc] p-3 transition hover:-translate-y-0.5 hover:bg-white"
+              >
+                <span className="text-2xl">📜</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-[#9477b4]">Reglas e información</span>
+                  <span className="mt-1 block text-[9px] text-[#9a8997]">Lee las indicaciones antes de comprar</span>
+                </span>
+                <span className="text-sm text-[#9477b4]">↗</span>
+              </Link>
+              <p className="text-center text-[9px] text-[#b19eac]">Si tienes dudas, puedes consultar la información antes de continuar ♡</p>
+            </div>
+          </section>
+        </div>
+      )}
+    </section>
   );
 }
 
