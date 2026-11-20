@@ -27,7 +27,7 @@ export default function AtelierWelcome() {
           <div className="min-w-0">
             <div className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-[#c76d9d] sm:text-[10px]">
               <span className="h-px w-7 bg-[#e5a9c8]" />
-              tu pequeño rincón de k-pop
+              tu pequeño rincón
               <span className="text-[#e5b94e]">✳</span>
             </div>
             <div className="flex flex-wrap items-end gap-x-2 gap-y-0">
@@ -38,7 +38,7 @@ export default function AtelierWelcome() {
               <span className="mb-1 inline-flex h-9 w-9 rotate-6 items-center justify-center rounded-full border border-[#f0d28a] bg-[#fff8df] text-xl text-[#d9ad45] shadow-sm sm:mb-2">✳</span>
             </div>
             <p className="mt-4 max-w-xl text-[13px] leading-6 text-[#827783] sm:text-[15px]">
-              Un pequeño universo para coleccionar lo que más nos gusta: photocards, compras grupales, hallazgos de Corea y muchas sorpresas.
+              Un pequeño universo para coleccionar lo que más nos gusta.
             </p>
           </div>
           <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:pt-2">
