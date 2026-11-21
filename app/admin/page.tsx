@@ -13,6 +13,7 @@ type ItemTarjeta = {
   pedidoId?: number;
   origen: 'GO' | 'SHOP';
   goTitulo: string;
+  grupoGo?: string;
   productoNombre: string;
   imagenUrl: string | null;
   detalleSlot: string;
@@ -92,6 +93,10 @@ async function optimizarImagenParaSubida(file: File): Promise<File> {
     );
   });
 
+  if (blob.type !== 'image/webp') {
+    throw new Error('Este navegador no pudo convertir la imagen a WebP. Prueba con JPG o PNG en otro navegador.');
+  }
+
   const nombreBase = file.name.replace(/\.[^.]+$/, '') || 'imagen';
   return new File([blob], `${nombreBase}.webp`, {
     type: 'image/webp',
@@ -109,8 +114,17 @@ export default function AdminPanelPremium() {
   const [subiendoImagen, setSubiendoImagen] = useState(false);
 
   const [tarjetasJoiners, setTarjetasJoiners] = useState<TarjetaJoiner[]>([]);
+  const [perfilesJoinersAdmin, setPerfilesJoinersAdmin] = useState<any[]>([]);
+  const [manualGoId, setManualGoId] = useState('');
+  const [manualProductoId, setManualProductoId] = useState('');
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualSlot, setManualSlot] = useState('');
+  const [manualCantidad, setManualCantidad] = useState('1');
+  const [guardandoClaimManual, setGuardandoClaimManual] = useState(false);
   const [filtroCategoria, setFiltroCategoria] = useState<string>('TODOS');
   const [filtroGrupoAdmin, setFiltroGrupoAdmin] = useState<string>('TODOS');
+  const [filtroEstadoPago, setFiltroEstadoPago] = useState<'TODOS' | 'PAGADO' | 'ABONADO' | 'SIN_PAGAR'>('TODOS');
+  const [joinerSeleccionado, setJoinerSeleccionado] = useState<string>('');
 
   const [busqueda, setBusqueda] = useState('');
   const [editandoNombreCorreo, setEditandoNombreCorreo] = useState<string | null>(null);
@@ -215,7 +229,7 @@ export default function AdminPanelPremium() {
         const [{ data: dataGos }, { data: dataAllProds }, { data: dataSeg }, { data: dataPerfiles }, { data: dataTiendaProds }, { data: dataPedidos }, { data: dataEnvios }] =
           await Promise.all([
             supabase.from('gos').select('*'),
-            supabase.from('productos').select('id, nombre_producto, precio, go_id, cantidad_disponible, descripcion, lista_slots, stock_slots, claims_integrantes, imagen_producto, due_date, gos(title)'),
+            supabase.from('productos').select('id, nombre_producto, precio, go_id, cantidad_disponible, descripcion, lista_slots, stock_slots, claims_integrantes, imagen_producto, due_date, gos(title, group_name)'),
             supabase.from('seguimiento_claims').select('*'),
             supabase.from('perfiles_joiners').select('*'),
             supabase.from('tienda_productos').select('*'),
@@ -224,6 +238,7 @@ export default function AdminPanelPremium() {
           ]);
 
         if (dataEnvios) setSolicitudesEnvio(dataEnvios);
+        if (dataPerfiles) setPerfilesJoinersAdmin(dataPerfiles);
 
         if (dataGos) {
           setGosAdmin(dataGos.map((g: any) => ({ id: g.id, title: g.title, group_name: g.group_name, status: g.status || 'OPEN', estado_logistica: g.estado_logistica || 'Esperando cierre' })));
@@ -233,7 +248,11 @@ export default function AdminPanelPremium() {
         }
 
         const mapaSeg: Record<string, any> = {};
-        if (dataSeg) dataSeg.forEach((s: any) => { mapaSeg[s.claim_key] = s; });
+        if (dataSeg) dataSeg.forEach((s: any) => {
+          const correoSeg = String(s.user_email || '').toLowerCase().trim();
+          mapaSeg[s.claim_key + '__' + correoSeg] = s;
+          if (!mapaSeg[s.claim_key]) mapaSeg[s.claim_key] = s;
+        });
 
         const mapaNombres: Record<string, string> = {};
         const mapaTelefonos: Record<string, string> = {};
@@ -277,32 +296,37 @@ export default function AdminPanelPremium() {
             slots.forEach((s: string) => { estructura[p.id][s] = String(p.stock_slots?.[s] ?? '0'); });
 
             const claims = p.claims_integrantes || {};
-            const goTitle = p.gos?.title || 'Group Order';
+            const goRelacionado = Array.isArray(p.gos) ? p.gos[0] : p.gos;
+            const goTitle = goRelacionado?.title || 'Group Order';
+            const goGroupName = goRelacionado?.group_name || 'OTROS';
             Object.entries(claims).forEach(([integrante, dataClaim]: [string, any]) => {
               if (!dataClaim) return;
               const claimKey = p.id + '-' + integrante;
-              const seg = mapaSeg[claimKey];
+              const segLegacy = mapaSeg[claimKey];
 
               if (typeof dataClaim === 'string') {
+                const correoClaim = dataClaim.toLowerCase().trim();
+                const seg = mapaSeg[claimKey + '__' + correoClaim] || segLegacy;
                 agregarATarjeta(dataClaim, goTitle, 'GO', {
-                  idUnico: claimKey, claimKeyBase: claimKey, origen: 'GO', goTitulo: goTitle,
+                  idUnico: claimKey, claimKeyBase: claimKey, origen: 'GO', goTitulo: goTitle, grupoGo: goGroupName,
                   productoNombre: p.nombre_producto, imagenUrl: p.imagen_producto || null,
                   detalleSlot: integrante, cantidad: 1, precioTotal: Number(p.precio || 0),
                   estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
                   estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
                   creadoEn: seg?.created_at || '',
-                }, Number(seg?.monto_abonado || 0));
+                }, seg?.estado_pago === 'Pagado' ? Number(p.precio || 0) : Number(seg?.monto_abonado || 0));
               } else if (typeof dataClaim === 'object') {
                 Object.entries(dataClaim).forEach(([correoCliente, cant]: [string, any]) => {
                   if (!correoCliente || !cant) return;
+                  const seg = mapaSeg[claimKey + '__' + correoCliente.toLowerCase().trim()];
                   agregarATarjeta(correoCliente, goTitle, 'GO', {
-                    idUnico: claimKey + '-' + correoCliente, claimKeyBase: claimKey, origen: 'GO', goTitulo: goTitle,
+                    idUnico: claimKey + '-' + correoCliente, claimKeyBase: claimKey, origen: 'GO', goTitulo: goTitle, grupoGo: goGroupName,
                     productoNombre: p.nombre_producto, imagenUrl: p.imagen_producto || null,
                     detalleSlot: integrante, cantidad: Number(cant), precioTotal: Number(p.precio || 0) * Number(cant),
                     estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
                     estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
                     creadoEn: seg?.created_at || '',
-                  }, Number(seg?.monto_abonado || 0));
+                  }, seg?.estado_pago === 'Pagado' ? Number(p.precio || 0) * Number(cant) : Number(seg?.monto_abonado || 0));
                 });
               }
             });
@@ -331,7 +355,7 @@ export default function AdminPanelPremium() {
                 estadoConfirmacion: ped.estado_confirmacion || 'Pendiente',
                 estadoPago: ped.estado_pago || 'Sin pagar', fechaPago: ped.fecha_pago || '',
                 creadoEn: ped.created_at || '',
-              }, Number(ped.monto_abonado || 0));
+              }, ped.estado_pago === 'Pagado' ? Number(ped.total_pagar || 0) : Number(ped.monto_abonado || 0));
             }
           });
         }
@@ -366,6 +390,7 @@ export default function AdminPanelPremium() {
     const valStr = inputsAbono[tarjeta.tarjetaId];
     if (valStr === undefined) return;
     const monto = Math.max(0, Number(valStr) || 0);
+    if (monto > tarjeta.totalTarjeta + 0.005) { alert('El abono no puede superar el total del pedido.'); return; }
     const llegoAlTotal = monto >= tarjeta.totalTarjeta && tarjeta.totalTarjeta > 0;
 
     for (let i = 0; i < tarjeta.items.length; i++) {
@@ -391,6 +416,49 @@ export default function AdminPanelPremium() {
     }
     alert(llegoAlTotal ? '💚 ¡Pago completado al 100%!' : '💰 ¡Abono guardado!');
     cargarDatosHibridos();
+  }
+
+  async function registrarClaimManual(e: React.FormEvent) {
+    e.preventDefault();
+    const email = manualEmail.toLowerCase().trim();
+    const cantidad = Math.floor(Number(manualCantidad));
+    const productoId = Number(manualProductoId);
+    if (!email || !productoId || !manualSlot || !Number.isInteger(cantidad) || cantidad < 1) {
+      alert('Completa el GO, artículo, Joiner, integrante y cantidad.');
+      return;
+    }
+    const perfil = perfilesJoinersAdmin.find((p) => String(p.user_email || '').toLowerCase().trim() === email);
+    if (!perfil) {
+      alert('Ese correo no está registrado en Hyuneatelier. Primero debe crear su cuenta y perfil de Joiner.');
+      return;
+    }
+    setGuardandoClaimManual(true);
+    try {
+      const { data: producto, error: errorLectura } = await supabase.from('productos').select('id, go_id, precio, nombre_producto, stock_slots, claims_integrantes').eq('id', productoId).single();
+      if (errorLectura || !producto) throw errorLectura || new Error('No se encontró el artículo.');
+      if (String(producto.go_id) !== manualGoId) throw new Error('El artículo seleccionado no pertenece al GO elegido.');
+
+      const claims = { ...(producto.claims_integrantes || {}) } as Record<string, any>;
+      const actual = claims[manualSlot];
+      const porCorreo: Record<string, number> = {};
+      if (typeof actual === 'string' && actual.trim()) porCorreo[actual.toLowerCase().trim()] = 1;
+      else if (actual && typeof actual === 'object') Object.entries(actual).forEach(([mail, qty]) => { porCorreo[mail.toLowerCase().trim()] = Number(qty) || 0; });
+      const totalUsado = Object.values(porCorreo).reduce((sum, qty) => sum + qty, 0);
+      const stock = Number(producto.stock_slots?.[manualSlot] ?? 0);
+      if (totalUsado + cantidad > stock) throw new Error(`No hay suficientes cupos. Disponibles: ${Math.max(0, stock - totalUsado)}.`);
+      porCorreo[email] = (porCorreo[email] || 0) + cantidad;
+      claims[manualSlot] = porCorreo;
+
+      const { error: errorGuardar } = await supabase.from('productos').update({ claims_integrantes: claims }).eq('id', productoId);
+      if (errorGuardar) throw errorGuardar;
+      alert('✅ Claim manual registrado. Ya aparecerá en el perfil de la Joiner y en el panel de pedidos.');
+      setManualEmail(''); setManualSlot(''); setManualCantidad('1');
+      await cargarDatosHibridos();
+    } catch (error: any) {
+      alert('No se pudo registrar el claim: ' + (error?.message || 'Error desconocido.'));
+    } finally {
+      setGuardandoClaimManual(false);
+    }
   }
 
   async function actualizarEstadoLogisticaGO(goId: number, nuevoEstado: string) {
@@ -734,13 +802,39 @@ export default function AdminPanelPremium() {
   );
 
   const categoriasGos = gosFiltradosPorGrupo.map((g) => g.title);
+  const estadoPagoCalculado = (total: number, abonado: number): 'PAGADO' | 'ABONADO' | 'SIN_PAGAR' => {
+    if (total > 0 && abonado >= total - 0.005) return 'PAGADO';
+    if (abonado > 0) return 'ABONADO';
+    return 'SIN_PAGAR';
+  };
+  const perfilesJoinersPago = Object.values(
+    tarjetasJoiners.filter((t) => t.origen === 'GO').reduce((acc: Record<string, any>, t) => {
+      const key = t.correo.toLowerCase().trim();
+      if (!acc[key]) acc[key] = { correo: key, nombreReal: t.nombreReal, telefono: t.telefono || '', total: 0, abonado: 0, tarjetas: [] as TarjetaJoiner[] };
+      acc[key].total += t.totalTarjeta;
+      acc[key].abonado += t.abonadoTarjeta;
+      acc[key].tarjetas.push(t);
+      return acc;
+    }, {})
+  ).map((perfil: any) => ({ ...perfil, falta: Math.max(0, perfil.total - perfil.abonado), estado: estadoPagoCalculado(perfil.total, perfil.abonado) }))
+    .filter((perfil: any) => {
+      if (busqueda && !perfil.nombreReal.toLowerCase().includes(busqueda.toLowerCase()) && !perfil.correo.includes(busqueda.toLowerCase())) return false;
+      if (filtroGrupoAdmin !== 'TODOS' && !perfil.tarjetas.some((t: TarjetaJoiner) => t.items.some((it) => (it.grupoGo || 'OTROS').toUpperCase().trim() === filtroGrupoAdmin))) return false;
+      if (filtroEstadoPago !== 'TODOS' && perfil.estado !== filtroEstadoPago) return false;
+      return true;
+    })
+    .sort((a: any, b: any) => a.nombreReal.localeCompare(b.nombreReal, 'es'));
 
   const tarjetasFiltradas = tarjetasJoiners
     .filter((t) => {
+      if (joinerSeleccionado && t.correo !== joinerSeleccionado) return false;
       if (filtroGrupoAdmin !== 'TODOS' && t.origen === 'GO') {
-        const goDeTarjeta = gosAdmin.find((g) => g.title === t.categoriaTitulo);
-        const grupoTarjeta = (goDeTarjeta?.group_name || 'OTROS').toUpperCase().trim();
+        const grupoTarjeta = (t.items.find((it) => it.grupoGo)?.grupoGo || gosAdmin.find((g) => g.title === t.categoriaTitulo)?.group_name || 'OTROS').toUpperCase().trim();
         if (grupoTarjeta !== filtroGrupoAdmin) return false;
+      }
+      if (filtroEstadoPago !== 'TODOS') {
+        const estado = estadoPagoCalculado(t.totalTarjeta, t.abonadoTarjeta);
+        if (estado !== filtroEstadoPago) return false;
       }
       if (filtroCategoria !== 'TODOS' && t.categoriaTitulo !== filtroCategoria) return false;
       if (busqueda && !t.nombreReal.toLowerCase().includes(busqueda.toLowerCase()) && !t.correo.toLowerCase().includes(busqueda.toLowerCase())) return false;
@@ -752,6 +846,9 @@ export default function AdminPanelPremium() {
       return fechaA.localeCompare(fechaB);
     });
 
+  const productosDelGoManual = productosAdmin.filter((p) => String(p.go_id) === manualGoId);
+  const productoManualSeleccionado = productosDelGoManual.find((p) => String(p.id) === manualProductoId);
+  const slotsManualDisponibles = (productoManualSeleccionado?.lista_slots || '').split(',').map((slot) => slot.trim()).filter(Boolean);
   const todosLosProductosAdmin = [...productosAdmin, ...productosTiendaAdmin];
   const productosStockFiltrados = goStockFiltro === 'TODOS' ? productosAdmin : productosAdmin.filter((p) => p.go_id === goStockFiltro);
   const coloresAvatar = ['bg-[#8fc9bd]', 'bg-[#e88db4]', 'bg-[#e8c96f]', 'bg-[#a9a4dc]', 'bg-[#8ebbd9]', 'bg-[#c4a0d8]'];
@@ -850,7 +947,27 @@ export default function AdminPanelPremium() {
               <input type="text" placeholder="Buscar por nombre o correo..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="bg-white border border-zinc-200 rounded-xl px-4 py-2 text-xs w-full sm:w-72 shadow-2xs" />
             </div>
 
-                        <div className="bg-white border border-zinc-200/80 rounded-2xl p-3 space-y-2.5 shadow-2xs">
+                        <form onSubmit={registrarClaimManual} className="rounded-2xl border border-[#ead9e3] bg-gradient-to-br from-white to-[#fff4f8] p-4 shadow-sm space-y-3">
+              <div><h3 className="text-sm font-black text-[#514653]">➕ Registrar pedido recibido por WhatsApp</h3><p className="mt-1 text-[10px] text-zinc-500">Solo permite registrar personas que ya tengan una cuenta y perfil de Joiner.</p></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <select value={manualGoId} onChange={(e) => { setManualGoId(e.target.value); setManualProductoId(''); setManualSlot(''); }} className="w-full rounded-xl border bg-white px-3 py-2 text-xs" required>
+                  <option value="">Seleccionar GO...</option>{gosAdmin.map((g) => <option key={g.id} value={g.id}>{g.group_name} · {g.title}</option>)}
+                </select>
+                <select value={manualProductoId} onChange={(e) => { setManualProductoId(e.target.value); setManualSlot(''); }} className="w-full rounded-xl border bg-white px-3 py-2 text-xs" required disabled={!manualGoId}>
+                  <option value="">Seleccionar artículo...</option>{productosDelGoManual.map((p) => <option key={p.id} value={p.id}>{p.nombre_producto} · ${Number(p.precio).toFixed(2)}</option>)}
+                </select>
+                <select value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2 text-xs" required>
+                  <option value="">Seleccionar Joiner registrado...</option>{perfilesJoinersAdmin.map((p) => <option key={p.user_email} value={p.user_email}>{p.nombre_completo || p.user_email} · {p.user_email}</option>)}
+                </select>
+                <select value={manualSlot} onChange={(e) => setManualSlot(e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2 text-xs" required disabled={!manualProductoId}>
+                  <option value="">Seleccionar integrante / slot...</option>{slotsManualDisponibles.map((slot) => <option key={slot} value={slot}>{slot}</option>)}
+                </select>
+                <input type="number" min="1" step="1" value={manualCantidad} onChange={(e) => setManualCantidad(e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2 text-xs" placeholder="Cantidad" required />
+                <button type="submit" disabled={guardandoClaimManual || !manualGoId || !manualProductoId || !manualEmail || !manualSlot} className="rounded-xl bg-[#D96B9F] px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50">{guardandoClaimManual ? 'Guardando...' : 'Guardar claim manual'}</button>
+              </div>
+            </form>
+
+            <div className="bg-white border border-zinc-200/80 rounded-2xl p-3 space-y-2.5 shadow-2xs">
               <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-zinc-100">
                 <span className="text-[10px] font-black uppercase text-zinc-400 mr-1">1. Grupo:</span>
                 <button
@@ -901,6 +1018,53 @@ export default function AdminPanelPremium() {
               </div>
             </div>
 
+
+            {filtroCategoria !== 'Tienda / Shop' && <section className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-black text-[#514653]">👤 Pagos por Joiner</h3>
+                  <p className="text-[11px] text-[#8b7c89]">Un perfil reúne todos sus GOs, incluso si participa en varios grupos.</p>
+                </div>
+                <button type="button" onClick={() => setJoinerSeleccionado('')} className="rounded-full border border-[#ead9e3] bg-white px-3 py-1.5 text-[10px] font-bold text-[#8b647a]">Ver todas las personas</button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  ['TODOS', 'Todos'], ['PAGADO', '💚 Pagados'], ['ABONADO', '💛 Abonados'], ['SIN_PAGAR', '🩷 Sin pagar'],
+                ] as [string, string][]).map(([valor, etiqueta]) => (
+                  <button key={valor} type="button" onClick={() => { setFiltroEstadoPago(valor as any); setJoinerSeleccionado(''); }} className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold ${filtroEstadoPago === valor ? 'bg-[#776a79] text-white' : 'border border-[#f0e2eb] bg-white text-[#766d78]'}`}>{etiqueta}</button>
+                ))}
+              </div>
+              {joinerSeleccionado && <p className="rounded-xl border border-pink-200 bg-pink-50 px-3 py-2 text-[11px] font-bold text-pink-700">Mostrando pedidos de: {perfilesJoinersPago.find((p: any) => p.correo === joinerSeleccionado)?.nombreReal || joinerSeleccionado}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {perfilesJoinersPago.map((perfil: any, idx: number) => {
+                  const grupos = Array.from(new Set(perfil.tarjetas.flatMap((t: TarjetaJoiner) => t.items.map((it) => (it.grupoGo || 'OTROS').toUpperCase().trim()))));
+                  const waDigits = (perfil.telefono || '').replace(/\D/g, '');
+                  const waNumber = waDigits.startsWith('0') ? '593' + waDigits.slice(1) : waDigits.startsWith('593') ? waDigits : waDigits ? '593' + waDigits : '';
+                  const desglose = perfil.tarjetas.map((t: TarjetaJoiner) => `• ${t.categoriaTitulo}: $${t.totalTarjeta.toFixed(2)} (abonado $${t.abonadoTarjeta.toFixed(2)}, falta $${Math.max(0, t.totalTarjeta - t.abonadoTarjeta).toFixed(2)})`).join('\n');
+                  const mensaje = `¡Holis, ${perfil.nombreReal}! 🎀 Te comparto el resumen de tus Group Orders de hyuneatelier:\n\n${desglose}\n\nTotal GOs: $${perfil.total.toFixed(2)} USD\nAbonado: $${perfil.abonado.toFixed(2)} USD\nSaldo pendiente: $${perfil.falta.toFixed(2)} USD\n\nQuedo atenta a tu comprobante. ¡Muchas gracias! ♡`;
+                  const estadoLabel = perfil.estado === 'PAGADO' ? '💚 Pagado' : perfil.estado === 'ABONADO' ? '💛 Abonado' : '🩷 Sin pagar';
+                  return (
+                    <article key={perfil.correo} className={`rounded-2xl border bg-white p-4 shadow-sm ${joinerSeleccionado === perfil.correo ? 'border-pink-400 ring-2 ring-pink-100' : 'border-[#f0dce7]'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0"><p className="text-sm font-black capitalize text-[#514653]">{perfil.nombreReal}</p><p className="break-all text-[10px] text-zinc-400">{perfil.correo}</p><p className="mt-1 text-[10px] font-bold text-[#a45e7c]">{grupos.join(' · ')}</p></div>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-extrabold ${perfil.estado === 'PAGADO' ? 'bg-emerald-50 text-emerald-700' : perfil.estado === 'ABONADO' ? 'bg-amber-50 text-amber-800' : 'bg-rose-50 text-rose-700'}`}>{estadoLabel}</span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-3 gap-1.5 text-center">
+                        <div className="rounded-xl bg-[#fff4f8] p-2"><p className="text-sm font-black text-[#a83f70]">${perfil.total.toFixed(2)}</p><p className="text-[9px] text-zinc-500">Total GOs</p></div>
+                        <div className="rounded-xl bg-[#eff9f3] p-2"><p className="text-sm font-black text-emerald-700">${perfil.abonado.toFixed(2)}</p><p className="text-[9px] text-zinc-500">Abonado</p></div>
+                        <div className="rounded-xl bg-[#fff7e8] p-2"><p className="text-sm font-black text-amber-800">${perfil.falta.toFixed(2)}</p><p className="text-[9px] text-zinc-500">Falta</p></div>
+                      </div>
+                      <div className="mt-3 space-y-1.5">{perfil.tarjetas.map((t: TarjetaJoiner) => <div key={t.tarjetaId} className="flex justify-between gap-2 text-[10px]"><span className="min-w-0 truncate text-zinc-600">{t.categoriaTitulo}</span><strong className="shrink-0 text-zinc-800">${t.totalTarjeta.toFixed(2)}</strong></div>)}</div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => { setJoinerSeleccionado(perfil.correo); setFiltroCategoria('TODOS'); }} className="rounded-xl border border-pink-200 bg-pink-50 px-2 py-2 text-[10px] font-extrabold text-pink-700">Ver sus pedidos</button>
+                        {waNumber ? <a href={`https://wa.me/${waNumber}?text=${encodeURIComponent(mensaje)}`} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-emerald-600 px-2 py-2 text-center text-[10px] font-extrabold text-white">💬 Cobro conjunto</a> : <button type="button" onClick={async () => { const tel = prompt('WhatsApp de ' + perfil.nombreReal + ' (ej. 0991234567):'); if (!tel?.trim()) return; const { error } = await supabase.from('perfiles_joiners').upsert({ user_email: perfil.correo, nombre_completo: perfil.nombreReal, telefono: tel.trim() }, { onConflict: 'user_email' }); if (error) alert('No se pudo guardar el teléfono: ' + error.message); else cargarDatosHibridos(); }} className="rounded-xl bg-amber-100 px-2 py-2 text-[10px] font-extrabold text-amber-900">+ Añadir WhatsApp</button>}
+                      </div>
+                    </article>
+                  );
+                })}
+                {perfilesJoinersPago.length === 0 && <div className="col-span-full rounded-2xl border border-dashed border-[#ead9e3] bg-white p-6 text-center text-xs text-zinc-400">No hay Joiners con GOs para estos filtros.</div>}
+              </div>
+            </section>}
 
             {filtroCategoria === 'TODOS' && (
               <section className="space-y-3">
@@ -989,7 +1153,7 @@ export default function AdminPanelPremium() {
                 const primerItem = tarjeta.items.at(0);
                 const inicial = tarjeta.nombreReal.slice(0, 2).toUpperCase();
                 const estadoConfirmActual = primerItem?.estadoConfirmacion || 'Pendiente';
-                const estadoPagoActual = primerItem?.estadoPago || 'Sin pagar';
+                const estadoPagoActual = estadoPagoCalculado(tarjeta.totalTarjeta, tarjeta.abonadoTarjeta) === 'PAGADO' ? 'Pagado' : estadoPagoCalculado(tarjeta.totalTarjeta, tarjeta.abonadoTarjeta) === 'ABONADO' ? 'Abonado' : 'Sin pagar';
                 const fechaPagoActual = primerItem?.fechaPago || '';
                 const colorAvatar = coloresAvatar.at(idx % coloresAvatar.length) || 'bg-pink-600';
 
@@ -1183,11 +1347,9 @@ export default function AdminPanelPremium() {
                           <option value="Confirmado">✅ Confirmado</option>
                           <option value="Cancelado">❌ Cancelado</option>
                         </select>
-                        <select value={estadoPagoActual} onChange={(e) => actualizarTarjetaCompleta(tarjeta, 'estadoPago', e.target.value)} className={`text-[11px] font-bold rounded-xl px-2.5 py-2 border ${estadoPagoActual === 'Pagado' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-zinc-900'}`}>
-                          <option value="Sin pagar">💸 Sin pagar</option>
-                          <option value="Verificando">🔵 Verificando</option>
-                          <option value="Pagado">💚 Pagado</option>
-                        </select>
+                        <div className={`text-[11px] font-extrabold rounded-xl px-2.5 py-2 border text-center ${estadoPagoActual === 'Pagado' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : estadoPagoActual === 'Abonado' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+                          {estadoPagoActual === 'Pagado' ? '💚 Pagado' : estadoPagoActual === 'Abonado' ? '💛 Abonado' : '💸 Sin pagar'}
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-zinc-500">
