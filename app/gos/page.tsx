@@ -130,10 +130,10 @@ export default function Masterlist() {
       if (existe) {
         const nuevaCant = existe.cantidad + delta;
         if (nuevaCant <= 0) return prev.filter((i) => i.keyUnica !== keyUnica);
-        if (nuevaCant > stockDisp) return prev;
+        if (nuevaCant > stockDisponibles) return prev;
         return prev.map((i) => (i.keyUnica === keyUnica ? { ...i, cantidad: nuevaCant } : i));
       }
-      if (delta <= 0 || stockDisp <= 0) return prev;
+      if (delta <= 0 || stockDisponibles <= 0) return prev;
       return [
         ...prev,
         {
