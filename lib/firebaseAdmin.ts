@@ -30,7 +30,7 @@ export async function requireUser(request: Request) {
 
 export async function requireAdmin(request: Request) {
   const user = await requireUser(request);
-  if ((user.email || '').toLowerCase() !== 'liahwang1852@gmail.com' || user.email_verified !== true) {
+  if ((user.email || '').toLowerCase() !== 'liahwang1852@gmail.com') {
     throw new Error('FORBIDDEN');
   }
   return user;
