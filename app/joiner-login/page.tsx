@@ -34,7 +34,7 @@ export default function JoinerLogin() {
         if (error) {
           setMensaje(`Error: ${error.message} ✕`);
         } else {
-          setMensaje('¡Cuenta creada con éxito! Ya puedes iniciar sesión... ✨');
+          setMensaje('¡Cuenta creada! Revisa tu correo y verifica la dirección antes de iniciar sesión. ✨');
           setTimeout(() => {
             setEsRegistro(false);
             setMensaje('');

@@ -231,49 +231,19 @@ export default function AtelierShop() {
   const subtotalCarrito = carrito.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
   async function enviarDirectoAMisPedidos() {
     if (carrito.length === 0) return;
+    if (!usuarioEmail) { alert('Inicia sesión para realizar tu pedido.'); router.push('/joiner-login?redirect=/shop'); return; }
     setProcesando(true);
-
-    const porProd: Record<number, ItemCarrito[]> = {};
-    carrito.forEach((it) => { if (!porProd[it.producto.id]) porProd[it.producto.id] = []; porProd[it.producto.id].push(it); });
-
-    for (const [prodIdStr, itemsProd] of Object.entries(porProd)) {
-      const prodId = Number(prodIdStr);
-      const { data: prodDb } = await supabase.from('tienda_productos').select('*').eq('id', prodId).single();
-      if (!prodDb) continue;
-      const varsDb: VarianteShop[] = Array.isArray(prodDb.variantes) ? [...prodDb.variantes] : [];
-      if (varsDb.length > 0) {
-        itemsProd.forEach((it) => {
-          const idx = varsDb.findIndex((v) => v.nombre === it.varianteNombre);
-          if (idx >= 0) varsDb[idx].stock = Math.max(0, Number(varsDb[idx].stock) - it.cantidad);
-        });
-        const stockRestanteTotal = varsDb.reduce((s, v) => s + Number(v.stock), 0);
-        await supabase.from('tienda_productos').update({ variantes: varsDb, cantidad_disponible: stockRestanteTotal, estado_pago: stockRestanteTotal === 0 ? 'SOLD OUT' : prodDb.estado_pago }).eq('id', prodId);
-      } else {
-        const cantComprada = itemsProd.reduce((s, i) => s + i.cantidad, 0);
-        const nuevoStock = Math.max(0, Number(prodDb.cantidad_disponible) - cantComprada);
-        await supabase.from('tienda_productos').update({ cantidad_disponible: nuevoStock, estado_pago: nuevoStock === 0 ? 'SOLD OUT' : prodDb.estado_pago }).eq('id', prodId);
-      }
-    }
-
-    const resumenArticulos = carrito.map((i) => i.cantidad + 'x ' + i.producto.nombre_producto + (i.varianteNombre ? ' [' + i.varianteNombre + ']' : '') + ' ($' + (i.precioUnitario * i.cantidad).toFixed(2) + ')').join(' + ');
-    const primeraFoto = carrito.at(0)?.producto.imagen_producto || null;
-
-    await supabase.from('pedidos').insert([{
-      user_email: usuarioEmail.toLowerCase().trim(),
-      tipo_servicio: 'SHOP',
-      producto_nombre: resumenArticulos,
-      imagen_producto: primeraFoto,
-      total_pagar: subtotalCarrito,
-      estado_pago: 'Sin pagar',
-      estado_confirmacion: 'Pendiente',
-      estado_envio: 'En bodega',
-      detalles: (perfilCliente.ig ? 'IG: ' + perfilCliente.ig + ' | ' : '') + 'Nombre: ' + perfilCliente.nombre + ' | En bodega',
-    }]);
-
-    setCarrito([]);
-    setMostrarCarrito(false);
-    setProcesando(false);
-    router.push('/mi-escritorio');
+    try {
+      const token = await (await import('@/lib/firebaseClient')).firebaseAuth.currentUser?.getIdToken();
+      const response = await fetch('/api/shop/order', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ items: carrito.map(i => ({ productId: i.producto.id, variantName: i.varianteNombre, quantity: i.cantidad, name: i.producto.nombre_producto, price: i.precioUnitario, image: i.producto.imagen_producto })), name: perfilCliente.nombre, instagram: perfilCliente.ig }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error === 'OUT_OF_STOCK' ? 'Uno de los artículos ya no tiene suficiente stock. Actualiza la tienda.' : result.error || 'No se pudo registrar el pedido.');
+      setCarrito([]); setMostrarCarrito(false); router.push('/mi-escritorio');
+    } catch (error:any) { alert(error.message || 'No se pudo completar el pedido.'); }
+    finally { setProcesando(false); }
   }
 
   if (loading) return <div className="min-h-screen bg-[#FFF7FA] flex items-center justify-center text-sm font-semibold text-[#B84B7B]">Preparando tu tienda ✦</div>;

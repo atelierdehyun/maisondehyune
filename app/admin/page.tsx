@@ -895,6 +895,7 @@ export default function AdminPanelPremium() {
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-[11px] text-zinc-400">{usuarioEmail}</span>
+            <Link href="/admin/migracion" className="rounded-xl border border-[#ead8f4] bg-[#f8f2fc] px-3 py-2 text-[11px] font-bold text-[#8a6aa7]">Migración Firebase</Link>
             <Link href="/gos" className="rounded-xl border border-pink-100 bg-pink-50 px-3 py-2 text-[11px] font-bold text-pink-700 hover:bg-pink-100">← Catálogo</Link>
           </div>
         </div>

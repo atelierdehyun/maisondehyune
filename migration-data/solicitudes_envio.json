@@ -1,0 +1,62 @@
+[
+  {
+    "id": "1",
+    "user_email": "isabellavalentinamorenocruz@gmail.com",
+    "nombre_completo": "Isabella Valentina Moreno Cruz",
+    "instagram": "valentinamn_.c",
+    "telefono": "0967547331",
+    "ciudad": "Esmeraldas",
+    "direccion": "al frente del colegio Luis Vargastorres en una puerta blanca con letras rojas que dice garaje al lado de un lugar donde arreglan ventiladores",
+    "metodo_envio": "Otras Provincias (+$6.50)",
+    "costo_envio": "6.5",
+    "articulos_incluidos": "• [Tienda / Shop] 1x SUNGHOON SET #4 [4: the sin bliss collection event] ($13.50) (En bodega)",
+    "estado_despacho": "Pendiente",
+    "guia_rastreo": "",
+    "created_at": "2026-11-16 00:23:27.320971+00"
+  },
+  {
+    "id": "2",
+    "user_email": "raquelopez2009@icloud.com",
+    "nombre_completo": "Raquel López",
+    "instagram": "",
+    "telefono": "0968082017",
+    "ciudad": "Santo Domingo de los tsáchilas",
+    "direccion": "Panadería Miel y Canela. Av. De los colonos, entrada a la UCOM #2, diagonal al hospital santo domingo.",
+    "metodo_envio": "Otras Provincias (+$6.50)",
+    "costo_envio": "6.5",
+    "articulos_incluidos": "• [Tienda / Shop] 1x SET NI-KI #1  [4: d:u puppy ears] ($6.00) (En bodega)\n• [Tienda / Shop] 1x SET NI-KI #2 [7: r:u luckydraw] ($15.00) (En bodega)\n• [Tienda / Shop] 1x SET NI-KI #1  [1: d:u weverse] ($1.00) + 1x SET NI-KI #1  [3: d:u popup luckydraw] ($7.00) + 1x SET NI-KI #1  [5: d:u] ($4.00) (En bodega)\n• [Tienda / Shop] 1x JAY SET #1 [6: daydream] ($5.00) + 1x JAY SET #1 [3: dicon ver. 2] ($5.00) (En bodega)\n• [Tienda / Shop] 1x SET JAKE #2 [8: d:u] ($4.10) + 1x SET JAKE #2 [3: d:u pob] ($6.00) + 1x SET JAKE #2 [7: d:u] ($3.50) (En bodega)\n• [Tienda / Shop] 1x SET JAKE #1 [10: dicon] ($6.00) + 1x SET JAKE #1 [3: o:b] ($6.00) + 1x SET JAKE #1 [8: r:u weverse] ($4.00) (En bodega)\n• [Tienda / Shop] 1x JUNGWON PHOTOCARDS [3: pola] ($0.75) + 1x JUNGWON PHOTOCARDS [8: o:b pob] ($8.00) + 1x JUNGWON PHOTOCARDS [13: d:u] ($6.00) + 1x JUNGWON PHOTOCARDS [9: d:u puppy ear] ($8.00) (En bodega)",
+    "estado_despacho": "Pendiente",
+    "guia_rastreo": "",
+    "created_at": "2026-11-16 12:49:31.755274+00"
+  },
+  {
+    "id": "3",
+    "user_email": "monserratemartina2bgub@gmail.com",
+    "nombre_completo": "Martina Monserrate",
+    "instagram": "",
+    "telefono": "0998530204",
+    "ciudad": "Pichincha",
+    "direccion": "PFJ4+Q7W, Domingo Oliva, 170131 Quito",
+    "metodo_envio": "Quito (+$3.50)",
+    "costo_envio": "3.5",
+    "articulos_incluidos": "• [THE SIN : PARALLEL WORLD (LOCKET NECKLACE VER.)] BATCH 2  (Modelo único)",
+    "estado_despacho": "Pendiente",
+    "guia_rastreo": "",
+    "created_at": "2026-11-18 16:14:32.969533+00"
+  },
+  {
+    "id": "4",
+    "user_email": "liahwang1852@gmail.com",
+    "nombre_completo": "Lia",
+    "instagram": "hyuneatelier",
+    "telefono": "58",
+    "ciudad": "Jj",
+    "direccion": "Jj",
+    "metodo_envio": "Quito (+$3.50)",
+    "costo_envio": "3.5",
+    "articulos_incluidos": "• [Tienda / Shop] 1x SUNGHOON SET #1 [5: dicon] ($7.00) (En bodega)",
+    "estado_despacho": "Pendiente",
+    "guia_rastreo": "",
+    "created_at": "2026-11-20 17:31:48.407186+00"
+  }
+]
