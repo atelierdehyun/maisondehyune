@@ -418,48 +418,96 @@ export default function AdminPanelPremium() {
     cargarDatosHibridos();
   }
 
+  
   async function registrarClaimManual(e: React.FormEvent) {
     e.preventDefault();
+
     const email = manualEmail.toLowerCase().trim();
     const cantidad = Math.floor(Number(manualCantidad));
     const productoId = Number(manualProductoId);
-    if (!email || !productoId || !manualSlot || !Number.isInteger(cantidad) || cantidad < 1) {
+
+    if (
+      !email ||
+      !productoId ||
+      !manualSlot ||
+      !Number.isInteger(cantidad) ||
+      cantidad < 1
+    ) {
       alert('Completa el GO, artículo, Joiner, integrante y cantidad.');
       return;
     }
-    const perfil = perfilesJoinersAdmin.find((p) => String(p.user_email || '').toLowerCase().trim() === email);
+
+    const perfil = perfilesJoinersAdmin.find(
+      (p) =>
+        String(p.user_email || '').toLowerCase().trim() === email
+    );
+
     if (!perfil) {
-      alert('Ese correo no está registrado en Hyuneatelier. Primero debe crear su cuenta y perfil de Joiner.');
+      alert(
+        'Ese correo no está registrado en Hyuneatelier. Primero debe crear su cuenta y perfil de Joiner.'
+      );
       return;
     }
+
     setGuardandoClaimManual(true);
+
     try {
-      const { data: producto, error: errorLectura } = await supabase.from('productos').select('id, go_id, precio, nombre_producto, stock_slots, claims_integrantes').eq('id', productoId).single();
-      if (errorLectura || !producto) throw errorLectura || new Error('No se encontró el artículo.');
-      if (String(producto.go_id) !== manualGoId) throw new Error('El artículo seleccionado no pertenece al GO elegido.');
+      const token = await (
+        await import('@/lib/firebaseClient')
+      ).firebaseAuth.currentUser?.getIdToken();
 
-      const claims = { ...(producto.claims_integrantes || {}) } as Record<string, any>;
-      const actual = claims[manualSlot];
-      const porCorreo: Record<string, number> = {};
-      if (typeof actual === 'string' && actual.trim()) porCorreo[actual.toLowerCase().trim()] = 1;
-      else if (actual && typeof actual === 'object') Object.entries(actual).forEach(([mail, qty]) => { porCorreo[mail.toLowerCase().trim()] = Number(qty) || 0; });
-      const totalUsado = Object.values(porCorreo).reduce((sum, qty) => sum + qty, 0);
-      const stock = Number(producto.stock_slots?.[manualSlot] ?? 0);
-      if (totalUsado + cantidad > stock) throw new Error(`No hay suficientes cupos. Disponibles: ${Math.max(0, stock - totalUsado)}.`);
-      porCorreo[email] = (porCorreo[email] || 0) + cantidad;
-      claims[manualSlot] = porCorreo;
+      if (!token) {
+        throw new Error('Tu sesión ha expirado. Inicia sesión nuevamente.');
+      }
 
-      const { error: errorGuardar } = await supabase.from('productos').update({ claims_integrantes: claims }).eq('id', productoId);
-      if (errorGuardar) throw errorGuardar;
-      alert('✅ Claim manual registrado. Ya aparecerá en el perfil de la Joiner y en el panel de pedidos.');
-      setManualEmail(''); setManualSlot(''); setManualCantidad('1');
+      const response = await fetch('/api/admin/claims-manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productoId,
+          goId: manualGoId,
+          email,
+          slot: manualSlot,
+          cantidad,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (result.error?.startsWith('OUT_OF_STOCK:')) {
+          const disponibles = result.error.split(':')[1] || '0';
+          throw new Error(
+            `No hay suficientes cupos. Disponibles: ${disponibles}.`
+          );
+        }
+
+        throw new Error(
+          result.error || 'No se pudo registrar el claim.'
+        );
+      }
+
+      alert('✅ Claim manual registrado correctamente.');
+
+      setManualEmail('');
+      setManualSlot('');
+      setManualCantidad('1');
+
       await cargarDatosHibridos();
+
     } catch (error: any) {
-      alert('No se pudo registrar el claim: ' + (error?.message || 'Error desconocido.'));
+      alert(
+        'No se pudo registrar el claim: ' +
+        (error?.message || 'Error desconocido.')
+      );
     } finally {
       setGuardandoClaimManual(false);
     }
   }
+
 
   async function actualizarEstadoLogisticaGO(goId: number, nuevoEstado: string) {
     const { error } = await supabase.from('gos').update({ estado_logistica: nuevoEstado }).eq('id', goId);
