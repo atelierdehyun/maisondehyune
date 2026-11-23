@@ -549,14 +549,21 @@ export default function AdminPanelPremium() {
       const { data: prodDb } = await supabase.from('productos').select('claims_integrantes').eq('id', prodId).single();
       if (prodDb?.claims_integrantes) {
         const claimsCopia = { ...prodDb.claims_integrantes };
-        if (typeof claimsCopia[slotNombre] === 'string') delete claimsCopia[slotNombre];
-        else if (typeof claimsCopia[slotNombre] === 'object' && claimsCopia[slotNombre] !== null) {
-          delete claimsCopia[slotNombre][tarjeta.correo];
+        if (typeof claimsCopia[slotNombre] === 'string') {
+          if (claimsCopia[slotNombre].toLowerCase().trim() === tarjeta.correo.toLowerCase().trim()) {
+            delete claimsCopia[slotNombre];
+          }
+        } else if (typeof claimsCopia[slotNombre] === 'object' && claimsCopia[slotNombre] !== null) {
+          delete claimsCopia[slotNombre][tarjeta.correo.toLowerCase().trim()];
           if (Object.keys(claimsCopia[slotNombre]).length === 0) delete claimsCopia[slotNombre];
         }
         await supabase.from('productos').update({ claims_integrantes: claimsCopia }).eq('id', prodId);
       }
-      await supabase.from('seguimiento_claims').delete().eq('claim_key', item.claimKeyBase);
+      await supabase
+        .from('seguimiento_claims')
+        .delete()
+        .eq('claim_key', item.claimKeyBase)
+        .eq('user_email', tarjeta.correo.toLowerCase().trim());
     } else if (item.pedidoId) {
       await supabase.from('pedidos').delete().eq('id', item.pedidoId);
     }
@@ -574,14 +581,21 @@ export default function AdminPanelPremium() {
         const { data: prodDb } = await supabase.from('productos').select('claims_integrantes').eq('id', prodId).single();
         if (prodDb?.claims_integrantes) {
           const claimsCopia = { ...prodDb.claims_integrantes };
-          if (typeof claimsCopia[slotNombre] === 'string') delete claimsCopia[slotNombre];
-          else if (typeof claimsCopia[slotNombre] === 'object' && claimsCopia[slotNombre] !== null) {
-            delete claimsCopia[slotNombre][tarjeta.correo];
+          if (typeof claimsCopia[slotNombre] === 'string') {
+            if (claimsCopia[slotNombre].toLowerCase().trim() === tarjeta.correo.toLowerCase().trim()) {
+              delete claimsCopia[slotNombre];
+            }
+          } else if (typeof claimsCopia[slotNombre] === 'object' && claimsCopia[slotNombre] !== null) {
+            delete claimsCopia[slotNombre][tarjeta.correo.toLowerCase().trim()];
             if (Object.keys(claimsCopia[slotNombre]).length === 0) delete claimsCopia[slotNombre];
           }
           await supabase.from('productos').update({ claims_integrantes: claimsCopia }).eq('id', prodId);
         }
-        await supabase.from('seguimiento_claims').delete().eq('claim_key', item.claimKeyBase);
+        await supabase
+          .from('seguimiento_claims')
+          .delete()
+          .eq('claim_key', item.claimKeyBase)
+          .eq('user_email', tarjeta.correo.toLowerCase().trim());
       } else if (item.pedidoId) {
         await supabase.from('pedidos').delete().eq('id', item.pedidoId);
       }
