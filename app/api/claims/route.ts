@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { db, requireUser } from '@/lib/firebaseAdmin';
+import { db, requireUser, requireAdmin } from '@/lib/firebaseAdmin';
 
 type ClaimItem = { productId: number; integrante: string; cantidad: number; goTitulo?: string; productoNombre?: string };
 
@@ -60,6 +60,38 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'UNKNOWN';
     const status = message === 'UNAUTHORIZED' ? 401 : message.startsWith('OUT_OF_STOCK:') ? 409 : message === 'PRODUCT_NOT_FOUND' ? 404 : message === 'GO_CLOSED' ? 409 : 400;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    await requireAdmin(request);
+    const body = await request.json() as { productId?: number; integrante?: string; email?: string };
+    const productId = Number(body.productId);
+    const integrante = String(body.integrante || '').trim();
+    const email = String(body.email || '').toLowerCase().trim();
+    if (!Number.isInteger(productId) || !integrante || !email) {
+      return NextResponse.json({ error: 'Datos de claim inválidos.' }, { status: 400 });
+    }
+    await db.runTransaction(async (tx) => {
+      const productRef = db.collection('productos').doc(String(productId));
+      const productSnap = await tx.get(productRef);
+      if (!productSnap.exists) throw new Error('PRODUCT_NOT_FOUND');
+      const product = productSnap.data() || {};
+      const claims = structuredClone((product.claims_integrantes || {}) as Record<string, Record<string, number>>);
+      if (claims[integrante]) {
+        delete claims[integrante][email];
+        if (Object.keys(claims[integrante]).length === 0) delete claims[integrante];
+      }
+      tx.update(productRef, { claims_integrantes: claims, updated_at: FieldValue.serverTimestamp() });
+      const claimId = `${productId}-${integrante}-${Buffer.from(email).toString('base64url')}`;
+      tx.delete(db.collection('seguimiento_claims').doc(claimId));
+    });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'UNKNOWN';
+    const status = message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : message === 'PRODUCT_NOT_FOUND' ? 404 : 400;
     return NextResponse.json({ error: message }, { status });
   }
 }
