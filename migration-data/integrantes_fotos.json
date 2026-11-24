@@ -1,0 +1,92 @@
+[
+  {
+    "id": "1",
+    "grupo": "STRAY KIDS",
+    "nombre": "Chan",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794765807969-cavzibczq8i.jpeg"
+  },
+  {
+    "id": "3",
+    "grupo": "STRAY KIDS",
+    "nombre": "Felix",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766028912-tkg36qpnfjc.jpeg"
+  },
+  {
+    "id": "4",
+    "grupo": "STRAY KIDS",
+    "nombre": "Hanji",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794765825602-rci6nlt9tj.jpeg"
+  },
+  {
+    "id": "5",
+    "grupo": "STRAY KIDS",
+    "nombre": "Minho",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794765832913-z3l38k6dq49.jpeg"
+  },
+  {
+    "id": "6",
+    "grupo": "STRAY KIDS",
+    "nombre": "Changbin",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794765840916-d2b20ns543i.jpeg"
+  },
+  {
+    "id": "7",
+    "grupo": "STRAY KIDS",
+    "nombre": "Hyunjin",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794765999037-gvlgv475rtb.jpeg"
+  },
+  {
+    "id": "8",
+    "grupo": "STRAY KIDS",
+    "nombre": "Jeongin",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766009673-92kz08tndin.jpeg"
+  },
+  {
+    "id": "9",
+    "grupo": "STRAY KIDS",
+    "nombre": "Seungmin",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766017781-esxxsezstc.jpeg"
+  },
+  {
+    "id": "11",
+    "grupo": "ENHYPEN",
+    "nombre": "Jay",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766203050-rjp9yw1l04m.jpeg"
+  },
+  {
+    "id": "12",
+    "grupo": "ENHYPEN",
+    "nombre": "Sunoo",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766210554-7lyhgf2jso7.jpeg"
+  },
+  {
+    "id": "13",
+    "grupo": "ENHYPEN",
+    "nombre": "Ni-ki",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766217512-af695iv987w.jpeg"
+  },
+  {
+    "id": "14",
+    "grupo": "ENHYPEN",
+    "nombre": "Jungwon",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766227253-2jpvye6m9mo.jpeg"
+  },
+  {
+    "id": "15",
+    "grupo": "ENHYPEN",
+    "nombre": "Sunghoon",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766295260-wwaf1n666ar.jpeg"
+  },
+  {
+    "id": "17",
+    "grupo": "ENHYPEN",
+    "nombre": "Jake",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766326708-zo1118eh7y.jpeg"
+  },
+  {
+    "id": "18",
+    "grupo": "EVAN",
+    "nombre": "Evan",
+    "imagen_url": "https://rvgphlmuvwhgqcoydknc.supabase.co/storage/v1/object/public/fotos-productos/1794766383409-l9j9ctwvoc.jpeg"
+  }
+]

@@ -418,48 +418,130 @@ export default function AdminPanelPremium() {
     cargarDatosHibridos();
   }
 
+  
+  async function ejecutarGestionClaims(payload: any) {
+    const { firebaseAuth } = await import('@/lib/firebaseClient');
+    await firebaseAuth.authStateReady();
+    const token = await firebaseAuth.currentUser?.getIdToken();
+
+    if (!token) {
+      throw new Error('Tu sesión ha expirado. Inicia sesión nuevamente.');
+    }
+
+    const response = await fetch('/api/admin/claims-manage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (result.error?.startsWith('STOCK_BELOW_CLAIMS:')) {
+        const [, slot, reservado] = result.error.split(':');
+        throw new Error(
+          `No puedes dejar "${slot}" con menos de ${reservado} unidades reservadas.`
+        );
+      }
+
+      throw new Error(result.error || 'No se pudo completar la operación.');
+    }
+
+    return result.data;
+  }
+
   async function registrarClaimManual(e: React.FormEvent) {
     e.preventDefault();
+
     const email = manualEmail.toLowerCase().trim();
-    const cantidad = Math.floor(Number(manualCantidad));
+    const cantidad = Number(manualCantidad);
     const productoId = Number(manualProductoId);
-    if (!email || !productoId || !manualSlot || !Number.isInteger(cantidad) || cantidad < 1) {
+
+    if (
+      !email ||
+      !productoId ||
+      !manualSlot ||
+      !Number.isSafeInteger(cantidad) ||
+      cantidad < 1
+    ) {
       alert('Completa el GO, artículo, Joiner, integrante y cantidad.');
       return;
     }
-    const perfil = perfilesJoinersAdmin.find((p) => String(p.user_email || '').toLowerCase().trim() === email);
+
+    const perfil = perfilesJoinersAdmin.find(
+      (p) =>
+        String(p.user_email || '').toLowerCase().trim() === email
+    );
+
     if (!perfil) {
-      alert('Ese correo no está registrado en Hyuneatelier. Primero debe crear su cuenta y perfil de Joiner.');
+      alert(
+        'Ese correo no está registrado en Hyuneatelier. Primero debe crear su cuenta y perfil de Joiner.'
+      );
       return;
     }
+
     setGuardandoClaimManual(true);
+
     try {
-      const { data: producto, error: errorLectura } = await supabase.from('productos').select('id, go_id, precio, nombre_producto, stock_slots, claims_integrantes').eq('id', productoId).single();
-      if (errorLectura || !producto) throw errorLectura || new Error('No se encontró el artículo.');
-      if (String(producto.go_id) !== manualGoId) throw new Error('El artículo seleccionado no pertenece al GO elegido.');
+      const token = await (
+        await import('@/lib/firebaseClient')
+      ).firebaseAuth.currentUser?.getIdToken();
 
-      const claims = { ...(producto.claims_integrantes || {}) } as Record<string, any>;
-      const actual = claims[manualSlot];
-      const porCorreo: Record<string, number> = {};
-      if (typeof actual === 'string' && actual.trim()) porCorreo[actual.toLowerCase().trim()] = 1;
-      else if (actual && typeof actual === 'object') Object.entries(actual).forEach(([mail, qty]) => { porCorreo[mail.toLowerCase().trim()] = Number(qty) || 0; });
-      const totalUsado = Object.values(porCorreo).reduce((sum, qty) => sum + qty, 0);
-      const stock = Number(producto.stock_slots?.[manualSlot] ?? 0);
-      if (totalUsado + cantidad > stock) throw new Error(`No hay suficientes cupos. Disponibles: ${Math.max(0, stock - totalUsado)}.`);
-      porCorreo[email] = (porCorreo[email] || 0) + cantidad;
-      claims[manualSlot] = porCorreo;
+      if (!token) {
+        throw new Error('Tu sesión ha expirado. Inicia sesión nuevamente.');
+      }
 
-      const { error: errorGuardar } = await supabase.from('productos').update({ claims_integrantes: claims }).eq('id', productoId);
-      if (errorGuardar) throw errorGuardar;
-      alert('✅ Claim manual registrado. Ya aparecerá en el perfil de la Joiner y en el panel de pedidos.');
-      setManualEmail(''); setManualSlot(''); setManualCantidad('1');
+      const response = await fetch('/api/admin/claims-manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productoId,
+          goId: manualGoId,
+          email,
+          slot: manualSlot,
+          cantidad,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (result.error?.startsWith('OUT_OF_STOCK:')) {
+          const disponibles = result.error.split(':')[1] || '0';
+          throw new Error(
+            `No hay suficientes cupos. Disponibles: ${disponibles}.`
+          );
+        }
+
+        throw new Error(
+          result.error || 'No se pudo registrar el claim.'
+        );
+      }
+
+      alert('✅ Claim manual registrado correctamente.');
+
+      setManualEmail('');
+      setManualSlot('');
+      setManualCantidad('1');
+
       await cargarDatosHibridos();
+
     } catch (error: any) {
-      alert('No se pudo registrar el claim: ' + (error?.message || 'Error desconocido.'));
+      alert(
+        'No se pudo registrar el claim: ' +
+        (error?.message || 'Error desconocido.')
+      );
     } finally {
       setGuardandoClaimManual(false);
     }
   }
+
 
   async function actualizarEstadoLogisticaGO(goId: number, nuevoEstado: string) {
     const { error } = await supabase.from('gos').update({ estado_logistica: nuevoEstado }).eq('id', goId);
@@ -542,52 +624,42 @@ export default function AdminPanelPremium() {
   async function handleEliminarUnSoloItem(tarjeta: TarjetaJoiner, item: ItemTarjeta) {
     if (!confirm('¿Quitar "' + item.productoNombre + '" (' + item.detalleSlot + ') del pedido de ' + tarjeta.nombreReal + '?')) return;
 
-    if (item.origen === 'GO' && item.claimKeyBase) {
-      const partes = item.claimKeyBase.split('-');
-      const prodId = Number(partes.at(0));
-      const slotNombre = partes.slice(1).join('-');
-      const { data: prodDb } = await supabase.from('productos').select('claims_integrantes').eq('id', prodId).single();
-      if (prodDb?.claims_integrantes) {
-        const claimsCopia = { ...prodDb.claims_integrantes };
-        if (typeof claimsCopia[slotNombre] === 'string') delete claimsCopia[slotNombre];
-        else if (typeof claimsCopia[slotNombre] === 'object' && claimsCopia[slotNombre] !== null) {
-          delete claimsCopia[slotNombre][tarjeta.correo];
-          if (Object.keys(claimsCopia[slotNombre]).length === 0) delete claimsCopia[slotNombre];
-        }
-        await supabase.from('productos').update({ claims_integrantes: claimsCopia }).eq('id', prodId);
-      }
-      await supabase.from('seguimiento_claims').delete().eq('claim_key', item.claimKeyBase);
-    } else if (item.pedidoId) {
-      await supabase.from('pedidos').delete().eq('id', item.pedidoId);
-    }
+    try {
+      await ejecutarGestionClaims({
+        action: 'delete-items',
+        email: tarjeta.correo,
+        items: [{
+          origen: item.origen,
+          claimKeyBase: item.claimKeyBase,
+          pedidoId: item.pedidoId,
+        }],
+      });
 
-    cargarDatosHibridos();
+      await cargarDatosHibridos();
+    } catch (error: any) {
+      alert('No se pudo eliminar el artículo: ' + (error?.message || 'Error desconocido.'));
+    }
   }
 
   async function handleEliminarTarjetaPedido(tarjeta: TarjetaJoiner) {
     if (!confirm('⚠️ ¿Eliminar todo el pedido de ' + tarjeta.nombreReal + ' y liberar sus slots?')) return;
-    for (const item of tarjeta.items) {
-      if (item.origen === 'GO' && item.claimKeyBase) {
-        const partes = item.claimKeyBase.split('-');
-        const prodId = Number(partes.at(0));
-        const slotNombre = partes.slice(1).join('-');
-        const { data: prodDb } = await supabase.from('productos').select('claims_integrantes').eq('id', prodId).single();
-        if (prodDb?.claims_integrantes) {
-          const claimsCopia = { ...prodDb.claims_integrantes };
-          if (typeof claimsCopia[slotNombre] === 'string') delete claimsCopia[slotNombre];
-          else if (typeof claimsCopia[slotNombre] === 'object' && claimsCopia[slotNombre] !== null) {
-            delete claimsCopia[slotNombre][tarjeta.correo];
-            if (Object.keys(claimsCopia[slotNombre]).length === 0) delete claimsCopia[slotNombre];
-          }
-          await supabase.from('productos').update({ claims_integrantes: claimsCopia }).eq('id', prodId);
-        }
-        await supabase.from('seguimiento_claims').delete().eq('claim_key', item.claimKeyBase);
-      } else if (item.pedidoId) {
-        await supabase.from('pedidos').delete().eq('id', item.pedidoId);
-      }
+
+    try {
+      await ejecutarGestionClaims({
+        action: 'delete-items',
+        email: tarjeta.correo,
+        items: tarjeta.items.map((item) => ({
+          origen: item.origen,
+          claimKeyBase: item.claimKeyBase,
+          pedidoId: item.pedidoId,
+        })),
+      });
+
+      alert('🗑️ Pedido eliminado y slots liberados ✨');
+      await cargarDatosHibridos();
+    } catch (error: any) {
+      alert('No se pudo eliminar el pedido: ' + (error?.message || 'Error desconocido.'));
     }
-    alert('🗑️ Pedido eliminado y slots liberados ✨');
-    cargarDatosHibridos();
   }
   const handleEditInputLocal = (prodId: number, slot: string, valor: string) => {
     setInputsStock((prev) => ({ ...prev, [prodId]: { ...(prev[prodId] || {}), [slot]: valor } }));
@@ -596,9 +668,34 @@ export default function AdminPanelPremium() {
   async function handleGuardarStockBD(prodId: number) {
     const inputsProd = inputsStock[prodId] || {};
     const jsonNuevo: { [key: string]: number } = {};
-    Object.entries(inputsProd).forEach(([slot, val]) => { jsonNuevo[slot] = Math.max(0, parseInt(val) || 0); });
-    const { error } = await supabase.from('productos').update({ stock_slots: jsonNuevo }).eq('id', prodId);
-    if (!error) { alert('¡Stock guardado! ✨'); cargarDatosHibridos(); }
+
+    for (const [slot, val] of Object.entries(inputsProd)) {
+      const cantidad = Number(val);
+
+      if (
+        !String(val).trim() ||
+        !Number.isSafeInteger(cantidad) ||
+        cantidad < 0
+      ) {
+        alert(`El stock de "${slot}" debe ser un número entero igual o mayor que cero.`);
+        return;
+      }
+
+      jsonNuevo[slot] = cantidad;
+    }
+
+    try {
+      await ejecutarGestionClaims({
+        action: 'update-stock',
+        productoId: prodId,
+        stock_slots: jsonNuevo,
+      });
+
+      alert('¡Stock guardado! ✨');
+      await cargarDatosHibridos();
+    } catch (error: any) {
+      alert('No se pudo guardar el stock: ' + (error?.message || 'Error desconocido.'));
+    }
   }
 
   async function handleRenombrarSlotGO(prod: ProductoAdmin, slotViejo: string) {
@@ -895,6 +992,7 @@ export default function AdminPanelPremium() {
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-[11px] text-zinc-400">{usuarioEmail}</span>
+            <Link href="/admin/migracion" className="rounded-xl border border-[#ead8f4] bg-[#f8f2fc] px-3 py-2 text-[11px] font-bold text-[#8a6aa7]">Migración Firebase</Link>
             <Link href="/gos" className="rounded-xl border border-pink-100 bg-pink-50 px-3 py-2 text-[11px] font-bold text-pink-700 hover:bg-pink-100">← Catálogo</Link>
           </div>
         </div>

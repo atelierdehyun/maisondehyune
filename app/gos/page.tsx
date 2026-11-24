@@ -163,47 +163,22 @@ export default function Masterlist() {
     setProcesando(true);
     const mailLimpio = usuarioEmail.toLowerCase().trim();
 
-    const porProducto: Record<number, ItemCarritoGo[]> = {};
-    carritoGlobal.forEach((item) => {
-      if (!porProducto[item.productoId]) porProducto[item.productoId] = [];
-      porProducto[item.productoId].push(item);
+    const token = await (await import('@/lib/firebaseClient')).firebaseAuth.currentUser?.getIdToken();
+    const claimResponse = await fetch('/api/claims', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({
+        items: carritoGlobal.map((item) => ({ productId: item.productoId, integrante: item.integrante, cantidad: item.cantidad, goTitulo: item.goTitulo, productoNombre: item.productoNombre })),
+        profile: { user_email: mailLimpio, nombre_completo: formNombre.trim(), usuario_red: '@' + formInstagram.replace('@', ''), telefono: formTelefono.trim() },
+      }),
     });
-
-    const ahoraIso = new Date().toISOString();
-
-    for (const [prodIdStr, itemsProd] of Object.entries(porProducto)) {
-      const prodId = Number(prodIdStr);
-      const { data: prodActual } = await supabase.from('productos').select('claims_integrantes').eq('id', prodId).single();
-      const claimsActuales = { ...(prodActual?.claims_integrantes || {}) };
-
-      for (const it of itemsProd) {
-        const slotActual = typeof claimsActuales[it.integrante] === 'object' && claimsActuales[it.integrante] !== null
-          ? { ...claimsActuales[it.integrante] }
-          : {};
-        slotActual[mailLimpio] = (Number(slotActual[mailLimpio]) || 0) + it.cantidad;
-        claimsActuales[it.integrante] = slotActual;
-
-        await supabase.from('seguimiento_claims').upsert({
-          claim_key: prodId + '-' + it.integrante,
-          user_email: mailLimpio,
-          go_title: it.goTitulo,
-          producto_nombre: it.productoNombre,
-          integrante: it.integrante,
-          estado_confirmacion: 'Pendiente',
-          estado_pago: 'Sin pagar',
-          created_at: ahoraIso,
-        });
-      }
-
-      await supabase.from('productos').update({ claims_integrantes: claimsActuales }).eq('id', prodId);
+    const claimResult = await claimResponse.json();
+    if (!claimResponse.ok) {
+      alert(claimResult.error?.startsWith('OUT_OF_STOCK:') ? 'Ese slot ya no tiene suficientes unidades disponibles. Actualiza la página y vuelve a intentarlo.' : (claimResult.error || 'No se pudo guardar tu claim.'));
+      setProcesando(false);
+      inicializarPagina();
+      return;
     }
-
-    await supabase.from('perfiles_joiners').upsert({
-      user_email: mailLimpio,
-      nombre_completo: formNombre.trim(),
-      usuario_red: '@' + formInstagram.replace('@', ''),
-      telefono: formTelefono.trim(),
-    });
 
     const desgloseTexto = carritoGlobal
       .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — ' + i.integrante + ' (' + i.cantidad + ' und): $' + (i.precioUnitario * i.cantidad).toFixed(2))
