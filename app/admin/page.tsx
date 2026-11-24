@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+import { firebaseAuth } from '@/lib/firebaseClient';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -57,6 +58,7 @@ type ProductoAdmin = {
   destacado?: boolean;
   badge_especial?: string | null;
   variantes?: { nombre: string; precio: number; stock: number }[] | null;
+  fotos_extra?: string[] | null;
 };
 async function optimizarImagenParaSubida(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) {
@@ -175,42 +177,52 @@ export default function AdminPanelPremium() {
   const [editTipoPc, setEditTipoPc] = useState('Álbum PC');
   const [editDesc, setEditDesc] = useState('');
   const [editVariantes, setEditVariantes] = useState<{ nombre: string; precio: number; stock: number }[]>([]);
+  const [editImage, setEditImage] = useState('');
+  const [editExtraImages, setEditExtraImages] = useState<string[]>([]);
   const [filtroItemsEditar, setFiltroItemsEditar] = useState<string>('TIENDA');
   const [busquedaItemsEditar, setBusquedaItemsEditar] = useState('');
 
   const [fotoIntegGrupo, setFotoIntegGrupo] = useState('STRAY KIDS');
   const [fotoIntegNombre, setFotoIntegNombre] = useState('');
   const [fotoIntegUrl, setFotoIntegUrl] = useState('');
-  async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra' | 'integ') {
+  async function uploadImageHandler(e: React.ChangeEvent<HTMLInputElement>, targetForm: 'go' | 'prod' | 'shop' | 'shop-extra' | 'integ' | 'edit-shop' | 'edit-shop-extra') {
     const input = e.currentTarget;
-    const file = input.files?.[0];
-    if (!file) return;
+    const files: File[] = Array.from(input.files || []);
+    if (!files.length) return;
+    if (files.length > 20) { alert('Selecciona hasta 20 imágenes por tanda.'); input.value = ''; return; }
 
     setSubiendoImagen(true);
     try {
-      const imagenOptimizada = await optimizarImagenParaSubida(file);
-      const extension = imagenOptimizada.type === 'image/webp' ? 'webp' : (imagenOptimizada.name.split('.').pop() || 'gif');
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const imagenOptimizada = await optimizarImagenParaSubida(file);
+        const extension = imagenOptimizada.type === 'image/webp' ? 'webp' : (imagenOptimizada.name.split('.').pop() || 'gif');
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
 
-      const { error } = await supabase.storage
+        const { error } = await supabase.storage
         .from('fotos-productos')
         .upload(fileName, imagenOptimizada, {
           cacheControl: '31536000',
           contentType: imagenOptimizada.type,
+          folder: targetForm === 'go' ? 'gos' : targetForm === 'prod' ? 'productos' : targetForm === 'integ' ? 'integrantes' : 'shop',
           upsert: false,
         });
 
       if (error) throw error;
 
-      const { data: { publicUrl } } = supabase.storage.from('fotos-productos').getPublicUrl(fileName);
-      if (targetForm === 'go') setNewGoImage(publicUrl);
-      else if (targetForm === 'prod') setNewProdImage(publicUrl);
-      else if (targetForm === 'shop') setNewShopImage(publicUrl);
-      else if (targetForm === 'integ') setFotoIntegUrl(publicUrl);
-      else setNewShopExtraImages((prev) => [...prev, publicUrl]);
+        const { data: { publicUrl } } = supabase.storage.from('fotos-productos').getPublicUrl(fileName);
+        uploadedUrls.push(publicUrl);
+      }
 
-      const ahorro = Math.max(0, Math.round((1 - imagenOptimizada.size / file.size) * 100));
-      alert(`¡Imagen subida! ${imagenOptimizada.type === 'image/webp' ? `Optimizada a WebP${ahorro > 0 ? ` (aprox. ${ahorro}% menos peso)` : ''}.` : 'Se conservó su formato original.'}`);
+      if (targetForm === 'go') setNewGoImage(uploadedUrls[0]);
+      else if (targetForm === 'prod') setNewProdImage(uploadedUrls[0]);
+      else if (targetForm === 'shop') setNewShopImage(uploadedUrls[0]);
+      else if (targetForm === 'integ') setFotoIntegUrl(uploadedUrls[0]);
+      else if (targetForm === 'edit-shop') setEditImage(uploadedUrls[0]);
+      else if (targetForm === 'edit-shop-extra') setEditExtraImages((prev) => [...prev, ...uploadedUrls]);
+      else setNewShopExtraImages((prev) => [...prev, ...uploadedUrls]);
+
+      alert(`¡${uploadedUrls.length} ${uploadedUrls.length === 1 ? 'imagen subida' : 'imágenes subidas'} correctamente!`);
     } catch (error: any) {
       alert('No se pudo subir la imagen: ' + (error?.message || 'Error inesperado.'));
     } finally {
@@ -338,7 +350,7 @@ export default function AdminPanelPremium() {
           setProductosTiendaAdmin(dataTiendaProds.map((p: any) => ({
             id: p.id, nombre_producto: p.nombre_producto, precio: p.precio, go_id: 0,
             cantidad_disponible: p.cantidad_disponible, descripcion: p.descripcion,
-            imagen_producto: p.imagen_producto, estado_pago: p.estado_pago, due_date: p.due_date,
+            imagen_producto: p.imagen_producto, fotos_extra: p.fotos_extra || [], estado_pago: p.estado_pago, due_date: p.due_date,
             grupo: p.grupo, integrante: p.integrante, era: p.era, tipo_pc: p.tipo_pc,
             destacado: p.destacado, badge_especial: p.badge_especial, variantes: p.variantes, isShop: true,
           })));
@@ -389,36 +401,42 @@ export default function AdminPanelPremium() {
   async function guardarAbonoTarjeta(tarjeta: TarjetaJoiner) {
     const valStr = inputsAbono[tarjeta.tarjetaId];
     if (valStr === undefined) return;
-    const monto = Math.max(0, Number(valStr) || 0);
-    if (monto > tarjeta.totalTarjeta + 0.005) { alert('El abono no puede superar el total del pedido.'); return; }
-    const llegoAlTotal = monto >= tarjeta.totalTarjeta && tarjeta.totalTarjeta > 0;
-
-    for (let i = 0; i < tarjeta.items.length; i++) {
-      const it = tarjeta.items[i];
-      const abonoItem = i === 0 ? monto : 0;
-      if (it.origen === 'GO' && it.claimKeyBase) {
-        await supabase.from('seguimiento_claims').upsert({
-          claim_key: it.claimKeyBase,
-          user_email: tarjeta.correo,
-          go_title: tarjeta.categoriaTitulo,
-          producto_nombre: it.productoNombre,
-          integrante: it.detalleSlot,
-          estado_confirmacion: it.estadoConfirmacion,
-          estado_pago: llegoAlTotal ? 'Pagado' : it.estadoPago,
-          monto_abonado: abonoItem,
-        });
-      } else if (it.pedidoId) {
-        await supabase.from('pedidos').update({
-          monto_abonado: abonoItem,
-          estado_pago: llegoAlTotal ? 'Pagado' : it.estadoPago,
-        }).eq('id', it.pedidoId);
-      }
+    const targetPaid = Math.max(0, Number(valStr) || 0);
+    const alreadyPaid = Number(tarjeta.abonadoTarjeta || 0);
+    if (targetPaid + 0.005 < alreadyPaid) {
+      alert('Para reducir un abono se necesita un ajuste/reembolso auditado. No se modificó el historial.');
+      return;
     }
-    alert(llegoAlTotal ? '💚 ¡Pago completado al 100%!' : '💰 ¡Abono guardado!');
-    cargarDatosHibridos();
+    if (targetPaid > tarjeta.totalTarjeta + 0.005) {
+      alert('El abono no puede superar el total del pedido.');
+      return;
+    }
+    const difference = Math.round((targetPaid - alreadyPaid) * 100) / 100;
+    if (difference <= 0) { alert('No hay un abono nuevo que registrar.'); return; }
+    try {
+      await firebaseAuth.authStateReady();
+      const token = await firebaseAuth.currentUser?.getIdToken();
+      if (!token) throw new Error('Tu sesión ha expirado. Inicia sesión nuevamente.');
+      const go = tarjeta.origen === 'GO' ? gosAdmin.find((item) => item.title === tarjeta.categoriaTitulo) : null;
+      if (tarjeta.origen === 'GO' && !go) throw new Error('No pude identificar el GO de esta tarjeta.');
+      const response = await fetch('/api/admin/operations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          kind: 'payment', scope: tarjeta.origen, goId: go?.id ? String(go.id) : '',
+          joinerEmail: tarjeta.correo, amount: difference, method: 'Registro manual',
+          note: 'Registrado desde Pedidos y pagos del panel administrativo.',
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo registrar el pago.');
+      alert('💚 Pago registrado y aplicado al saldo correspondiente.');
+      cargarDatosHibridos();
+    } catch (error: any) {
+      alert(error?.message || 'No se pudo registrar el pago.');
+    }
   }
 
-  
   async function ejecutarGestionClaims(payload: any) {
     const { firebaseAuth } = await import('@/lib/firebaseClient');
     await firebaseAuth.authStateReady();
@@ -833,6 +851,8 @@ export default function AdminPanelPremium() {
     setEditTipoPc(p.tipo_pc || 'Álbum PC');
     setEditDesc(p.descripcion || '');
     setEditVariantes(Array.isArray(p.variantes) ? p.variantes.map((v) => ({ ...v })) : []);
+    setEditImage(p.imagen_producto || '');
+    setEditExtraImages(Array.isArray(p.fotos_extra) ? [...p.fotos_extra] : []);
   };
 
   async function handleGuardarEdicion(e: React.FormEvent) {
@@ -843,7 +863,7 @@ export default function AdminPanelPremium() {
     if (editandoProducto.isShop && editVariantes.length > 0) {
       const stockTotal = editVariantes.reduce((s, v) => s + Math.max(0, Number(v.stock || 0)), 0);
       const precioMin = Math.min(...editVariantes.map((v) => Number(v.precio || 0)));
-      await supabase
+      const { error } = await supabase
         .from('tienda_productos')
         .update({
           nombre_producto: editName.toUpperCase(),
@@ -861,8 +881,11 @@ export default function AdminPanelPremium() {
             stock: Math.max(0, Number(v.stock)),
           })),
           descripcion: editDesc || null,
+          imagen_producto: editImage || null,
+          fotos_extra: editExtraImages,
         })
         .eq('id', editandoProducto.id);
+      if (error) { setLoadingForm(false); alert('No se pudieron guardar los cambios: ' + error.message); return; }
     } else {
       const nuevoStock = Math.max(0, Number(editQty));
       const payload: any = {
@@ -872,6 +895,10 @@ export default function AdminPanelPremium() {
         descripcion: editDesc || null,
       };
       if (editandoProducto.isShop) {
+        payload.imagen_producto = editImage || null;
+        payload.fotos_extra = editExtraImages;
+      }
+      if (editandoProducto.isShop) {
         payload.estado_pago = nuevoStock > 0 ? 'INSTOCK' : 'SOLD OUT';
         payload.grupo = editGrupo.trim() || editandoProducto.grupo;
         payload.due_date = (editGrupo.trim() || editandoProducto.due_date || '').toLowerCase();
@@ -879,10 +906,11 @@ export default function AdminPanelPremium() {
         payload.era = editEra.trim().toUpperCase() || null;
         payload.tipo_pc = editTipoPc;
       }
-      await supabase
+      const { error } = await supabase
         .from(editandoProducto.isShop ? 'tienda_productos' : 'productos')
         .update(payload)
         .eq('id', editandoProducto.id);
+      if (error) { setLoadingForm(false); alert('No se pudieron guardar los cambios: ' + error.message); return; }
     }
 
     setLoadingForm(false);
@@ -992,6 +1020,8 @@ export default function AdminPanelPremium() {
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-[11px] text-zinc-400">{usuarioEmail}</span>
+            <Link href="/admin/centro" className="rounded-xl border border-[#f0d7e4] bg-[#fff0f6] px-3 py-2 text-[11px] font-bold text-[#a34f79]">Centro de operaciones</Link>
+            <Link href="/admin/fotos" className="rounded-xl border border-[#dcece5] bg-[#eef8f3] px-3 py-2 text-[11px] font-bold text-[#477b69]">Biblioteca de fotos</Link>
             <Link href="/admin/migracion" className="rounded-xl border border-[#ead8f4] bg-[#f8f2fc] px-3 py-2 text-[11px] font-bold text-[#8a6aa7]">Migración Firebase</Link>
             <Link href="/gos" className="rounded-xl border border-pink-100 bg-pink-50 px-3 py-2 text-[11px] font-bold text-pink-700 hover:bg-pink-100">← Catálogo</Link>
           </div>
@@ -1493,7 +1523,7 @@ export default function AdminPanelPremium() {
                   <div key={sol.id} className="bg-white border rounded-2xl p-5 shadow-2xs space-y-3">
                     <div className="flex justify-between items-start gap-2 border-b pb-3">
                       <div>
-                        <h3 className="text-sm font-extrabold text-zinc-900">{sol.nombre_completo} (@{sol.instagram})</h3>
+                        <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-extrabold text-zinc-900">{sol.nombre_completo} (@{sol.instagram})</h3><span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${sol.tipo_servicio === 'SHOP' ? 'bg-indigo-50 text-indigo-700' : 'bg-pink-50 text-pink-700'}`}>{sol.tipo_servicio === 'SHOP' ? 'SHOP' : 'GROUP ORDER'}</span></div>
                         <p className="text-[11px] text-zinc-400">{sol.user_email} · Tlf: {sol.telefono}</p>
                       </div>
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${sol.estado_despacho === 'Enviado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
@@ -1783,6 +1813,27 @@ export default function AdminPanelPremium() {
                     <h3 className="text-sm font-black text-zinc-900">{editandoProducto.nombre_producto}</h3>
                   </div>
                 </div>
+
+                {editandoProducto.isShop && (
+                  <div className="rounded-2xl border border-pink-200 bg-white p-3 space-y-3">
+                    <div>
+                      <p className="text-xs font-extrabold text-[#8e4e70]">Fotografías del producto</p>
+                      <p className="text-[10px] text-zinc-500">Puedes reemplazar la portada y añadir varias imágenes desde tu galería.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {editImage ? <img src={editImage} alt="Portada" className="h-16 w-16 rounded-xl border object-cover" /> : <div className="h-16 w-16 rounded-xl border border-dashed flex items-center justify-center text-xl">🖼️</div>}
+                      <div className="min-w-0 flex-1">
+                        <label className="block text-[10px] font-bold text-zinc-600">Portada principal</label>
+                        <input type="file" accept="image/*" onChange={(e) => uploadImageHandler(e, 'edit-shop')} className="mt-1 w-full text-[10px]" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-zinc-600">Fotos adicionales</label>
+                      <input type="file" accept="image/*" multiple onChange={(e) => uploadImageHandler(e, 'edit-shop-extra')} className="w-full text-[10px]" />
+                      {editExtraImages.length > 0 && <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">{editExtraImages.map((url, index) => <div key={`${url}-${index}`} className="relative"><img src={url} alt={`Foto adicional ${index + 1}`} className="h-16 w-full rounded-lg border object-cover" /><button type="button" onClick={() => setEditExtraImages((prev) => prev.filter((_, i) => i !== index))} className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-rose-500 text-white text-xs">×</button></div>)}</div>}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex flex-wrap gap-2 items-center">
                   <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-white font-bold flex-1 min-w-[200px]" />

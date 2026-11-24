@@ -49,7 +49,7 @@ export const supabase: any = {
   auth,
   from: (table:string) => new Query(table),
   storage: { from: (bucket:string) => ({
-    upload: async (path:string,file:File,_opts?:any) => { const token=await firebaseAuth.currentUser?.getIdToken(); const fd=new FormData(); fd.append('file',file); fd.append('folder',bucket); const res=await fetch('/api/media/upload',{method:'POST',headers:token?{Authorization:`Bearer ${token}`}:{},body:fd}); const j=await res.json(); if(res.ok) uploadedMedia.set(path,j.secure_url); return res.ok?{data:{path},error:null}:{data:null,error:{message:j.error||'Upload failed'}}; },
+    upload: async (path:string,file:File,_opts?:any) => { const token=await firebaseAuth.currentUser?.getIdToken(); const fd=new FormData(); fd.append('file',file); fd.append('folder',_opts?.folder || 'catalogo'); const res=await fetch('/api/media/upload',{method:'POST',headers:token?{Authorization:`Bearer ${token}`}:{},body:fd}); const j=await res.json(); if(res.ok) uploadedMedia.set(path,j.secure_url); return res.ok?{data:{path},error:null}:{data:null,error:{message:j.error||'Upload failed'}}; },
     getPublicUrl: (path:string) => ({data:{publicUrl:uploadedMedia.get(path)||path}})
   }) }
 };
