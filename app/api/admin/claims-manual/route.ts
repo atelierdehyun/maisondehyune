@@ -1,27 +1,16 @@
-
 import { NextResponse } from 'next/server';
-import { db, requireUser } from '@/lib/firebaseAdmin';
-
-const adminEmail = 'liahwang1852@gmail.com';
+import { db, requireAdmin } from '@/lib/firebaseAdmin';
 
 export async function POST(request: Request) {
   try {
-    const user = await requireUser(request);
-    const emailAdmin = (user.email || '').toLowerCase().trim();
-
-    if (emailAdmin !== adminEmail) {
-      return NextResponse.json(
-        { error: 'FORBIDDEN' },
-        { status: 403 }
-      );
-    }
+    await requireAdmin(request);
 
     const body = await request.json();
 
     const productoId = Number(body.productoId);
-    const goId = String(body.goId || '');
-    const slot = String(body.slot || '').trim();
-    const joinerEmail = String(body.email || '').toLowerCase().trim();
+    const goId = String(body.goId ?? '').trim();
+    const slot = String(body.slot ?? '').trim();
+    const joinerEmail = String(body.email ?? '').trim().toLowerCase();
     const cantidad = Number(body.cantidad);
 
     if (
@@ -29,8 +18,8 @@ export async function POST(request: Request) {
       productoId <= 0 ||
       !goId ||
       !slot ||
-      !joinerEmail ||
-      !Number.isInteger(cantidad) ||
+      !/^\S+@\S+\.\S+$/.test(joinerEmail) ||
+      !Number.isSafeInteger(cantidad) ||
       cantidad < 1
     ) {
       return NextResponse.json(
@@ -54,26 +43,50 @@ export async function POST(request: Request) {
         throw new Error('GO_MISMATCH');
       }
 
-      const stockSlots = producto.stock_slots || {};
-      const stock = Number(stockSlots[slot] ?? 0);
+      const slotsPermitidos = String(producto.lista_slots || '')
+        .split(',')
+        .map((value: string) => value.trim())
+        .filter(Boolean);
 
-      if (!Number.isFinite(stock) || stock < 0) {
+      if (slotsPermitidos.length && !slotsPermitidos.includes(slot)) {
+        throw new Error('INVALID_SLOT');
+      }
+
+      const stockSlots =
+        producto.stock_slots && typeof producto.stock_slots === 'object'
+          ? producto.stock_slots
+          : {};
+
+      const stock = Number(stockSlots[slot]);
+
+      if (!Number.isSafeInteger(stock) || stock < 0) {
         throw new Error('INVALID_STOCK');
       }
 
-      const claims = {
-        ...(producto.claims_integrantes || {}),
-      };
+      const claims =
+        producto.claims_integrantes &&
+        typeof producto.claims_integrantes === 'object'
+          ? { ...producto.claims_integrantes }
+          : {};
 
       const actual = claims[slot];
       const porCorreo: Record<string, number> = {};
 
       if (typeof actual === 'string' && actual.trim()) {
-        porCorreo[actual.toLowerCase().trim()] = 1;
-      } else if (actual && typeof actual === 'object') {
-        Object.entries(actual).forEach(([mail, qty]) => {
-          porCorreo[mail.toLowerCase().trim()] = Number(qty) || 0;
-        });
+        porCorreo[actual.trim().toLowerCase()] = 1;
+      } else if (actual && typeof actual === 'object' && !Array.isArray(actual)) {
+        for (const [mail, qty] of Object.entries(actual)) {
+          const normalizedMail = mail.trim().toLowerCase();
+          const parsedQty = Number(qty);
+
+          if (
+            normalizedMail &&
+            Number.isSafeInteger(parsedQty) &&
+            parsedQty > 0
+          ) {
+            porCorreo[normalizedMail] = parsedQty;
+          }
+        }
       }
 
       const totalUsado = Object.values(porCorreo).reduce(
@@ -87,9 +100,7 @@ export async function POST(request: Request) {
         throw new Error(`OUT_OF_STOCK:${disponibles}`);
       }
 
-      porCorreo[joinerEmail] =
-        (porCorreo[joinerEmail] || 0) + cantidad;
-
+      porCorreo[joinerEmail] = (porCorreo[joinerEmail] || 0) + cantidad;
       claims[slot] = porCorreo;
 
       transaction.update(productoRef, {
@@ -105,8 +116,8 @@ export async function POST(request: Request) {
       success: true,
       data: resultado,
     });
-  } catch (error: any) {
-    const message = error.message || 'ERROR';
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'ERROR';
 
     const status =
       message === 'UNAUTHORIZED'
@@ -115,11 +126,10 @@ export async function POST(request: Request) {
           ? 403
           : message === 'PRODUCT_NOT_FOUND'
             ? 404
-            : 400;
+            : message.startsWith('OUT_OF_STOCK:')
+              ? 409
+              : 400;
 
-    return NextResponse.json(
-      { error: message },
-      { status }
-    );
+    return NextResponse.json({ error: message }, { status });
   }
 }
