@@ -57,8 +57,17 @@ export default function AdminFotos() {
       }
       const updateResponse = await fetch(`/api/data/${collection}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ filters: [['id', productId]], values }) });
       const updateResult = await updateResponse.json();
-      if (!updateResponse.ok) throw new Error(updateResult.error || 'Las fotos se subieron, pero no se pudieron asignar al producto.');
-      const libraryResponse = await fetch('/api/admin/media-library', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ records: uploaded, assignedTo: scope, productId, productName: selected?.nombre_producto || selected?.title || '' }) });
+      if (!updateResponse.ok) {
+  throw new Error(updateResult.error || 'No se pudo actualizar el producto.');
+}
+
+if (updateResult.data?.count !== 1) {
+  throw new Error(
+    `La foto se subió, pero no se actualizó ningún registro (coincidencias: ${updateResult.data?.count ?? 0}). No se registró como asignada.`
+  );
+}
+
+const libraryResponse = await fetch('/api/admin/media-library', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ records: uploaded, assignedTo: scope, productId, productName: selected?.nombre_producto || selected?.title || '' }) });
       const libraryResult = await libraryResponse.json();
       if (!libraryResponse.ok) throw new Error(libraryResult.error || 'Las fotos se asignaron, pero no se pudieron registrar en la biblioteca.');
       setFiles([]); setMessage(`${uploaded.length} foto(s) subidas y asignadas correctamente ♡`); await load();
