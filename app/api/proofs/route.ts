@@ -1,13 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { randomUUID, createHash, createHmac } from 'crypto';
 import { db, requireAdmin, requireUser } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs';
@@ -37,7 +30,18 @@ const parseObject = (value: any) => {
   }
 };
 
-function getR2() {
+const sha256 = (value: Buffer | string) =>
+  createHash('sha256').update(value).digest('hex');
+
+const hmac = (key: Buffer | string, value: string) =>
+  createHmac('sha256', key).update(value).digest();
+
+const awsEncode = (value: string) =>
+  encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
+    `%${char.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+
+function getR2Config() {
   const endpoint = process.env.R2_ENDPOINT;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
@@ -48,13 +52,208 @@ function getR2() {
   }
 
   return {
+    endpoint: endpoint.replace(/\/+$/, ''),
+    accessKeyId,
+    secretAccessKey,
     bucket,
-    client: new S3Client({
-      region: 'auto',
-      endpoint,
-      credentials: { accessKeyId, secretAccessKey },
-    }),
   };
+}
+
+function getObjectUrl(endpoint: string, bucket: string, key: string) {
+  const url = new URL(endpoint);
+  const basePath = url.pathname.replace(/\/+$/, '');
+  const objectPath = `${basePath}/${awsEncode(bucket)}/${key
+    .split('/')
+    .map(awsEncode)
+    .join('/')}`;
+
+  url.pathname = objectPath;
+  url.search = '';
+  return url;
+}
+
+function getSigningKey(secret: string, date: string) {
+  const dateKey = hmac(`AWS4${secret}`, date);
+  const regionKey = hmac(dateKey, 'auto');
+  const serviceKey = hmac(regionKey, 's3');
+  return hmac(serviceKey, 'aws4_request');
+}
+
+function signRequest(
+  method: string,
+  url: URL,
+  headers: Record<string, string>,
+  payloadHash: string,
+  accessKeyId: string,
+  secretAccessKey: string
+) {
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  const date = amzDate.slice(0, 8);
+
+  const allHeaders: Record<string, string> = {
+    host: url.host,
+    ...Object.fromEntries(
+      Object.entries(headers).map(([key, value]) => [
+        key.toLowerCase(),
+        value.trim(),
+      ])
+    ),
+    'x-amz-content-sha256': payloadHash,
+    'x-amz-date': amzDate,
+  };
+
+  const signedHeaders = Object.keys(allHeaders).sort().join(';');
+  const canonicalHeaders = Object.keys(allHeaders)
+    .sort()
+    .map((key) => `${key}:${allHeaders[key]}\n`)
+    .join('');
+
+  const canonicalRequest = [
+    method,
+    url.pathname,
+    '',
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join('\n');
+
+  const credentialScope = `${date}/auto/s3/aws4_request`;
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    sha256(canonicalRequest),
+  ].join('\n');
+
+  const signature = createHmac(
+    'sha256',
+    getSigningKey(secretAccessKey, date)
+  )
+    .update(stringToSign)
+    .digest('hex');
+
+  const authorization =
+    `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, ` +
+    `SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  return {
+    ...headers,
+    'x-amz-content-sha256': payloadHash,
+    'x-amz-date': amzDate,
+    Authorization: authorization,
+  };
+}
+
+async function uploadToR2(
+  key: string,
+  bytes: Buffer,
+  contentType: string,
+  email: string,
+  scope: string
+) {
+  const config = getR2Config();
+  const url = getObjectUrl(config.endpoint, config.bucket, key);
+  const payloadHash = sha256(bytes);
+
+  const headers = signRequest(
+    'PUT',
+    url,
+    {
+      'content-type': contentType,
+      'cache-control': 'private, no-store, max-age=0',
+      'x-amz-meta-owner': Buffer.from(email).toString('base64'),
+      'x-amz-meta-scope': scope,
+    },
+    payloadHash,
+    config.accessKeyId,
+    config.secretAccessKey
+  );
+
+  const response = await fetch(url.toString(), {
+    method: 'PUT',
+    headers,
+    body: bytes,
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(`R2_UPLOAD_FAILED: ${response.status} ${detail.slice(0, 300)}`);
+  }
+}
+
+async function deleteFromR2(key: string) {
+  const config = getR2Config();
+  const url = getObjectUrl(config.endpoint, config.bucket, key);
+  const payloadHash = sha256('');
+
+  const headers = signRequest(
+    'DELETE',
+    url,
+    {},
+    payloadHash,
+    config.accessKeyId,
+    config.secretAccessKey
+  );
+
+  const response = await fetch(url.toString(), {
+    method: 'DELETE',
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(`R2_DELETE_FAILED: ${response.status}`);
+  }
+}
+
+function createSignedDownloadUrl(key: string, expiresIn = 600) {
+  const config = getR2Config();
+  const url = getObjectUrl(config.endpoint, config.bucket, key);
+
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  const date = amzDate.slice(0, 8);
+  const credentialScope = `${date}/auto/s3/aws4_request`;
+
+  const query: Record<string, string> = {
+    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+    'X-Amz-Credential': `${config.accessKeyId}/${credentialScope}`,
+    'X-Amz-Date': amzDate,
+    'X-Amz-Expires': String(expiresIn),
+    'X-Amz-SignedHeaders': 'host',
+  };
+
+  const canonicalQuery = Object.entries(query)
+    .map(([key, value]) => [awsEncode(key), awsEncode(value)] as const)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+
+  const canonicalRequest = [
+    'GET',
+    url.pathname,
+    canonicalQuery,
+    `host:${url.host}\n`,
+    'host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    sha256(canonicalRequest),
+  ].join('\n');
+
+  const signature = createHmac(
+    'sha256',
+    getSigningKey(config.secretAccessKey, date)
+  )
+    .update(stringToSign)
+    .digest('hex');
+
+  url.search = `${canonicalQuery}&X-Amz-Signature=${signature}`;
+  return url.toString();
 }
 
 function getExtension(type: string) {
@@ -204,28 +403,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const { client, bucket } = getR2();
     const id = randomUUID();
     const extension = getExtension(file.type);
     const safeUid = String(user.uid).replace(/[^a-zA-Z0-9_-]/g, '');
     const storagePath = `payment-proofs/${safeUid}/${id}.${extension}`;
     const bytes = Buffer.from(await file.arrayBuffer());
 
-    await client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: storagePath,
-        Body: bytes,
-        ContentType: file.type,
-        ContentLength: file.size,
-        CacheControl: 'private, no-store, max-age=0',
-        Metadata: {
-          owner: Buffer.from(email).toString('base64'),
-          scope,
-        },
-      })
-    );
-
+    await uploadToR2(storagePath, bytes, file.type, email, scope);
     uploadedKey = storagePath;
 
     const record = {
@@ -252,12 +436,9 @@ export async function POST(request: Request) {
   } catch (error: any) {
     if (uploadedKey) {
       try {
-        const { client, bucket } = getR2();
-        await client.send(
-          new DeleteObjectCommand({ Bucket: bucket, Key: uploadedKey })
-        );
+        await deleteFromR2(uploadedKey);
       } catch {
-        // El registro principal del error se conserva.
+        // Se conserva el error principal.
       }
     }
 
@@ -337,15 +518,9 @@ export async function GET(request: Request) {
       );
     }
 
-    const { client, bucket } = getR2();
-
-    const signedUrl = await getSignedUrl(
-      client,
-      new GetObjectCommand({
-        Bucket: bucket,
-        Key: String(record.storage_path),
-      }),
-      { expiresIn: 600 }
+    const signedUrl = createSignedDownloadUrl(
+      String(record.storage_path),
+      600
     );
 
     return NextResponse.json(
