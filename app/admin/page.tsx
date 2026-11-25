@@ -1013,7 +1013,7 @@ export default function AdminPanelPremium() {
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#fff4f8_0%,#fffaf0_42%,#f1fbf7_100%)] font-sans text-[#514653] pb-8">
       <header className="sticky top-0 z-30 border-b border-[#f4dce8] bg-white/90 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-[1720px] flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-xl">🎀</div>
             <div><p className="text-sm font-black tracking-tight text-zinc-900">hyuneatelier</p><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-pink-500">Panel de administración</p></div>
@@ -1028,8 +1028,8 @@ export default function AdminPanelPremium() {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-[1500px] gap-5 px-3 sm:px-5 pt-4 lg:pt-6">
-        <aside className="hidden lg:block w-64 shrink-0">
+      <div className="mx-auto flex max-w-[1720px] gap-4 px-4 sm:px-6 pt-4 lg:pt-6">
+        <aside className="hidden lg:block w-60 shrink-0">
           <div className="sticky top-24 rounded-3xl border border-[#f2dce8] bg-white/95 p-3 shadow-[0_12px_35px_rgba(170,120,150,0.08)]">
             <p className="px-3 pb-3 pt-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Espacio de trabajo</p>
             <nav className="space-y-1">
@@ -1064,7 +1064,7 @@ export default function AdminPanelPremium() {
               </div>
             </div>
           </div>
-          <div className="rounded-3xl border border-[#f1dce8] bg-white/90 p-3 sm:p-5 shadow-[0_12px_40px_rgba(170,120,150,0.08)]">
+          <div className="rounded-3xl border border-[#f1dce8] bg-white/95 p-4 sm:p-6 shadow-[0_12px_40px_rgba(170,120,150,0.06)]">
         {pestanaAdmin === 'joiners' && (
           <div className="space-y-5">
             <div className="flex flex-wrap justify-between items-center gap-3">
@@ -1174,7 +1174,7 @@ export default function AdminPanelPremium() {
                   return (
                     <article key={perfil.correo} className={`rounded-2xl border bg-white p-4 shadow-sm ${joinerSeleccionado === perfil.correo ? 'border-pink-400 ring-2 ring-pink-100' : 'border-[#f0dce7]'}`}>
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0"><p className="text-sm font-black capitalize text-[#514653]">{perfil.nombreReal}</p><p className="break-all text-[10px] text-zinc-400">{perfil.correo}</p><p className="mt-1 text-[10px] font-bold text-[#a45e7c]">{grupos.join(' · ')}</p></div>
+                        <div className="min-w-0"><p className="text-sm font-black capitalize text-[#514653]">{perfil.nombreReal}</p><p className="break-words [overflow-wrap:anywhere] text-[10px] text-zinc-400">{perfil.correo}</p><p className="mt-1 text-[10px] font-bold text-[#a45e7c]">{grupos.join(' · ')}</p></div>
                         <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-extrabold ${perfil.estado === 'PAGADO' ? 'bg-emerald-50 text-emerald-700' : perfil.estado === 'ABONADO' ? 'bg-amber-50 text-amber-800' : 'bg-rose-50 text-rose-700'}`}>{estadoLabel}</span>
                       </div>
                       <div className="mt-3 grid grid-cols-3 gap-1.5 text-center">
@@ -1287,7 +1287,7 @@ export default function AdminPanelPremium() {
                 {tarjetasFiltradas.length === 0 && <div className="rounded-2xl border border-dashed border-[#ead9e3] bg-white p-6 text-center text-xs text-zinc-400">Todavía no hay Joiners registrados en este GO.</div>}
               </section>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
               {tarjetasFiltradas.map((tarjeta, idx) => {
                 const primerItem = tarjeta.items.at(0);
                 const inicial = tarjeta.nombreReal.slice(0, 2).toUpperCase();
@@ -1297,7 +1297,7 @@ export default function AdminPanelPremium() {
                 const colorAvatar = coloresAvatar.at(idx % coloresAvatar.length) || 'bg-pink-600';
 
                 return (
-                  <div key={tarjeta.tarjetaId} className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
+                  <div key={tarjeta.tarjetaId} className="bg-white border border-[#f0e2e9] rounded-2xl p-4 shadow-sm flex flex-col justify-between space-y-3 min-w-0">
                     <div className="space-y-3">
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex items-center gap-3">
@@ -1314,7 +1314,7 @@ export default function AdminPanelPremium() {
                                 <button type="button" onClick={() => { setEditandoNombreCorreo(tarjeta.correo); setInputNombreTemp(tarjeta.nombreReal); }} className="text-[11px] text-zinc-400 hover:text-pink-600">✏️</button>
                               </div>
                             )}
-                            <p className="text-[11px] text-zinc-400 break-all">{tarjeta.correo}</p>
+                            <p className="text-[11px] text-zinc-400 break-words [overflow-wrap:anywhere]">{tarjeta.correo}</p>
                             {tarjeta.telefono ? (
                               <div className="pt-1 space-y-1">
                                 <p className="text-[11px] font-bold text-emerald-700">📱 {tarjeta.telefono}</p>
