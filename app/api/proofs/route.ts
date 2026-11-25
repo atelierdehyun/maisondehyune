@@ -23,6 +23,8 @@ export async function POST(request: Request) {
     const scope = clean(form.get('scope'), 12).toUpperCase();
     if (!['GO', 'SHOP'].includes(scope)) return NextResponse.json({ error: 'Selecciona GO o Shop.' }, { status: 400 });
     const goTitle = scope === 'GO' ? clean(form.get('goTitle'), 180) : '';
+    const amount = Math.round(Number(form.get('amount')) * 100) / 100;
+    if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: 'Indica un importe de abono válido.' }, { status: 400 });
     if (scope === 'GO' && !goTitle) return NextResponse.json({ error: 'Selecciona el Group Order del comprobante.' }, { status: 400 });
     if (scope === 'GO') {
       const [productsSnap, trackingSnap] = await Promise.all([db.collection('productos').limit(1000).get(), db.collection('seguimiento_claims').where('user_email', '==', email).get()]);
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
       },
     });
     const record = {
-      owner_email: email, scope, go_title: goTitle || null, storage_path: storagePath,
+      owner_email: email, scope, go_title: goTitle || null, amount, currency: 'USD', storage_path: storagePath,
       file_name: clean(file.name, 180), mime_type: file.type, size_bytes: file.size,
       status: 'Pendiente de revisión', created_at: new Date().toISOString(),
     };
