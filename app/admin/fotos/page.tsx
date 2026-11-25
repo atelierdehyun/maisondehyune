@@ -105,6 +105,27 @@ export default function AdminFotos() {
       <button type="button" disabled={busy || !files.length || !productId} onClick={upload} className={`${btn} w-full bg-[#d779a5] text-white`}>{busy ? 'Subiendo y asignando…' : `Subir y asignar ${files.length || ''} foto(s)`}</button>
       {message && <p role="status" className="rounded-2xl bg-[#fff2f7] p-3 text-sm">{message}</p>}
     </section>
-    <section className="rounded-3xl bg-white p-5 shadow-sm"><div className="mb-3 flex items-center justify-between"><h2 className="font-black">Biblioteca reciente</h2><span className="text-xs text-[#987f8e]">{library.length} fotos</span></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{library.slice(0, 32).map((item) => <button type="button" key={item.id} onClick={() => setSelectedLibraryId(String(item.id))} className={`overflow-hidden rounded-2xl border text-left ${String(selectedLibraryId) === String(item.id) ? 'border-[#d779a5] ring-2 ring-[#d779a5]' : 'border-[#f3e5ec]'}`}><img src={item.url} alt={item.file_name || ''} className="aspect-square w-full object-cover"/><p className="truncate px-2 pt-2 text-[10px] text-[#987f8e]">{item.file_name}</p><p className="truncate px-2 pb-2 text-[9px] font-bold text-[#b17b96]">{item.assigned_to || 'Sin asignar'} · {item.assigned_product_name || '—'}</p>{String(selectedLibraryId) === String(item.id) && <p className="px-2 pb-2 text-[10px] font-black text-[#a34f79]">✓ Seleccionada</p>}</button>)}</div>{scope === 'GO_COVER' && <button type="button" disabled={busy || !productId || !selectedLibraryId} onClick={assignExistingPhoto} className={`${btn} w-full border border-[#d779a5] bg-[#fff2f7] text-[#a34f79]`}>{busy ? 'Asignando portada…' : 'Asignar foto seleccionada como portada del GO'}</button>}</section>
+    <section className="rounded-3xl bg-white p-5 shadow-sm">
+      <div className="mb-3 flex items-center justify-between"><h2 className="font-black">Biblioteca reciente</h2><span className="text-xs text-[#987f8e]">{library.length} fotos</span></div>
+      {scope === 'GO_COVER' && <div className="mb-4 rounded-2xl border border-[#e8c3d5] bg-[#fff2f7] p-3">
+        <p className="text-sm font-bold text-[#8e4568]">Selecciona una imagen de la biblioteca</p>
+        <p className="mt-1 text-xs text-[#987f8e]">{selectedLibraryId ? `Foto seleccionada: ${library.find((item) => String(item.id) === String(selectedLibraryId))?.file_name || 'imagen de la biblioteca'}` : 'Todavía no has seleccionado ninguna foto.'}</p>
+        <button type="button" disabled={busy || !productId || !selectedLibraryId} onClick={assignExistingPhoto} className={`${btn} mt-3 w-full bg-[#d779a5] text-white`}>
+          {busy ? 'Asignando portada…' : 'Asignar foto seleccionada como portada del GO'}
+        </button>
+      </div>}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {library.slice(0, 32).map((item) => {
+          const isSelected = String(selectedLibraryId) === String(item.id);
+          return <button type="button" key={String(item.id)} aria-pressed={isSelected} onClick={() => setSelectedLibraryId(String(item.id))} className={`relative overflow-hidden rounded-2xl border-2 text-left transition ${isSelected ? 'border-[#d779a5] ring-2 ring-[#d779a5] bg-[#fff2f7]' : 'border-[#f3e5ec] hover:border-[#d9a0ba]'}`}>
+            <img src={item.url} alt={item.file_name || 'Foto de la biblioteca'} className="aspect-square w-full object-cover" />
+            {isSelected && <span className="absolute right-2 top-2 rounded-full bg-[#d779a5] px-2 py-1 text-xs font-black text-white shadow">✓ Seleccionada</span>}
+            <p className="truncate px-2 pt-2 text-[10px] text-[#987f8e]">{item.file_name || 'Imagen sin nombre'}</p>
+            <p className="truncate px-2 pb-2 text-[9px] font-bold text-[#b17b96]">{item.assigned_to || 'Sin asignar'} · {item.assigned_product_name || '—'}</p>
+          </button>;
+        })}
+      </div>
+      {library.length === 0 && <p className="rounded-xl bg-[#fff2f7] p-4 text-sm text-[#987f8e]">La biblioteca todavía no contiene fotografías.</p>}
+    </section>
   </div></main>;
 }
