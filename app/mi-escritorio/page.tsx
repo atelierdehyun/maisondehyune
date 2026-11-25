@@ -52,10 +52,15 @@ export default function MiEscritorioJoiner() {
   const [grupos, setGrupos] = useState<GrupoGoEscritorio[]>([]);
   const [solicitudesPrevias, setSolicitudesPrevias] = useState<any[]>([]);
   const [wishlistProds, setWishlistProds] = useState<any[]>([]);
+  const [avisosGo, setAvisosGo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [seleccionadosPago, setSeleccionadosPago] = useState<Record<string, boolean>>({});
   const [titularTransferencia, setTitularTransferencia] = useState('');
+  const [montoAbono, setMontoAbono] = useState('');
+  const [comprobanteFile, setComprobanteFile] = useState<File | null>(null);
+  const [subiendoComprobante, setSubiendoComprobante] = useState(false);
+  const [mensajeComprobante, setMensajeComprobante] = useState('');
 
   const [seleccionadosEnvio, setSeleccionadosEnvio] = useState<Record<string, boolean>>({});
   const [envioNombre, setEnvioNombre] = useState('');
@@ -71,7 +76,17 @@ export default function MiEscritorioJoiner() {
       const email = session?.user?.email?.toLowerCase().trim() || '';
       setUsuarioEmail(email);
 
-      if (email) {
+      if (email && session?.access_token) {
+        try {
+          const response = await fetch('/api/joiner/updates', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            cache: 'no-store',
+          });
+          const payload = await response.json();
+          setAvisosGo(response.ok && Array.isArray(payload.data) ? payload.data : []);
+        } catch {
+          setAvisosGo([]);
+        }
         const [{ data: perfil }, { data: prods }, { data: segs }, { data: peds }, { data: sols }, { data: wishRows }] = await Promise.all([
           supabase.from('perfiles_joiners').select('*').eq('user_email', email).maybeSingle(),
           supabase.from('productos').select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title, estado_logistica)'),
@@ -240,6 +255,10 @@ export default function MiEscritorioJoiner() {
   async function handleSolicitarEnvioAcumulado(e: React.FormEvent) {
     e.preventDefault();
     if (itemsMarcados.length === 0) return alert('Marca al menos 1 artículo pagado que ya haya llegado 📦');
+    const scopesSeleccionados = new Set(itemsMarcados.map((item) => item.origen));
+    if (scopesSeleccionados.size > 1) {
+      return alert('GO y Shop tienen envíos independientes. Envía primero los artículos de una sección y después solicita el otro envío.');
+    }
     if (!envioNombre || !envioTelefono || !envioCiudad || !envioDireccion) {
       return alert('Completa todos tus datos de dirección y teléfono 🚚');
     }
@@ -251,6 +270,7 @@ export default function MiEscritorioJoiner() {
 
     const { error } = await supabase.from('solicitudes_envio').insert([{
       user_email: usuarioEmail,
+      tipo_servicio: itemsMarcados[0].origen,
       nombre_completo: envioNombre.trim(),
       instagram: instagramJoiner.replace('@', '').trim(),
       telefono: envioTelefono.trim(),
@@ -333,6 +353,8 @@ export default function MiEscritorioJoiner() {
     0,
     itemsAPagarHoy.reduce((acc, i) => acc + i.precioTotal, 0) - totalAbonadoPendientes
   );
+  const importeTransferencia = montoAbono.trim() === '' ? totalPendientePagar : Number(montoAbono);
+  const importeValido = Number.isFinite(importeTransferencia) && importeTransferencia > 0 && importeTransferencia <= totalPendientePagar + 0.005;
 
   const estampitasGanadas = todosLosItems.filter(
     (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.precioTotal >= 20
@@ -427,6 +449,24 @@ export default function MiEscritorioJoiner() {
               <p>Revisa tus artículos pendientes y envía tu comprobante para evitar que se cancelen tus apartados.</p>
             </div>
           </div>
+        )}
+
+        {avisosGo.length > 0 && (
+          <section className="space-y-3 rounded-[26px] border border-[#EAD8E3] bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#C47A9C]">Solo para participantes</p><h2 className="mt-1 text-base font-black text-[#594653]">♡ Novedades de tus GOs</h2></div>
+              <span className="rounded-full bg-[#FFF0F6] px-3 py-1 text-[10px] font-bold text-[#A65D80]">{avisosGo.length} avisos</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {avisosGo.map((aviso) => (
+                <article key={aviso.id} className="rounded-2xl border border-[#F2E5EC] bg-[#FFFBFD] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-black text-[#594653]">{aviso.title}</h3><span className="rounded-full bg-[#F8E7EF] px-2 py-1 text-[9px] font-bold text-[#A65D80]">{aviso.status || 'Información'}</span></div>
+                  <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[#806B79]">{aviso.message}</p>
+                  <p className="mt-3 text-[10px] text-[#B49AA8]">{aviso.created_at ? new Date(aviso.created_at).toLocaleString() : ''}</p>
+                </article>
+              ))}
+            </div>
+          </section>
         )}
 
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
@@ -535,7 +575,7 @@ export default function MiEscritorioJoiner() {
                       <span className="rounded-full bg-[#DDEFE4] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#4F896F]">Resumen de pago</span>
                       <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
                         <div>
-                          <h3 className="text-lg font-black text-[#435B4E]">Total pendiente: ${totalPendientePagar.toFixed(2)} USD</h3>
+                          <h3 className="text-lg font-black text-[#435B4E]">Saldo pendiente: ${totalPendientePagar.toFixed(2)} USD</h3>
                           <p className="mt-1 text-[10px] text-[#82978B]">{itemsAPagarHoy.length} artículo(s) seleccionados para pagar</p>
                         </div>
                         {totalAbonadoPendientes > 0 && <p className="text-[11px] font-bold text-[#57927E]">Ya abonaste ${totalAbonadoPendientes.toFixed(2)}</p>}
@@ -566,7 +606,34 @@ export default function MiEscritorioJoiner() {
                         })}
                         <input type="text" placeholder="Nombre del titular de la cuenta que transfiere" value={titularTransferencia} onChange={(e) => setTitularTransferencia(e.target.value)} className="mt-1 w-full rounded-xl border border-[#DCE9E0] bg-white px-3 py-2.5 text-xs outline-none focus:border-[#78A997]" />
                       </div>
-                      <p className="text-[11px] leading-5 text-[#78877E]">Transfiere al Banco Pichincha <strong>(2213367970 — Isabel Revollar)</strong> y envía tu comprobante por WhatsApp.</p>
+                      <div className="rounded-2xl border border-[#DCE9E0] bg-white p-3">
+                        <label htmlFor="monto-abono" className="block text-[11px] font-extrabold text-[#5B7466]">¿Cuánto deseas abonar ahora?</label>
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-sm font-black text-[#5B7466]">$</span>
+                          <input id="monto-abono" type="number" inputMode="decimal" min="0.01" max={totalPendientePagar.toFixed(2)} step="0.01" value={montoAbono} onChange={(e) => setMontoAbono(e.target.value)} placeholder={totalPendientePagar.toFixed(2)} className="w-full rounded-xl border border-[#DCE9E0] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#78A997]" />
+                        </div>
+                        <p className="mt-2 text-[10px] leading-4 text-[#82978B]">Puedes abonar una parte o el total. Si dejas el campo vacío, se usará el saldo completo.</p>
+                        {montoAbono.trim() !== '' && !importeValido && <p className="mt-1 text-[10px] font-bold text-rose-600">Ingresa un importe mayor que $0 y que no supere el saldo pendiente.</p>}
+                        {importeValido && <p className="mt-2 text-[11px] font-bold text-[#57927E]">Después de este abono quedarán ${Math.max(0, totalPendientePagar - importeTransferencia).toFixed(2)} USD pendientes.</p>}
+                      </div>
+                      <p className="text-[11px] leading-5 text-[#78877E]">Transfiere al Banco Pichincha <strong>(2213367970 — Isabel Revollar)</strong>. También puedes adjuntar tu comprobante aquí; quedará privado hasta que lo revisemos.</p>
+                      <div className="rounded-2xl border border-[#DCE9E0] bg-white p-3 space-y-2">
+                        <label className="block text-[11px] font-extrabold text-[#5B7466]">Adjuntar comprobante · JPG, PNG, WebP o PDF (máx. 8 MB)</label>
+                        <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => setComprobanteFile(e.target.files?.[0] || null)} className="block w-full text-[11px]" />
+                        <button type="button" disabled={!comprobanteFile || subiendoComprobante || !importeValido} onClick={async () => {
+                          const scopes = new Set(itemsAPagarHoy.map((item) => item.origen));
+                          const goTitles = [...new Set(itemsAPagarHoy.filter((item) => item.origen === 'GO').map((item) => item.goTitulo))];
+                          if (scopes.size !== 1 || (scopes.has('GO') && goTitles.length !== 1)) { alert('Selecciona pedidos de un solo GO o de Shop para adjuntar el comprobante.'); return; }
+                          const sessionResult = await supabase.auth.getSession();
+                          const token = sessionResult.data.session?.access_token;
+                          if (!token) { alert('Inicia sesión nuevamente.'); return; }
+                          const form = new FormData(); if (!importeValido) { alert('Ingresa un abono válido que no supere el saldo pendiente.'); return; }
+                          form.append('file', comprobanteFile); form.append('scope', scopes.has('SHOP') ? 'SHOP' : 'GO'); form.append('amount', String(importeTransferencia)); if (goTitles[0]) form.append('goTitle', goTitles[0]);
+                          setSubiendoComprobante(true); setMensajeComprobante('');
+                          try { const response = await fetch('/api/proofs', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }); const result = await response.json(); if (!response.ok) throw new Error(result.error || 'No se pudo subir el comprobante.'); setMensajeComprobante('Comprobante recibido. Lo revisaremos desde administración ♡'); setComprobanteFile(null); } catch (error: any) { setMensajeComprobante(error?.message || 'No se pudo subir el comprobante.'); } finally { setSubiendoComprobante(false); }
+                        }} className="w-full rounded-xl bg-[#6EAA8D] px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">{subiendoComprobante ? 'Subiendo comprobante…' : 'Subir comprobante privado'}</button>
+                        {mensajeComprobante && <p role="status" className="text-[11px] font-semibold text-[#5B7466]">{mensajeComprobante}</p>}
+                      </div>
                       <a href={abrirChatLia(
                         '¡Hola, Lia! Quiero reportar el pago de mis pedidos en hyuneatelier:\n\n' +
                           '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + '\n' +
@@ -576,10 +643,10 @@ export default function MiEscritorioJoiner() {
                           '*Artículos a pagar:*\n' +
                           itemsAPagarHoy.map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2)).join('\n') +
                           (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
-                          '\n\n• *Total Transferido:* $' + totalPendientePagar.toFixed(2) + ' USD\n\n' +
-                          'Confirmo que sigo a @atelierdehyun y adjunto mi comprobante.'
+                          '\n\n• *Importe que abonaré ahora:* $' + importeTransferencia.toFixed(2) + ' USD\n' + '• *Saldo restante estimado:* $' + Math.max(0, totalPendientePagar - importeTransferencia).toFixed(2) + ' USD\n\n' +
+                          'Confirmo que sigo a @atelierdehyun. Si ya subí el comprobante en Mi escritorio, no necesito adjuntarlo otra vez.'
                       )} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6EAA8D] px-4 py-3.5 text-xs font-black text-white shadow-sm transition hover:bg-[#5D987C]">
-                        💬 Enviar resumen y comprobante · ${totalPendientePagar.toFixed(2)}
+                        💬 Enviar resumen de pago por WhatsApp · ${importeValido ? importeTransferencia.toFixed(2) : '—'}
                       </a>
                     </div>
                   </section>

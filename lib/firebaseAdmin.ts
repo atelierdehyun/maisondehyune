@@ -19,6 +19,7 @@ const app =
       clientEmail: required('FIREBASE_CLIENT_EMAIL'),
       privateKey,
     }),
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
 
 export const adminAuth = getAuth(app);

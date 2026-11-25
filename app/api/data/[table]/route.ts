@@ -32,6 +32,17 @@ const normalizeName = (value: any) =>
     .trim()
     .replace(/\s+/g, ' ');
 
+const parseJsonField = (value: any, fallback: any) => {
+  if (value && typeof value === 'object') return value;
+  if (typeof value !== 'string' || !value.trim()) return fallback;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const docId = (table: string, row: any) => {
   if (row.id !== undefined && row.id !== null) {
     return String(row.id);
@@ -139,6 +150,23 @@ export async function GET(
       ...d.data(),
     }));
 
+    // Legacy imports kept some JSON columns as strings. Normalize them at the
+    // API boundary so admin screens and customer pages receive stable objects.
+    if (table === 'productos') {
+      rows = rows.map((row: any) => ({
+        ...row,
+        claims_integrantes: parseJsonField(row.claims_integrantes, {}),
+        stock_slots: parseJsonField(row.stock_slots, {}),
+      }));
+    }
+    if (table === 'tienda_productos') {
+      rows = rows.map((row: any) => ({
+        ...row,
+        variantes: parseJsonField(row.variantes, []),
+        fotos_extra: parseJsonField(row.fotos_extra, []),
+      }));
+    }
+
     if (table === 'productos') {
       const gs = await db.collection('gos').get();
 
@@ -159,17 +187,18 @@ export async function GET(
         const claims = admin
           ? raw
           : Object.fromEntries(
-              Object.entries(raw).map(([slot, users]: [string, any]) => [
-                slot,
-                Object.fromEntries(
-                  Object.values(users || {}).map(
-                    (qty: any, index: number) => [
-                      `joiner_${index + 1}`,
-                      qty,
-                    ]
-                  )
-                ),
-              ])
+              Object.entries(raw).flatMap(([slot, users]: [string, any]) => {
+                if (typeof users === 'string') {
+                  return normalizeName(users) === normalizeName(email)
+                    ? [[slot, { [email]: 1 }]]
+                    : [];
+                }
+                if (!users || typeof users !== 'object' || Array.isArray(users)) return [];
+                const ownEntry = Object.entries(users).find(([mail, quantity]) =>
+                  normalizeName(mail) === normalizeName(email) && Number(quantity) > 0
+                );
+                return ownEntry ? [[slot, { [email]: Number(ownEntry[1]) }]] : [];
+              })
             );
 
         return {
@@ -383,7 +412,8 @@ async function mutate(
 
       const batch = db.batch();
 
-      for (const [index, row] of records.entries()) {
+      for (let index = 0; index < records.length; index++) {
+        const row = records[index];
         if (
           !admin &&
           [
@@ -425,13 +455,27 @@ async function mutate(
 
     let snap = await db.collection(table).get();
 
-    let docs = snap.docs.filter((d: any) =>
-      filters.every(([k, v, op]: [string, any, string?]) =>
-        op === 'in'
-          ? Array.isArray(v) && v.includes(d.get(k))
-          : d.get(k) === v
-      )
-    );
+    const sameValue = (a: any, b: any) => {
+      if (a === b) return true;
+      if (a == null || b == null || a === '' || b === '') return false;
+
+      const numberA = Number(a);
+      const numberB = Number(b);
+
+      return (
+        Number.isFinite(numberA) &&
+        Number.isFinite(numberB) &&
+        numberA === numberB
+      );
+    };
+
+let docs = snap.docs.filter((d: any) =>
+  filters.every(([k, v, op]: [string, any, string?]) =>
+    op === 'in'
+      ? Array.isArray(v) && v.some((item) => sameValue(d.get(k), item))
+      : sameValue(d.get(k), v)
+  )
+);
 
     if (!admin) {
       docs = docs.filter(
