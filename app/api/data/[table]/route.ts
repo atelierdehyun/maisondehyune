@@ -456,20 +456,18 @@ async function mutate(
     let snap = await db.collection(table).get();
 
     const sameValue = (a: any, b: any) => {
-  if (a === b) return true;
+      if (a === b) return true;
+      if (a == null || b == null || a === '' || b === '') return false;
 
-  if (a === null || a === undefined || a === '') return false;
-  if (b === null || b === undefined || b === '') return false;
+      const numberA = Number(a);
+      const numberB = Number(b);
 
-  const numberA = Number(a);
-  const numberB = Number(b);
-
-  return (
-    Number.isFinite(numberA) &&
-    Number.isFinite(numberB) &&
-    numberA === numberB
-  );
-};
+      return (
+        Number.isFinite(numberA) &&
+        Number.isFinite(numberB) &&
+        numberA === numberB
+      );
+    };
 
 let docs = snap.docs.filter((d: any) =>
   filters.every(([k, v, op]: [string, any, string?]) =>
