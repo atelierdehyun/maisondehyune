@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   try {
     await requireAdmin(request);
     const snap = await db.collection('media_library').orderBy('created_at', 'desc').limit(500).get();
-    return NextResponse.json({ data: snap.docs.map((doc) => ({ ...doc.data(), id: doc.id })) }, { headers: { 'Cache-Control': 'private, no-store' } });
+    return NextResponse.json({ data: snap.docs.map((doc) => ({ ...doc.data(), id: String(doc.id) })) }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error: any) {
     const message = error?.message || 'ERROR';
     return NextResponse.json({ error: message }, { status: message === 'UNAUTHORIZED' ? 401 : 403 });
