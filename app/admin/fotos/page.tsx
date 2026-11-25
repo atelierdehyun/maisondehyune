@@ -12,6 +12,7 @@ export default function AdminFotos() {
   const [productId, setProductId] = useState('');
   const [mode, setMode] = useState<'cover' | 'gallery'>('cover');
   const [library, setLibrary] = useState<Row[]>([]);
+  const [selectedLibraryId, setSelectedLibraryId] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const getToken = useCallback(async () => { await firebaseAuth.authStateReady(); const token = await firebaseAuth.currentUser?.getIdToken(); if (!token) throw new Error('Inicia sesión con tu cuenta administradora.'); return token; }, []);
@@ -32,6 +33,33 @@ export default function AdminFotos() {
   }, [getToken, scope]);
   useEffect(() => { load(); }, [load]);
   const selected = products.find((item) => String(item.id) === productId);
+  const assignExistingPhoto = async () => {
+    const photo = library.find((item) => String(item.id) === String(selectedLibraryId));
+    if (!photo || !productId || scope !== 'GO_COVER') {
+      setMessage('Selecciona una foto de la biblioteca y un GO de destino.');
+      return;
+    }
+    setBusy(true);
+    setMessage('');
+    try {
+      const token = await getToken();
+      const response = await fetch('/api/data/gos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ filters: [['id', productId]], values: { imagen_general: photo.url } }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo asignar la portada.');
+      if (result.data?.count !== 1) throw new Error(`No se encontró exactamente un GO para actualizar (coincidencias: ${result.data?.count ?? 0}).`);
+      setMessage('¡Portada asignada correctamente! ♡');
+      await load();
+    } catch (error: any) {
+      setMessage(error.message || 'No se pudo asignar la portada.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const upload = async () => {
     if (!files.length || !productId) { setMessage('Selecciona fotos y un producto de destino.'); return; }
     if (files.length > 20) { setMessage('Puedes subir hasta 20 fotos por tanda.'); return; }
@@ -57,17 +85,9 @@ export default function AdminFotos() {
       }
       const updateResponse = await fetch(`/api/data/${collection}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ filters: [['id', productId]], values }) });
       const updateResult = await updateResponse.json();
-      if (!updateResponse.ok) {
-  throw new Error(updateResult.error || 'No se pudo actualizar el producto.');
-}
-
-if (updateResult.data?.count !== 1) {
-  throw new Error(
-    `La foto se subió, pero no se actualizó ningún registro (coincidencias: ${updateResult.data?.count ?? 0}). No se registró como asignada.`
-  );
-}
-
-const libraryResponse = await fetch('/api/admin/media-library', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ records: uploaded, assignedTo: scope, productId, productName: selected?.nombre_producto || selected?.title || '' }) });
+      if (!updateResponse.ok) throw new Error(updateResult.error || 'Las fotos se subieron, pero no se pudieron asignar al producto.');
+      if (updateResult.data?.count !== 1) throw new Error(`La foto se subió, pero no se actualizó el registro (coincidencias: ${updateResult.data?.count ?? 0}). No se registró como asignada.`);
+      const libraryResponse = await fetch('/api/admin/media-library', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ records: uploaded, assignedTo: scope, productId, productName: selected?.nombre_producto || selected?.title || '' }) });
       const libraryResult = await libraryResponse.json();
       if (!libraryResponse.ok) throw new Error(libraryResult.error || 'Las fotos se asignaron, pero no se pudieron registrar en la biblioteca.');
       setFiles([]); setMessage(`${uploaded.length} foto(s) subidas y asignadas correctamente ♡`); await load();
@@ -85,6 +105,6 @@ const libraryResponse = await fetch('/api/admin/media-library', { method: 'POST'
       <button type="button" disabled={busy || !files.length || !productId} onClick={upload} className={`${btn} w-full bg-[#d779a5] text-white`}>{busy ? 'Subiendo y asignando…' : `Subir y asignar ${files.length || ''} foto(s)`}</button>
       {message && <p role="status" className="rounded-2xl bg-[#fff2f7] p-3 text-sm">{message}</p>}
     </section>
-    <section className="rounded-3xl bg-white p-5 shadow-sm"><div className="mb-3 flex items-center justify-between"><h2 className="font-black">Biblioteca reciente</h2><span className="text-xs text-[#987f8e]">{library.length} fotos</span></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{library.slice(0, 32).map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-[#f3e5ec]"><img src={item.url} alt={item.file_name || ''} className="aspect-square w-full object-cover"/><p className="truncate px-2 pt-2 text-[10px] text-[#987f8e]">{item.file_name}</p><p className="truncate px-2 pb-2 text-[9px] font-bold text-[#b17b96]">{item.assigned_to || 'Sin asignar'} · {item.assigned_product_name || '—'}</p></article>)}</div></section>
+    <section className="rounded-3xl bg-white p-5 shadow-sm"><div className="mb-3 flex items-center justify-between"><h2 className="font-black">Biblioteca reciente</h2><span className="text-xs text-[#987f8e]">{library.length} fotos</span></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{library.slice(0, 32).map((item) => <button type="button" key={item.id} onClick={() => setSelectedLibraryId(String(item.id))} className={`overflow-hidden rounded-2xl border text-left ${String(selectedLibraryId) === String(item.id) ? 'border-[#d779a5] ring-2 ring-[#d779a5]' : 'border-[#f3e5ec]'}`}><img src={item.url} alt={item.file_name || ''} className="aspect-square w-full object-cover"/><p className="truncate px-2 pt-2 text-[10px] text-[#987f8e]">{item.file_name}</p><p className="truncate px-2 pb-2 text-[9px] font-bold text-[#b17b96]">{item.assigned_to || 'Sin asignar'} · {item.assigned_product_name || '—'}</p>{String(selectedLibraryId) === String(item.id) && <p className="px-2 pb-2 text-[10px] font-black text-[#a34f79]">✓ Seleccionada</p>}</button>)}</div>{scope === 'GO_COVER' && <button type="button" disabled={busy || !productId || !selectedLibraryId} onClick={assignExistingPhoto} className={`${btn} w-full border border-[#d779a5] bg-[#fff2f7] text-[#a34f79]`}>{busy ? 'Asignando portada…' : 'Asignar foto seleccionada como portada del GO'}</button>}</section>
   </div></main>;
 }
