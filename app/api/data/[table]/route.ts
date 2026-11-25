@@ -455,13 +455,29 @@ async function mutate(
 
     let snap = await db.collection(table).get();
 
-    let docs = snap.docs.filter((d: any) =>
-      filters.every(([k, v, op]: [string, any, string?]) =>
-        op === 'in'
-          ? Array.isArray(v) && v.includes(d.get(k))
-          : d.get(k) === v
-      )
-    );
+    const sameValue = (a: any, b: any) => {
+  if (a === b) return true;
+
+  if (a === null || a === undefined || a === '') return false;
+  if (b === null || b === undefined || b === '') return false;
+
+  const numberA = Number(a);
+  const numberB = Number(b);
+
+  return (
+    Number.isFinite(numberA) &&
+    Number.isFinite(numberB) &&
+    numberA === numberB
+  );
+};
+
+let docs = snap.docs.filter((d: any) =>
+  filters.every(([k, v, op]: [string, any, string?]) =>
+    op === 'in'
+      ? Array.isArray(v) && v.some((item) => sameValue(d.get(k), item))
+      : sameValue(d.get(k), v)
+  )
+);
 
     if (!admin) {
       docs = docs.filter(
