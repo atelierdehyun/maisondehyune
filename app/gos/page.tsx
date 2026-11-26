@@ -510,3 +510,7 @@ export default function Masterlist() {
           </div>
         </div>
       )}
+          </div>
+  );
+}
+
