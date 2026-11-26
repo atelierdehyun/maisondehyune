@@ -19,8 +19,6 @@ export async function GET(request: Request) {
     await requireAdmin(request);
     const url = new URL(request.url);
 
-    // Lightweight dashboard: Firestore aggregation counts avoid downloading
-    // entire collections just to render a handful of counters.
     if (url.searchParams.get('summary') === '1') {
       const count = async (collection: string, field?: string, value?: unknown) => {
         let query: any = db.collection(collection);
@@ -44,20 +42,19 @@ export async function GET(request: Request) {
 
     const requested = (url.searchParams.get('collections') || names.join(','))
       .split(',').filter((name) => names.includes(name));
+    const maxRows = Math.min(200, Math.max(10, Number(url.searchParams.get('limit')) || 100));
     const data: Record<string, any[]> = {};
-    // The operations workspace only needs recent history, not thousands of
-    // old records. Keep its initial payload bounded.
+
     await Promise.all(requested.map(async (name) => {
-      const snap = await db.collection(name).limit(200).get();
+      const snap = await db.collection(name).limit(maxRows).get();
       data[name] = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     }));
-    return NextResponse.json({ data }, { headers: { 'Cache-Control': 'private, no-store' } });
+    return NextResponse.json({ data }, { headers: { 'Cache-Control': 'private, max-age=10' } });
   } catch (error: any) {
     const message = error?.message || 'ERROR';
     return NextResponse.json({ error: message }, { status: message === 'UNAUTHORIZED' ? 401 : 403 });
   }
 }
-
 export async function POST(request: Request) {
   try {
     const admin = await requireAdmin(request);
@@ -77,19 +74,18 @@ export async function POST(request: Request) {
       if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000) throw new Error('INVALID_AMOUNT');
       if (scope === 'GO' && !goId) throw new Error('GO_REQUIRED');
 
-      // Apply each payment to the existing customer ledger so Mi escritorio,
-      // which already reads monto_abonado, reflects the same amount.
       await db.runTransaction(async (tx) => {
         const allocations: Array<{ ref: any; current: number; due: number; kind: 'GO' | 'SHOP'; meta?: Record<string, any>; createdAt?: string }> = [];
         if (scope === 'GO') {
-          // Build the balance from the product claims themselves, not only from
-          // tracking rows: some imported claims predate seguimiento_claims.
-          const productsQuery = db.collection('productos').limit(1000);
+          const goIdFilters: Array<string | number> = [String(goId)];
+          if (!Number.isNaN(Number(goId))) goIdFilters.push(Number(goId));
+
+          const productsQuery = db.collection('productos').where('go_id', 'in', goIdFilters);
           const productsSnap = await tx.get(productsQuery);
           const candidates: Array<{ ref: any; claimKey: string; slot: string; product: any; quantity: number }> = [];
           for (const productDoc of productsSnap.docs) {
             const product = productDoc.data() || {};
-            if (String(product.go_id) !== goId) continue;
+            if (String(product.go_id) !== String(goId)) continue;
             const claimsMap = parseObject(product.claims_integrantes);
             for (const [slot, rawClaim] of Object.entries(claimsMap)) {
               let quantity = 0;
@@ -185,7 +181,6 @@ export async function POST(request: Request) {
         total: money(quantity * unitPrice), source: clean(body.source || 'WhatsApp', 30),
         status: 'Registrado', note: clean(body.note, 1000), created_at: now, created_by: actor,
       };
-
       if (scope === 'GO') {
         await db.runTransaction(async (tx) => {
           const productRef = db.collection('productos').doc(String(productId));
