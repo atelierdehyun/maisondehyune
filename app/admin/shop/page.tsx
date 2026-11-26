@@ -20,10 +20,23 @@ type ShopProduct = {
   imagen_producto?: string | null;
   fotos_extra?: string[] | null;
   cantidad_disponible?: number;
-  variantes?: { nombre: string; precio: number; stock: number }[] | null;
+  variantes?: ShopVariant[] | null;
   due_date?: string;
 };
 
+type ShopVariant = {
+  nombre: string;
+  precio: number;
+  stock: number;
+  imagen?: string | null;
+};
+
+type EditableVariant = {
+  nombre: string;
+  precio: string;
+  stock: string;
+  imagen: string;
+};
 type ProductForm = {
   nombre_producto: string;
   grupo: string;
@@ -34,6 +47,7 @@ type ProductForm = {
   era: string;
   tipo_pc: string;
   descripcion: string;
+  imagen_producto: string;
   destacado: boolean;
 };
 
@@ -47,6 +61,7 @@ const emptyForm: ProductForm = {
   era: '',
   tipo_pc: '',
   descripcion: '',
+  imagen_producto: '',
   destacado: false,
 };
 
@@ -62,6 +77,7 @@ export default function ShopAdmin() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ShopProduct | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [variants, setVariants] = useState<EditableVariant[]>([]);
 
   const getToken = useCallback(async () => {
     await firebaseAuth.authStateReady();
@@ -150,7 +166,7 @@ export default function ShopAdmin() {
 
   const openNew = () => {
     setEditing(null);
-    setForm(emptyForm);
+    setForm(emptyForm); setVariants([]);
     setShowForm(true);
     setError('');
     setNotice('');
@@ -169,10 +185,147 @@ export default function ShopAdmin() {
       tipo_pc: item.tipo_pc || '',
       descripcion: item.descripcion || '',
       destacado: Boolean(item.destacado),
+      imagen_producto: item.imagen_producto || '',
     });
+    setVariants(
+  (item.variantes || []).map((variant) => ({
+    nombre: variant.nombre || '',
+    precio: String(variant.precio ?? 0),
+    stock: String(variant.stock ?? 0),
+    imagen: variant.imagen || '',
+  }))
+);
     setShowForm(true);
     setError('');
     setNotice('');
+  };
+
+  const addVariant = () => {
+  setVariants((current) => [
+    ...current,
+    {
+      nombre: '',
+      precio: '0',
+      stock: '0',
+      imagen: '',
+    },
+  ]);
+};
+
+const updateVariant = (
+  index: number,
+  field: keyof EditableVariant,
+  value: string
+) => {
+  setVariants((current) =>
+    current.map((variant, i) =>
+      i === index ? { ...variant, [field]: value } : variant
+    )
+  );
+};
+
+const removeVariant = (index: number) => {
+  setVariants((current) => current.filter((_, i) => i !== index));
+};
+  const uploadCover = async (file: File) => {
+  setSaving(true);
+  setError('');
+  setNotice('');
+
+  try {
+    const token = await getToken();
+    const data = new FormData();
+
+    data.append('file', file);
+    data.append('folder', 'shop');
+
+    const response = await fetch('/api/media/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: data,
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.secure_url) {
+      throw new Error(result.error || 'No se pudo subir la imagen.');
+    }
+
+    setForm((current) => ({
+      ...current,
+      imagen_producto: result.secure_url,
+    }));
+
+    const libraryResponse = await fetch('/api/admin/media-library', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        records: [{
+          url: result.secure_url,
+          publicId: result.public_id,
+          fileName: file.name,
+          mimeType: file.type,
+        }],
+        assignedTo: 'SHOP',
+        productId: editing?.id || null,
+        productName: form.nombre_producto,
+      }),
+    });
+
+    const libraryResult = await libraryResponse.json();
+
+    if (!libraryResponse.ok) {
+      throw new Error(
+        libraryResult.error || 'La imagen se subió, pero no se registró en la biblioteca.'
+      );
+    }
+
+    setNotice('¡Portada subida correctamente! ♡');
+  } catch (error: any) {
+    setError(error.message || 'No se pudo subir la portada.');
+  } finally {
+    setSaving(false);
+  }
+};
+  
+  const uploadVariantImage = async (index: number, file: File) => {
+    setSaving(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const token = await getToken();
+      const data = new FormData();
+
+      data.append('file', file);
+      data.append('folder', 'shop');
+
+      const response = await fetch('/api/media/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: data,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.secure_url) {
+        throw new Error(result.error || 'No se pudo subir la imagen.');
+      }
+
+      updateVariant(index, 'imagen', result.secure_url);
+      setNotice('¡Foto de variante subida correctamente! ♡');
+    } catch (error: any) {
+      setError(error.message || 'No se pudo subir la foto de la variante.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveProduct = async () => {
@@ -199,6 +352,25 @@ export default function ShopAdmin() {
       return;
     }
 
+    for (const variant of variants) {
+  const variantPrice = Number(variant.precio);
+  const variantStock = Number(variant.stock);
+
+  if (!variant.nombre.trim()) {
+    setError('Todas las variantes deben tener un nombre.');
+    return;
+  }
+
+  if (!Number.isFinite(variantPrice) || variantPrice < 0) {
+    setError('Revisa el precio de las variantes.');
+    return;
+  }
+
+  if (!Number.isInteger(variantStock) || variantStock < 0) {
+    setError('El stock de cada variante debe ser un entero igual o mayor que cero.');
+    return;
+  }
+}
     setSaving(true);
     setError('');
     setNotice('');
@@ -217,7 +389,14 @@ export default function ShopAdmin() {
         tipo_pc: form.tipo_pc.trim() || null,
         descripcion: form.descripcion.trim() || null,
         destacado: form.destacado,
-      };
+        imagen_producto: form.imagen_producto.trim() || null,
+variantes: variants.map((variant) => ({
+  nombre: variant.nombre.trim(),
+  precio: Number(variant.precio),
+  stock: Number(variant.stock),
+  imagen: variant.imagen.trim() || null,
+})),
+};
 
       const isEditing = Boolean(editing);
 
@@ -237,9 +416,8 @@ export default function ShopAdmin() {
                 records: [
                   {
                     ...values,
-                    imagen_producto: null,
+                    imagen_producto: form.imagen_producto.trim() || null,
                     fotos_extra: [],
-                    variantes: [],
                   },
                 ],
               }
@@ -275,6 +453,7 @@ export default function ShopAdmin() {
 
     if (!confirmed) return;
 
+    
     setSaving(true);
     setError('');
     setNotice('');
@@ -598,7 +777,6 @@ export default function ShopAdmin() {
             </div>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <label className="sm:col-span-2">
                 <span className="mb-1.5 block text-xs font-bold">Nombre del producto *</span>
                 <input
                   value={form.nombre_producto}
@@ -606,7 +784,6 @@ export default function ShopAdmin() {
                   className="w-full rounded-xl border border-[#eee3eb] px-4 py-3 text-sm outline-none focus:border-[#c47b9d]"
                   placeholder="Ej. Hyunjin photocard set"
                 />
-              </label>
 
               <label>
                 <span className="mb-1.5 block text-xs font-bold">Grupo *</span>
@@ -693,6 +870,133 @@ export default function ShopAdmin() {
                 />
               </label>
 
+              <section className="sm:col-span-2 rounded-2xl border border-[#f0e3eb] bg-[#fffafd] p-4">
+  <div className="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h3 className="font-black text-[#594653]">Variantes del producto</h3>
+      <p className="mt-1 text-xs text-[#93818d]">
+        Cada variante puede tener su propio precio y stock.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={addVariant}
+      className="rounded-xl bg-[#b34c80] px-4 py-2.5 text-xs font-bold text-white"
+    >
+      + Añadir variante
+    </button>
+  </div>
+
+  {variants.length === 0 ? (
+    <p className="mt-4 rounded-xl bg-[#faf2f6] p-4 text-center text-sm text-[#93818d]">
+      Todavía no hay variantes. Puedes añadir la primera aquí.
+    </p>
+  ) : (
+    <div className="mt-4 space-y-4">
+      {variants.map((variant, index) => (
+        <div
+          key={index}
+          className="rounded-xl border border-[#f0e3eb] bg-white p-4"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-black text-[#a4567d]">
+              Variante {index + 1}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => removeVariant(index)}
+              className="rounded-lg bg-[#fff0f1] px-3 py-2 text-xs font-bold text-[#bb6b75]"
+            >
+              Eliminar
+            </button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label>
+              <span className="mb-1 block text-xs font-bold">Nombre o código *</span>
+              <input
+                value={variant.nombre}
+                onChange={(e) =>
+                  updateVariant(index, 'nombre', e.target.value)
+                }
+                placeholder="Ej. A, B, DICON, Regular..."
+                className="w-full rounded-xl border border-[#eee3eb] px-3 py-3 text-sm outline-none focus:border-[#c47b9d]"
+              />
+            </label>
+
+            <label>
+              <span className="mb-1 block text-xs font-bold">Precio (USD) *</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={variant.precio}
+                onChange={(e) =>
+                  updateVariant(index, 'precio', e.target.value)
+                }
+                className="w-full rounded-xl border border-[#eee3eb] px-3 py-3 text-sm outline-none focus:border-[#c47b9d]"
+              />
+            </label>
+
+            <label>
+              <span className="mb-1 block text-xs font-bold">Stock disponible *</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={variant.stock}
+                onChange={(e) =>
+                  updateVariant(index, 'stock', e.target.value)
+                }
+                className="w-full rounded-xl border border-[#eee3eb] px-3 py-3 text-sm outline-none focus:border-[#c47b9d]"
+              />
+            </label>
+
+            <label>
+              <span className="mb-1 block text-xs font-bold">URL de imagen (opcional)</span>
+              <input
+                value={variant.imagen}
+                onChange={(e) =>
+                  updateVariant(index, 'imagen', e.target.value)
+                }
+                placeholder="https://..."
+                className="w-full rounded-xl border border-[#eee3eb] px-3 py-3 text-sm outline-none focus:border-[#c47b9d]"
+              />
+            </label>
+            
+  <div className="sm:col-span-2">
+    <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-[#d9a6bf] bg-[#fff7fb] px-4 py-3 text-sm font-semibold text-[#a64d78]">
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        disabled={saving}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) uploadVariantImage(index, file);
+          e.target.value = '';
+        }}
+      />
+      ♡ Seleccionar foto para esta variante
+    </label>
+
+    {variant.imagen && (
+      <img
+        src={variant.imagen}
+        alt={`Imagen de ${variant.nombre || `variante ${index + 1}`}`}
+        className="mt-3 max-h-40 w-auto rounded-xl object-contain"
+      />
+    )}
+  </div>
+
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
               <label className="sm:col-span-2 flex items-center gap-3 rounded-xl bg-[#fff7fa] p-3 text-sm">
                 <input
                   type="checkbox"
@@ -701,8 +1005,44 @@ export default function ShopAdmin() {
                   className="h-4 w-4 accent-[#b34c80]"
                 />
                 <span className="font-semibold">Marcar como producto destacado</span>
-              </label>
-            </div>
+                <div className="sm:col-span-2">
+  <span className="mb-2 block text-xs font-bold">
+    Imagen principal de la publicación
+  </span>
+
+  <input
+    type="text"
+    value={form.imagen_producto}
+    onChange={(e) =>
+      setForm({ ...form, imagen_producto: e.target.value })
+    }
+    className="w-full rounded-xl border border-[#eee3eb] px-4 py-3 text-sm"
+    placeholder="Pega aquí la URL de la imagen"
+  />
+
+  <label className="mt-3 flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-[#d9a6bf] bg-[#fff7fb] px-4 py-4 text-sm font-semibold text-[#a64d78]">
+    <input
+      type="file"
+      accept="image/*"
+      className="hidden"
+      disabled={saving}
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) uploadCover(file);
+        e.target.value = '';
+      }}
+    />
+    ♡ Seleccionar foto desde mi dispositivo
+  </label>
+
+  {form.imagen_producto && (
+    <img
+      src={form.imagen_producto}
+      alt="Vista previa de portada"
+      className="mt-3 max-h-56 w-auto rounded-xl object-contain"
+    />
+  )}
+</div>
 
             <div className="mt-6 flex flex-wrap justify-end gap-2">
               <button
