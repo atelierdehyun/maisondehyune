@@ -197,7 +197,6 @@ export async function GET(
           typeof r.claims_integrantes === 'object'
             ? r.claims_integrantes
             : {};
-
         const claims = admin
           ? raw
           : Object.fromEntries(
@@ -205,13 +204,24 @@ export async function GET(
                 if (typeof users === 'string') {
                   return normalizeName(users) === normalizeName(email)
                     ? [[slot, { [email]: 1 }]]
-                    : [];
+                    : [[slot, { _ocupado: 1 }]];
                 }
                 if (!users || typeof users !== 'object' || Array.isArray(users)) return [];
-                const ownEntry = Object.entries(users).find(([mail, quantity]) =>
-                  normalizeName(mail) === normalizeName(email) && Number(quantity) > 0
-                );
-                return ownEntry ? [[slot, { [email]: Number(ownEntry[1]) }]] : [];
+                let propios = 0;
+                let otros = 0;
+                for (const [mail, quantity] of Object.entries(users)) {
+                  const qty = Number(quantity) || 0;
+                  if (qty <= 0) continue;
+                  if (email && normalizeName(mail) === normalizeName(email)) {
+                    propios += qty;
+                  } else {
+                    otros += qty;
+                  }
+                }
+                const resultado: Record<string, number> = {};
+                if (propios > 0 && email) resultado[email] = propios;
+                if (otros > 0) resultado._ocupado = otros;
+                return Object.keys(resultado).length > 0 ? [[slot, resultado]] : [];
               })
             );
 
@@ -238,9 +248,10 @@ export async function GET(
       { data: rows },
       {
         headers: {
-          'Cache-Control': publicRead.has(table)
-            ? 'public, s-maxage=60, stale-while-revalidate=120'
-            : 'private, no-store',
+          'Cache-Control':
+            publicRead.has(table) && !email
+              ? 'public, s-maxage=60, stale-while-revalidate=120'
+              : 'private, no-store',
         },
       }
     );
