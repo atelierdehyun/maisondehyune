@@ -1,9 +1,47 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { firebaseAuth } from '@/lib/firebaseClient';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
+
+async function getFirebaseToken() {
+  await firebaseAuth.authStateReady();
+  const token = await firebaseAuth.currentUser?.getIdToken();
+  if (!token) throw new Error('Tu sesión ha expirado. Inicia sesión nuevamente.');
+  return token;
+}
+
+async function dbRequest(table: string, options: {
+  method?: 'GET' | 'POST' | 'PATCH';
+  filters?: Array<[string, any, string?]>;
+  order?: [string, boolean];
+  records?: any[];
+  values?: Record<string, any>;
+  action?: 'upsert';
+} = {}) {
+  const token = await getFirebaseToken();
+  const method = options.method || 'GET';
+  const params = new URLSearchParams();
+  if (options.filters) params.set('filters', JSON.stringify(options.filters));
+  if (options.order) params.set('order', JSON.stringify(options.order));
+  const query = params.toString();
+  const response = await fetch(`/api/data/${encodeURIComponent(table)}${query ? `?${query}` : ''}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(method !== 'GET' ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(method !== 'GET' ? { body: JSON.stringify({
+      filters: options.filters || [], records: options.records || [],
+      values: options.values || {}, action: options.action,
+    }) } : {}),
+    cache: 'no-store',
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `No se pudo consultar ${table}.`);
+  return result.data;
+}
 
 const PRECIOS_ENVIO: Record<string, number> = {
   'Quito ($3.50)': 3.5,
@@ -72,14 +110,16 @@ export default function MiEscritorioJoiner() {
   async function cargarMisPedidos() {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const email = session?.user?.email?.toLowerCase().trim() || '';
+      await firebaseAuth.authStateReady();
+      const user = firebaseAuth.currentUser;
+      const email = user?.email?.toLowerCase().trim() || '';
       setUsuarioEmail(email);
 
-      if (email && session?.access_token) {
+      if (email && user) {
+        const token = await user.getIdToken();
         try {
           const response = await fetch('/api/joiner/updates', {
-            headers: { Authorization: `Bearer ${session.access_token}` },
+            headers: { Authorization: `Bearer ${token}` },
             cache: 'no-store',
           });
           const payload = await response.json();
@@ -87,14 +127,15 @@ export default function MiEscritorioJoiner() {
         } catch {
           setAvisosGo([]);
         }
-        const [{ data: perfil }, { data: prods }, { data: segs }, { data: peds }, { data: sols }, { data: wishRows }] = await Promise.all([
-          supabase.from('perfiles_joiners').select('*').eq('user_email', email).maybeSingle(),
-          supabase.from('productos').select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title, estado_logistica)'),
-          supabase.from('seguimiento_claims').select('*').eq('user_email', email),
-          supabase.from('pedidos').select('*').eq('user_email', email).order('id', { ascending: false }),
-          supabase.from('solicitudes_envio').select('*').eq('user_email', email).order('id', { ascending: false }),
-          supabase.from('wishlist_joiners').select('producto_id').eq('user_email', email),
+        const [perfilRows, prods, segs, peds, sols, wishRows] = await Promise.all([
+          dbRequest('perfiles_joiners', { filters: [['user_email', email]] }),
+          dbRequest('productos'),
+          dbRequest('seguimiento_claims'),
+          dbRequest('pedidos', { order: ['id', false] }),
+          dbRequest('solicitudes_envio', { order: ['id', false] }),
+          dbRequest('wishlist_joiners'),
         ]);
+        const perfil = Array.isArray(perfilRows) ? perfilRows[0] : null;
 
         if (perfil) {
           setNombreJoiner(perfil.nombre_completo || '');
@@ -106,10 +147,7 @@ export default function MiEscritorioJoiner() {
 
         if (Array.isArray(wishRows) && wishRows.length > 0) {
           const ids = wishRows.map((w: any) => w.producto_id);
-          const { data: prodsW } = await supabase
-            .from('tienda_productos')
-            .select('id, nombre_producto, imagen_producto, integrante')
-            .in('id', ids);
+          const prodsW = await dbRequest('tienda_productos', { filters: [['id', ids, 'in']] });
           setWishlistProds(Array.isArray(prodsW) ? prodsW : []);
         }
 
@@ -217,23 +255,24 @@ export default function MiEscritorioJoiner() {
     e.preventDefault();
     if (!usuarioEmail || !nombreJoiner.trim()) return;
     setGuardandoNombre(true);
-    const { error } = await supabase.from('perfiles_joiners').upsert(
-      {
-        user_email: usuarioEmail.toLowerCase().trim(),
-        nombre_completo: nombreJoiner.trim(),
-        usuario_red: instagramJoiner.trim()
-          ? '@' + instagramJoiner.replace('@', '').trim()
-          : '',
-        telefono: envioTelefono.trim(),
-      },
-      { onConflict: 'user_email' }
-    );
-    setGuardandoNombre(false);
-    if (error) {
-      alert('Error al guardar: ' + error.message);
-    } else {
+    try {
+      await dbRequest('perfiles_joiners', {
+        method: 'POST', action: 'upsert',
+        records: [{
+          user_email: usuarioEmail.toLowerCase().trim(),
+          nombre_completo: nombreJoiner.trim(),
+          usuario_red: instagramJoiner.trim()
+            ? '@' + instagramJoiner.replace('@', '').trim()
+            : '',
+          telefono: envioTelefono.trim(),
+        }],
+      });
+      setGuardandoNombre(false);
       alert('✅ ¡Tus datos quedaron guardados!');
       cargarMisPedidos();
+    } catch (error: any) {
+      setGuardandoNombre(false);
+      alert('Error al guardar: ' + (error?.message || 'Inténtalo nuevamente.'));
     }
   }
   const todosLosItems = grupos.flatMap((g) => g.items);
@@ -268,25 +307,25 @@ export default function MiEscritorioJoiner() {
       .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' (' + i.detalleSlot + ')')
       .join('\n');
 
-    const { error } = await supabase.from('solicitudes_envio').insert([{
-      user_email: usuarioEmail,
-      tipo_servicio: itemsMarcados[0].origen,
-      nombre_completo: envioNombre.trim(),
-      instagram: instagramJoiner.replace('@', '').trim(),
-      telefono: envioTelefono.trim(),
-      ciudad: envioCiudad.trim(),
-      direccion: envioDireccion.trim(),
-      metodo_envio: envioMetodo,
-      costo_envio: costoEnvioElegido,
-      articulos_incluidos: listaTexto,
-      estado_despacho: 'Pendiente',
-    }]);
+    try {
+      await dbRequest('solicitudes_envio', { method: 'POST', records: [{
+        user_email: usuarioEmail,
+        tipo_servicio: itemsMarcados[0].origen,
+        nombre_completo: envioNombre.trim(),
+        instagram: instagramJoiner.replace('@', '').trim(),
+        telefono: envioTelefono.trim(),
+        ciudad: envioCiudad.trim(),
+        direccion: envioDireccion.trim(),
+        metodo_envio: envioMetodo,
+        costo_envio: costoEnvioElegido,
+        articulos_incluidos: listaTexto,
+        estado_despacho: 'Pendiente',
+      }] });
 
-    if (!error) {
       for (const it of itemsMarcados) {
         if (it.origen === 'SHOP' && it.idUnico.startsWith('shop-')) {
           const idPed = Number(it.idUnico.replace('shop-', ''));
-          await supabase.from('pedidos').update({ estado_envio: 'Envío solicitado' }).eq('id', idPed);
+          await dbRequest('pedidos', { method: 'PATCH', filters: [['id', idPed]], values: { estado_envio: 'Envío solicitado' } });
         }
       }
 
@@ -303,10 +342,11 @@ export default function MiEscritorioJoiner() {
       setSeleccionadosEnvio({});
       await cargarMisPedidos();
       window.location.href = abrirChatLia(msgWsp);
-    } else {
-      alert('Error: ' + error.message);
+    } catch (error: any) {
+      alert('Error: ' + (error?.message || 'No se pudo registrar la solicitud.'));
+    } finally {
+      setEnviandoSolicitud(false);
     }
-    setEnviandoSolicitud(false);
   }
 
   if (loading) {
@@ -624,8 +664,7 @@ export default function MiEscritorioJoiner() {
                           const scopes = new Set(itemsAPagarHoy.map((item) => item.origen));
                           const goTitles = [...new Set(itemsAPagarHoy.filter((item) => item.origen === 'GO').map((item) => item.goTitulo))];
                           if (scopes.size !== 1 || (scopes.has('GO') && goTitles.length !== 1)) { alert('Selecciona pedidos de un solo GO o de Shop para adjuntar el comprobante.'); return; }
-                          const sessionResult = await supabase.auth.getSession();
-                          const token = sessionResult.data.session?.access_token;
+                          const token = await firebaseAuth.currentUser?.getIdToken();
                           if (!token) { alert('Inicia sesión nuevamente.'); return; }
                           const form = new FormData(); if (!importeValido) { alert('Ingresa un abono válido que no supere el saldo pendiente.'); return; }
                           form.append('file', comprobanteFile); form.append('scope', scopes.has('SHOP') ? 'SHOP' : 'GO'); form.append('amount', String(importeTransferencia)); if (goTitles[0]) form.append('goTitle', goTitles[0]);
