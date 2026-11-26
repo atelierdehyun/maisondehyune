@@ -37,31 +37,19 @@ async function request(
           }`
         : '';
 
-    const cacheKey = `${table}:${qs}`;
+    await firebaseAuth.authStateReady();
+    const user = firebaseAuth.currentUser;
+    const currentEmail = (user?.email || '').toLowerCase().trim();
+    const isAdmin = currentEmail === adminEmail;
+    const token = user ? await user.getIdToken() : undefined;
 
-    // Si es un catálogo público, revisamos la caché de inmediato sin esperar a que cargue la sesión
+    const cacheKey = `${currentEmail || 'anon'}:${table}:${qs}`;
+
     if (isPublicGet) {
       const hit = clientCache.get(cacheKey);
       if (hit && hit.exp > Date.now()) {
         const d = hit.data;
         return { data: single && Array.isArray(d) ? (d[0] ?? null) : d, error: null };
-      }
-    }
-
-    let token: string | undefined;
-    let isAdmin = false;
-
-    if (!isPublicGet) {
-      await firebaseAuth.authStateReady();
-      const user = firebaseAuth.currentUser;
-      isAdmin = (user?.email || '').toLowerCase().trim() === adminEmail;
-      if (user) token = await user.getIdToken();
-    } else if (firebaseAuth.currentUser) {
-      // Si el admin ya tiene sesión iniciada en memoria, enviamos su token para que vea todos los claims
-      const currentEmail = (firebaseAuth.currentUser.email || '').toLowerCase().trim();
-      if (currentEmail === adminEmail) {
-        isAdmin = true;
-        token = await firebaseAuth.currentUser.getIdToken();
       }
     }
 
@@ -78,7 +66,7 @@ async function request(
     if (!response.ok) return { data: null, error: { message: json.error || `HTTP ${response.status}` } };
 
     const data = json.data ?? null;
-    if (isPublicGet && !isAdmin) {
+    if (isPublicGet && !isAdmin && !currentEmail) {
       clientCache.set(cacheKey, { exp: Date.now() + 30_000, data });
     }
 
@@ -87,7 +75,6 @@ async function request(
     return { data: null, error: { message: e instanceof Error ? e.message : 'Network error' } };
   }
 }
-
 class Query {
   private filters: Array<[string, any, string?]> = [];
   private ordering?: [string, boolean];
