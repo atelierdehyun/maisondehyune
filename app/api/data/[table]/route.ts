@@ -310,7 +310,7 @@ async function mutate(
     if (
       !admin &&
       table === 'wishlist_joiners' &&
-      method !== 'POST'
+      !['POST', 'DELETE'].includes(method)
     ) {
       return NextResponse.json(
         { error: 'FORBIDDEN' },
