@@ -1,27 +1,66 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { firebaseAuth } from '@/lib/firebaseClient';
 
-type Data = { gos:any[]; productos:any[]; tienda_productos:any[]; pedidos:any[]; solicitudes_envio:any[]; operaciones_pagos:any[]; operaciones_pedidos:any[]; comprobantes_pago:any[] };
-const empty:Data={gos:[],productos:[],tienda_productos:[],pedidos:[],solicitudes_envio:[],operaciones_pagos:[],operaciones_pedidos:[],comprobantes_pago:[]};
-const money=(n:number)=>`$${(Number(n)||0).toFixed(2)}`;
-const Card=({href,icon,title,desc,meta,tone='pink'}:{href:string;icon:string;title:string;desc:string;meta:string;tone?:string})=><Link href={href} className="group rounded-[26px] border border-[#f0e3eb] bg-white p-5 shadow-[0_5px_20px_rgba(89,58,75,.04)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(89,58,75,.09)]"><div className="flex items-start justify-between"><span className={`grid h-12 w-12 place-items-center rounded-2xl text-2xl ${tone==='mint'?'bg-[#eaf6f0]':tone==='lavender'?'bg-[#f0edfb]':tone==='yellow'?'bg-[#fff6df]':'bg-[#faeaf2]'}`}>{icon}</span><span className="text-lg text-[#b99aaa] transition group-hover:translate-x-1">↗</span></div><h2 className="mt-4 text-lg font-black text-[#514653]">{title}</h2><p className="mt-1 min-h-10 text-sm leading-6 text-[#8c7b87]">{desc}</p><p className="mt-4 border-t border-[#f5edf1] pt-3 text-xs font-bold text-[#b16d90]">{meta}</p></Link>;
-export default function AdminDashboard(){
- const [data,setData]=useState<Data>(empty); const [loading,setLoading]=useState(true); const [error,setError]=useState('');
- const load=useCallback(async()=>{setLoading(true);try{await firebaseAuth.authStateReady();const token=await firebaseAuth.currentUser?.getIdToken();if(!token)throw new Error('Inicia sesión con tu cuenta administradora.');const r=await fetch('/api/admin/operations',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.error||'No se pudo cargar el resumen.');setData({...empty,...j.data});setError('');}catch(e:any){setError(e.message||'No se pudo cargar el resumen.');}finally{setLoading(false);}},[]);
- useEffect(()=>{load();},[load]);
- const dueProofs=data.comprobantes_pago.filter(x=>['Pendiente de revisión','Pendiente'].includes(String(x.status||''))).length;
- const pendingShip=data.solicitudes_envio.filter(x=>!['Enviado','Completado','Entregado'].includes(String(x.status||x.estado||''))).length;
- const openPayments=data.pedidos.filter(x=>!['Pagado','Cancelado'].includes(String(x.estado_pago||''))).length;
- const paymentTotal=data.operaciones_pagos.reduce((s,x)=>s+Number(x.amount||0),0);
- return <main className="min-h-screen bg-[#fff9fc] px-4 py-6 text-[#594653] sm:px-7 lg:px-9"><div className="mx-auto max-w-[1500px] space-y-6">
-  <header className="flex flex-wrap items-center justify-between gap-4 rounded-[30px] border border-[#f0e3eb] bg-white px-5 py-5 shadow-sm sm:px-7"><div className="flex items-center gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#faeaf2] text-2xl">🎀</span><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-[#c17b9d]">Hyuneatelier · workspace</p><h1 className="text-2xl font-black tracking-tight text-[#514653] sm:text-3xl">Centro de administración</h1><p className="mt-1 text-sm text-[#9a8793]">Todo tu Atelier, organizado en un solo lugar.</p></div></div><div className="flex flex-wrap gap-2"><Link href="/shop" className="rounded-2xl border border-[#efdfE8] px-4 py-2.5 text-sm font-bold text-[#98758a]">Ver tienda ↗</Link><button onClick={load} className="rounded-2xl bg-[#f8e8f0] px-4 py-2.5 text-sm font-bold text-[#a4567d]">↻ Actualizar</button></div></header>
-  <section className="rounded-[30px] bg-gradient-to-r from-[#faeaf2] via-[#fff5e5] to-[#eaf6f0] p-6 sm:p-8"><p className="text-xs font-black uppercase tracking-[.2em] text-[#a66c89]">Tu resumen</p><div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-2xl font-black text-[#514653] sm:text-3xl">Hola, bienvenida de vuelta ♡</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#816f7a]">Revisa lo importante, atiende pendientes y entra directamente al área en la que necesitas trabajar.</p></div><div className="rounded-2xl border border-white/80 bg-white/70 px-4 py-3 text-sm"><span className="text-[#9b8793]">Estado del panel</span><p className="font-black text-[#528c72]">{loading?'Actualizando…':error?'Revisar conexión':'Conectado'}</p></div></div></section>
-  {error&&<div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
-  <section><div className="mb-3 flex items-end justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#bd83a0]">Vista rápida</p><h2 className="text-xl font-black text-[#514653]">Resumen del negocio</h2></div><span className="text-xs text-[#a18d99]">{loading?'Cargando datos…':'Datos actuales'}</span></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><div className="rounded-[24px] border border-[#f0e3eb] bg-white p-5"><p className="text-xs font-bold text-[#9a8793]">GOs registrados</p><p className="mt-2 text-3xl font-black">{data.gos.length}</p><p className="mt-1 text-xs text-[#b08a9e]">Group Orders</p></div><div className="rounded-[24px] border border-[#f0e3eb] bg-white p-5"><p className="text-xs font-bold text-[#9a8793]">Productos Shop</p><p className="mt-2 text-3xl font-black">{data.tienda_productos.length}</p><p className="mt-1 text-xs text-[#8eaa9b]">Catálogo de tienda</p></div><div className="rounded-[24px] border border-[#f0e3eb] bg-white p-5"><p className="text-xs font-bold text-[#9a8793]">Comprobantes por revisar</p><p className="mt-2 text-3xl font-black">{dueProofs}</p><p className="mt-1 text-xs text-[#b08a9e]">Revisión pendiente</p></div><div className="rounded-[24px] border border-[#f0e3eb] bg-white p-5"><p className="text-xs font-bold text-[#9a8793]">Solicitudes de envío</p><p className="mt-2 text-3xl font-black">{pendingShip}</p><p className="mt-1 text-xs text-[#8eaa9b]">Por preparar o despachar</p></div></div></section>
-  <section><div className="mb-3"><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#bd83a0]">Tus espacios</p><h2 className="text-xl font-black text-[#514653]">¿Qué quieres gestionar?</h2></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Card href="/admin/gos" icon="🧸" title="Group Orders" desc="GOs, participantes, claims, pagos, stock y envíos de tus pedidos grupales." meta={`${data.gos.length} GOs · ${data.productos.length} productos`} /><Card href="/admin/shop" icon="🛍️" title="Hyuneatelier Shop" desc="Catálogo, inventario y pedidos de la tienda, sin mezclarlos con los GOs." meta={`${data.tienda_productos.length} productos`} tone="lavender"/><Card href="/admin/centro" icon="📊" title="Centro de operaciones" desc="Movimientos de pagos, comprobantes, pedidos manuales y avisos." meta={`${money(paymentTotal)} registrados`} tone="mint"/><Card href="/admin/fotos" icon="🖼️" title="Biblioteca multimedia" desc="Sube y asigna imágenes a portadas, productos GO y publicaciones Shop." meta="Archivos de Cloudinary" tone="yellow"/></div></section>
-  <section className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]"><div className="rounded-[26px] border border-[#f0e3eb] bg-white p-5"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#bd83a0]">Atención</p><h2 className="text-lg font-black">Pendientes importantes</h2></div><Link href="/admin/centro" className="text-xs font-bold text-[#b16d90]">Abrir operaciones →</Link></div><div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-2xl bg-[#fff4f8] p-4"><p className="text-xs text-[#987f8e]">Comprobantes</p><b className="mt-1 block text-2xl">{dueProofs}</b><span className="text-[11px] text-[#a77b91]">Por revisar</span></div><div className="rounded-2xl bg-[#fff8e9] p-4"><p className="text-xs text-[#987f8e]">Pagos abiertos*</p><b className="mt-1 block text-2xl">{openPayments}</b><span className="text-[11px] text-[#a77b91]">Pedidos con saldo</span></div><div className="rounded-2xl bg-[#eef7f1] p-4"><p className="text-xs text-[#987f8e]">Envíos</p><b className="mt-1 block text-2xl">{pendingShip}</b><span className="text-[11px] text-[#789987]">Por gestionar</span></div></div><p className="mt-3 text-[10px] leading-5 text-[#ad9aa5]">*El conteo de pagos abiertos usa los estados de los pedidos cargados; revisa el detalle en Pedidos y pagos antes de confirmar saldos.</p></div><div className="rounded-[26px] border border-[#f0e3eb] bg-white p-5"><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#bd83a0]">Accesos rápidos</p><h2 className="text-lg font-black">Para hoy</h2><div className="mt-3 space-y-2"><Link href="/admin/centro" className="flex items-center justify-between rounded-2xl bg-[#faf5f8] p-3 text-sm font-bold">Revisar pagos y comprobantes <span>→</span></Link><Link href="/admin/gos" className="flex items-center justify-between rounded-2xl bg-[#faf5f8] p-3 text-sm font-bold">Gestionar Group Orders <span>→</span></Link><Link href="/admin/shop" className="flex items-center justify-between rounded-2xl bg-[#faf5f8] p-3 text-sm font-bold">Abrir Hyuneatelier Shop <span>→</span></Link></div></div></section>
-  <footer className="pb-6 text-center text-xs text-[#b49aa8]">Hyuneatelier · tu Atelier, en orden ♡</footer>
- </div></main>;
+import Link from 'next/link';
+
+const sections = [
+  {
+    href: '/admin/shop',
+    icon: '🛍️',
+    title: 'SHOP',
+    description: 'Productos, precios, stock, fotografías y pedidos de la tienda.',
+    tone: 'bg-[#faeaf2]',
+    accent: 'text-[#a4567d]',
+  },
+  {
+    href: '/admin/gos',
+    icon: '📦',
+    title: 'GOs',
+    description: 'Group Orders, artículos, integrantes, claims y preparación de pedidos.',
+    tone: 'bg-[#eaf6f0]',
+    accent: 'text-[#528c72]',
+  },
+  {
+    href: '/admin/centro',
+    icon: '💳',
+    title: 'PAGOS',
+    description: 'Comprobantes, pagos recibidos, saldos e historial de operaciones.',
+    tone: 'bg-[#fff6df]',
+    accent: 'text-[#98752d]',
+  },
+];
+
+export default function AdminDashboard() {
+  return (
+    <main className="min-h-screen bg-[#fff9fc] px-4 py-7 text-[#594653] sm:px-7 lg:px-9">
+      <div className="mx-auto max-w-5xl space-y-7">
+        <header className="rounded-[30px] border border-[#f0e3eb] bg-white px-5 py-6 shadow-sm sm:px-8">
+          <div className="flex items-center gap-3">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#faeaf2] text-2xl">🎀</span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.22em] text-[#c17b9d]">Hyuneatelier · workspace</p>
+              <h1 className="text-2xl font-black tracking-tight text-[#514653] sm:text-3xl">Centro de administración</h1>
+              <p className="mt-1 text-sm text-[#9a8793]">Tus tres espacios de trabajo, sin secciones innecesarias.</p>
+            </div>
+          </div>
+        </header>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          {sections.map((section) => (
+            <Link
+              key={section.href}
+              href={section.href}
+              className="group rounded-[28px] border border-[#f0e3eb] bg-white p-5 shadow-[0_5px_20px_rgba(89,58,75,.04)] transition hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(89,58,75,.09)]"
+            >
+              <span className={`grid h-14 w-14 place-items-center rounded-2xl text-2xl ${section.tone}`}>{section.icon}</span>
+              <h2 className={`mt-5 text-lg font-black ${section.accent}`}>{section.title}</h2>
+              <p className="mt-2 min-h-16 text-sm leading-6 text-[#8c7b87]">{section.description}</p>
+              <p className="mt-5 border-t border-[#f5edf1] pt-3 text-xs font-bold text-[#b16d90]">Abrir sección <span className="transition group-hover:translate-x-1">↗</span></p>
+            </Link>
+          ))}
+        </section>
+
+        <p className="text-center text-xs text-[#ad9aa5]">Los datos se cargan dentro de cada sección cuando realmente los necesitas.</p>
+      </div>
+    </main>
+  );
 }
