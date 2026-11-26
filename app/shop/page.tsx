@@ -1,10 +1,41 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { firebaseAuth } from '@/lib/firebaseClient';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
+
+async function getFirebaseToken() {
+  await firebaseAuth.authStateReady();
+  return await firebaseAuth.currentUser?.getIdToken();
+}
+
+async function dbRequest(table: string, options: {
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  filters?: Array<[string, any, string?]>;
+  order?: [string, boolean];
+  records?: any[];
+  values?: Record<string, any>;
+  action?: 'upsert';
+} = {}) {
+  const token = await getFirebaseToken();
+  const method = options.method || 'GET';
+  const params = new URLSearchParams();
+  if (options.filters) params.set('filters', JSON.stringify(options.filters));
+  if (options.order) params.set('order', JSON.stringify(options.order));
+  const query = params.toString();
+  const response = await fetch(`/api/data/${encodeURIComponent(table)}${query ? `?${query}` : ''}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    ...(method === 'GET' ? {} : { body: JSON.stringify({ filters: options.filters || [], records: options.records || [], values: options.values || {}, action: options.action }) }),
+    cache: 'no-store',
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `No se pudo acceder a ${table}.`);
+  return result.data;
+}
+
 
 interface VarianteShop {
   nombre: string;
@@ -66,31 +97,29 @@ export default function AtelierShop() {
   async function cargarTienda() {
     try {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) {
-        const mail = session.user.email.toLowerCase().trim();
+      await firebaseAuth.authStateReady();
+      const user = firebaseAuth.currentUser;
+      if (user?.email) {
+        const mail = user.email.toLowerCase().trim();
         setUsuarioEmail(mail);
-        const { data: perfil } = await supabase
-          .from('perfiles_joiners')
-          .select('*')
-          .eq('user_email', mail)
-          .maybeSingle();
-
+        const [perfiles, dataWish] = await Promise.all([
+          dbRequest('perfiles_joiners', { filters: [['user_email', mail]] }),
+          dbRequest('wishlist_joiners', { filters: [['user_email', mail]] }),
+        ]);
+        const perfil = perfiles?.[0];
         setPerfilCliente({
           nombre: perfil?.nombre_completo || mail.split('@').at(0) || 'Joiner',
           ig: perfil?.usuario_red || '',
         });
-
-        const { data: dataWish } = await supabase
-          .from('wishlist_joiners')
-          .select('producto_id')
-          .eq('user_email', mail);
         setWishlistIds((dataWish || []).map((w: any) => Number(w.producto_id)));
+      } else {
+        setUsuarioEmail('');
+        setWishlistIds([]);
       }
 
-      const [{ data: dataProds }, { data: dataFotos }] = await Promise.all([
-        supabase.from('tienda_productos').select('*').order('id', { ascending: false }),
-        supabase.from('integrantes_fotos').select('*'),
+      const [dataProds, dataFotos] = await Promise.all([
+        dbRequest('tienda_productos', { order: ['id', false] }),
+        dbRequest('integrantes_fotos'),
       ]);
 
       setProductos(dataProds || []);
@@ -174,16 +203,16 @@ export default function AtelierShop() {
     const yaEsta = wishlistIds.includes(prodId);
     if (yaEsta) {
       setWishlistIds((prev) => prev.filter((id) => id !== prodId));
-      await supabase
-        .from('wishlist_joiners')
-        .delete()
-        .eq('user_email', usuarioEmail)
-        .eq('producto_id', prodId);
+      await dbRequest('wishlist_joiners', {
+        method: 'DELETE',
+        filters: [['user_email', usuarioEmail], ['producto_id', prodId]],
+      });
     } else {
       setWishlistIds((prev) => [...prev, prodId]);
-      await supabase
-        .from('wishlist_joiners')
-        .insert([{ user_email: usuarioEmail, producto_id: prodId }]);
+      await dbRequest('wishlist_joiners', {
+        method: 'POST',
+        records: [{ user_email: usuarioEmail, producto_id: prodId }],
+      });
     }
   }
 
