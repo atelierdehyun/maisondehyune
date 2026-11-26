@@ -36,7 +36,6 @@ type ItemCarritoGo = {
   precioUnitario: number;
   cantidad: number;
 };
-
 export default function Masterlist() {
   const [bandaSeleccionada, setBandaSeleccionada] = useState<'stray kids' | 'enhypen' | 'otros'>('stray kids');
   const [gos, setGos] = useState<Go[]>([]);
@@ -120,8 +119,7 @@ export default function Masterlist() {
 
   const activeGo = gos.find((g) => Number(g.id) === Number(goSeleccionado));
   const productosDelGo = productos.filter((p) => Number(p.go_id) === Number(goSeleccionado));
-  const activeProducto = productos.find((p) => Number(p.id) === Number(productoSeleccionado)) || productosDelGo[0] || null;
-
+  const activeProducto = productos.find((p) => Number(p.id) === Number(productoSeleccionado)) || productosDelGo || null;
   function cambiarCantidadEnBolsa(prod: Producto, integrante: string, delta: number, stockDisponibles: number) {
     if (!usuarioEmail) {
       setMessage('Inicia sesión primero para apartar slots 🎀');
@@ -155,9 +153,9 @@ export default function Masterlist() {
       ];
     });
   }
+
   const totalUnidadesBolsa = carritoGlobal.reduce((acc, i) => acc + i.cantidad, 0);
   const totalDineroBolsa = carritoGlobal.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
-
   async function handleConfirmarTodoElCarrito(e: React.FormEvent) {
     e.preventDefault();
     if (!usuarioEmail) return alert('Inicia sesión primero 🎀');
@@ -167,54 +165,76 @@ export default function Masterlist() {
     }
 
     setProcesando(true);
-    const mailLimpio = usuarioEmail.toLowerCase().trim();
+    try {
+      const mailLimpio = usuarioEmail.toLowerCase().trim();
+      const { firebaseAuth } = await import('@/lib/firebaseClient');
+      await firebaseAuth.authStateReady();
+      const token = await firebaseAuth.currentUser?.getIdToken();
+      if (!token) throw new Error('Tu sesión expiró. Inicia sesión nuevamente.');
 
-    const token = await (await import('@/lib/firebaseClient')).firebaseAuth.currentUser?.getIdToken();
-    const claimResponse = await fetch('/api/claims', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({
-        items: carritoGlobal.map((item) => ({ productId: item.productoId, integrante: item.integrante, cantidad: item.cantidad, goTitulo: item.goTitulo, productoNombre: item.productoNombre })),
-        profile: { user_email: mailLimpio, nombre_completo: formNombre.trim(), usuario_red: '@' + formInstagram.replace('@', ''), telefono: formTelefono.trim() },
-      }),
-    });
-    const claimResult = await claimResponse.json();
-    if (!claimResponse.ok) {
-      alert(claimResult.error?.startsWith('OUT_OF_STOCK:') ? 'Ese slot ya no tiene suficientes unidades disponibles. Actualiza la página y vuelve a intentarlo.' : (claimResult.error || 'No se pudo guardar tu claim.'));
-      setProcesando(false);
+      const claimResponse = await fetch('/api/claims', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          items: carritoGlobal.map((item) => ({
+            productId: item.productoId,
+            integrante: item.integrante,
+            cantidad: item.cantidad,
+            goTitulo: item.goTitulo,
+            productoNombre: item.productoNombre,
+          })),
+          profile: {
+            user_email: mailLimpio,
+            nombre_completo: formNombre.trim(),
+            usuario_red: '@' + formInstagram.replace('@', ''),
+            telefono: formTelefono.trim(),
+          },
+        }),
+      });
+      const claimResult = await claimResponse.json();
+      if (!claimResponse.ok) {
+        alert(
+          claimResult.error?.startsWith('OUT_OF_STOCK:')
+            ? 'Ese slot ya no tiene suficientes unidades disponibles. Actualiza la página y vuelve a intentarlo.'
+            : claimResult.error || 'No se pudo guardar tu claim.'
+        );
+        setProductos([]);
+        if (goSeleccionado) await abrirGo(goSeleccionado, true);
+        return;
+      }
+
+      const desgloseTexto = carritoGlobal
+        .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — ' + i.integrante + ' (' + i.cantidad + ' und): $' + (i.precioUnitario * i.cantidad).toFixed(2))
+        .join('\n');
+
+      const mensajeWsp =
+        '¡Holis, Lia! Acabo de apartar slots en la web 🐻✨\n\n' +
+        '💌 *Joiner:* ' + formNombre + ' (@' + formInstagram.replace('@', '') + ')\n' +
+        '📱 *Contacto:* ' + formTelefono + '\n' +
+        '📍 *Destino:* ' + formCiudad + ' — ' + formDireccion + '\n' +
+        '🚚 *Método:* ' + formMetodoEnvio + '\n\n' +
+        '📋 *Desglose de slots:*\n' + desgloseTexto + '\n\n' +
+        '💰 *Total a pagar:* $' + totalDineroBolsa.toFixed(2) + ' USD\n\n' +
+        'Confirmo que sigo a @hyuneatelier y adjunto mi comprobante por aquí. 💗';
+
+      const paramsWsp = new URLSearchParams({ phone: '593999530327', text: mensajeWsp });
+      setDatosUltimoClaim({
+        desglose: desgloseTexto,
+        total: totalDineroBolsa,
+        urlWhatsapp: 'https://whatsapp.com?' + paramsWsp.toString(),
+      });
+
+      setCarritoGlobal([]);
+      setMostrarBolsa(false);
+      setMostrarModuloPago(true);
       setProductos([]);
       if (goSeleccionado) await abrirGo(goSeleccionado, true);
-      return;
+    } catch (err: any) {
+      alert(err?.message || 'No se pudo guardar tu claim.');
+    } finally {
+      setProcesando(false);
     }
-
-    const desgloseTexto = carritoGlobal
-      .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — ' + i.integrante + ' (' + i.cantidad + ' und): $' + (i.precioUnitario * i.cantidad).toFixed(2))
-      .join('\n');
-
-    const mensajeWsp =
-      '¡Holis, Lia! Acabo de apartar slots en la web 🐻✨\n\n' +
-      '💌 *Joiner:* ' + formNombre + ' (@' + formInstagram.replace('@', '') + ')\n' +
-      '📱 *Contacto:* ' + formTelefono + '\n' +
-      '📍 *Destino:* ' + formCiudad + ' — ' + formDireccion + '\n' +
-      '🚚 *Método:* ' + formMetodoEnvio + '\n\n' +
-      '📋 *Desglose de slots:*\n' + desgloseTexto + '\n\n' +
-      '💰 *Total a pagar:* $' + totalDineroBolsa.toFixed(2) + ' USD\n\n' +
-      'Confirmo que sigo a @hyuneatelier y adjunto mi comprobante por aquí. 💗';
-
-    setDatosUltimoClaim({
-      desglose: desgloseTexto,
-      total: totalDineroBolsa,
-      urlWhatsapp: 'https://wa.me' + encodeURIComponent(mensajeWsp),
-    });
-
-    setCarritoGlobal([]);
-    setMostrarBolsa(false);
-    setMostrarModuloPago(true);
-    setProcesando(false);
-    setProductos([]);
-    if (goSeleccionado) await abrirGo(goSeleccionado, true);
   }
-
   async function handleCancelarClaimAdmin(prod: Producto, slotName: string, mail: string) {
     if (!confirm('¿Liberar este slot?')) return;
     const claimsCopia = { ...(prod.claims_integrantes || {}) };
@@ -226,27 +246,22 @@ export default function Masterlist() {
     setProductos([]);
     if (goSeleccionado) await abrirGo(goSeleccionado, true);
   }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFF0F4] bg-[linear-gradient(to_right,rgba(255,255,255,0.4)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.4)_1px,transparent_1px)] bg-[size:30px_30px] flex items-center justify-center font-sans text-xs text-[#A66C8D]">
+      <div className="min-h-screen bg-[#FFF0F4] flex items-center justify-center font-sans text-xs text-[#A66C8D]">
         ✧ preparando tus Group Orders... 🧸
       </div>
     );
   }
 
   const slotsDisponiblesList = activeProducto
-    ? (activeProducto.lista_slots || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
+    ? (activeProducto.lista_slots || '').split(',').map((s) => s.trim()).filter(Boolean)
     : [];
-  const slotsFinales =
-    slotsDisponiblesList.length > 0
-      ? slotsDisponiblesList
-      : Object.keys(activeProducto?.stock_slots || {});
+  const slotsFinales = slotsDisponiblesList.length > 0 ? slotsDisponiblesList : Object.keys(activeProducto?.stock_slots || {});
 
   return (
-    <div className="min-h-screen bg-[#FFF0F4] bg-[linear-gradient(to_right,rgba(255,255,255,0.4)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.4)_1px,transparent_1px)] bg-[size:30px_30px] font-sans text-[#594653] pb-32">
+    <div className="min-h-screen bg-[#FFF0F4] font-sans text-[#594653] pb-32">
       <div className="bg-white/90 border-b border-[#F1D8E5] px-4 py-3 sticky top-0 z-30 backdrop-blur-xl">
         <div className="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-3">
@@ -254,28 +269,26 @@ export default function Masterlist() {
             <Link href="/mi-escritorio" className="text-xs font-bold text-[#A66C8D] hover:text-[#D45D98]">👤 Mi Cuenta</Link>
             {usuarioEmail === correoAdmin && <Link href="/admin" className="text-xs font-bold text-[#8A78AE]">👑 Admin</Link>}
           </div>
-
           <button type="button" onClick={() => setMostrarBolsa(true)} className="bg-[#D96B9F] hover:bg-[#C85B90] text-white text-xs font-extrabold px-4 py-2 rounded-full flex items-center gap-2 shadow-2xs">
             <span>🧸 Mis Claims ({totalUnidadesBolsa})</span>
             <span className="bg-white text-[#C85B90] px-2 py-0.5 rounded-full text-[11px]">${totalDineroBolsa.toFixed(2)}</span>
           </button>
         </div>
       </div>
-
       <div className="mx-auto max-w-5xl px-4 pt-6 pb-2">
-        <div className="rounded-[26px] border border-[#F0D7E4] bg-gradient-to-r from-[#FCEAF2] via-white to-[#F0F8F4] px-5 py-5 shadow-[0_8px_25px_rgba(180,120,150,0.06)]">
+        <div className="rounded-[26px] border border-[#F0D7E4] bg-gradient-to-r from-[#FCEAF2] via-white to-[#F0F8F4] px-5 py-5 shadow-sm">
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#C47A9C]">hyuneatelier · comunidad</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-[#493744] sm:text-3xl">Group Orders <span className="text-[#D889AA]">♡</span></h1>
+          <h1 className="mt-1 text-2xl font-black text-[#493744] sm:text-3xl">Group Orders <span className="text-[#D889AA]">♡</span></h1>
           <p className="mt-1 text-xs leading-5 text-[#806B79]">Encuentra tu catálogo, elige tus integrantes y reúne tus claims en un solo lugar.</p>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 pt-6">
         {!goSeleccionado ? (
-          <div className="bg-white/95 border border-[#F0D7E4] rounded-[28px] p-5 sm:p-6 shadow-[0_8px_30px_rgba(180,120,150,0.08)] space-y-5">
+          <div className="bg-white/95 border border-[#F0D7E4] rounded-[28px] p-5 sm:p-6 shadow-sm space-y-5">
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
-                <h1 className="text-xl font-black tracking-tight text-[#493744]">Group Orders disponibles</h1>
+                <h1 className="text-xl font-black text-[#493744]">Group Orders disponibles</h1>
                 <p className="text-xs text-[#8D7885]">Explora los catálogos, elige tus integrantes y reúne todos tus slots en una sola confirmación ✨</p>
               </div>
               <div className="flex gap-1.5 bg-[#FFF0F5] p-1 rounded-xl border border-[#F4DCE8]">
@@ -286,24 +299,11 @@ export default function Masterlist() {
                 ))}
               </div>
             </div>
-
-            {gosFiltrados.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#F0D0E0] bg-[#FFF0F5]/50 px-5 py-10 text-center sm:col-span-3 md:col-span-4">
-                <p className="text-2xl mb-2">🧸</p>
-                <p className="text-sm font-extrabold text-[#594653]">No hay catálogos disponibles en esta categoría</p>
-                <p className="text-xs text-[#8D7885] mt-1">Prueba otra pestaña para ver más Group Orders.</p>
-              </div>
-            ) : (
             <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
               {gosFiltrados.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => abrirGo(g.id)}
-                  className="min-w-0 h-full p-3 sm:p-4 rounded-2xl border border-[#F3DFE9] text-left bg-white hover:border-[#E5A9C5] hover:shadow-md transition-all flex flex-col gap-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
-                >
-                  <div className="w-full aspect-[4/3] bg-[#FFF7FA] rounded-xl flex items-center justify-center p-2 sm:p-3 border border-pink-50">
-                    {g.imagen_general ? <img src={g.imagen_general} alt={g.title} loading="lazy" className="block w-full h-full object-contain object-center" /> : <span className="text-xs text-zinc-300 font-bold">Sin fotografía</span>}
+                <button key={g.id} type="button" onClick={() => abrirGo(g.id)} className="min-w-0 h-full p-3 sm:p-4 rounded-2xl border border-[#F3DFE9] text-left bg-white hover:border-[#E5A9C5] hover:shadow-md transition-all flex flex-col gap-3">
+                  <div className="w-full aspect-[4/3] bg-[#FFF7FA] rounded-xl flex items-center justify-center p-2 border border-pink-50">
+                    {g.imagen_general ? <img src={g.imagen_general} alt={g.title} className="block w-full h-full object-contain" /> : <span className="text-xs text-zinc-300 font-bold">Sin fotografía</span>}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs sm:text-sm font-black uppercase text-zinc-900 leading-snug break-words">{g.title}</p>
@@ -312,46 +312,32 @@ export default function Masterlist() {
                 </button>
               ))}
             </div>
-            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
             <div className="md:col-span-5 flex flex-col gap-3">
-              <button type="button" onClick={() => { setGoSeleccionado(null); setProductoSeleccionado(null); }} className="w-full py-2.5 bg-white text-[#725D6B] font-bold text-xs uppercase rounded-xl border border-[#EEDCE6] hover:border-[#E5A9C5]">
-                ⬅️ Ver otros catálogos (tu carrito se mantiene)
+              <button type="button" onClick={() => { setGoSeleccionado(null); setProductoSeleccionado(null); }} className="w-full py-2.5 bg-white text-[#725D6B] font-bold text-xs uppercase rounded-xl border border-[#EEDCE6]">
+                ⬅️ Ver otros catálogos
               </button>
               <div className="bg-white rounded-2xl p-4 border border-[#EEDCE6]/80 flex flex-col gap-3 shadow-2xs">
-                <div className="w-full min-h-[220px] sm:min-h-[280px] max-h-[440px] bg-[#FFF9FC] rounded-xl flex items-center justify-center p-3 sm:p-5 border overflow-hidden">
-                  {(activeProducto?.imagen_producto || activeGo?.imagen_general) && <img src={activeProducto?.imagen_producto || activeGo?.imagen_general || ''} alt={activeProducto?.nombre_producto || activeGo?.title || 'Imagen del catálogo'} className="block w-full h-full max-h-[400px] object-contain object-center rounded-lg" />}
+                <div className="w-full min-h-[220px] max-h-[440px] bg-[#FFF9FC] rounded-xl flex items-center justify-center p-3 border overflow-hidden">
+                  {(activeProducto?.imagen_producto || activeGo?.imagen_general) && <img src={activeProducto?.imagen_producto || activeGo?.imagen_general || ''} alt="" className="block w-full h-full max-h-[400px] object-contain rounded-lg" />}
                 </div>
                 <div>
                   <span className="bg-[#D96B9F] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">{activeGo?.status || 'ABIERTO'}</span>
                   <h3 className="text-base font-black text-[#594653] uppercase mt-1">{activeGo?.title}</h3>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const urlGo = window.location.origin + '/gos?go=' + activeGo?.id;
-                      navigator.clipboard.writeText(urlGo);
-                      alert('🔗 ¡Link directo de este GO copiado! Listo para pegar en tus historias ✨\n\n' + urlGo);
-                    }}
-                    className="mt-2 inline-flex items-center gap-1.5 bg-[#FFF0F5] hover:bg-pink-100 text-pink-700 border border-[#F0D0E0] text-[11px] font-extrabold px-3 py-1.5 rounded-xl"
-                  >
-                    🔗 Copiar link directo de este GO
-                  </button>
-
                   {activeProducto?.descripcion && <p className="text-xs text-zinc-600 bg-[#FFF9FC] p-3 rounded-xl border mt-2 whitespace-pre-line">{activeProducto.descripcion}</p>}
                 </div>
               </div>
               {message && <p className="text-xs font-bold text-center text-[#C85B90] bg-[#FFF0F5] py-2 rounded-xl border border-[#F0D0E0]">{message}</p>}
             </div>
-
             <div className="md:col-span-7 flex flex-col gap-4">
               <div className="bg-white border border-[#EEDCE6]/80 rounded-2xl p-4 space-y-3 shadow-2xs">
                 <p className="text-[11px] font-bold text-[#A995A1] uppercase">Productos de este GO</p>
                 <div className="flex flex-wrap gap-2">
                   {productosDelGo.map((p) => (
                     <button key={p.id} type="button" onClick={() => setProductoSeleccionado(p.id)} className={`px-3 py-2 rounded-xl text-xs font-extrabold border ${Number(activeProducto?.id) === Number(p.id) ? 'bg-[#D96B9F] text-white shadow-sm border-zinc-950' : 'bg-[#FFF9FC] text-[#725D6B] border-[#EEDCE6]'}`}>
-                      {p.nombre_producto} (${p.precio})
+                      {p.nombre_producto} (${Number(p.precio).toFixed(2)})
                     </button>
                   ))}
                 </div>
@@ -361,7 +347,7 @@ export default function Masterlist() {
                 <div className="bg-white p-5 rounded-2xl border border-[#EEDCE6]/80 space-y-4 shadow-2xs">
                   <div className="flex justify-between items-center border-b pb-2">
                     <span className="text-xs font-extrabold text-[#594653] uppercase">Elige tus slots — {activeProducto.nombre_producto}</span>
-                    <span className="text-xs font-black text-[#C85B90]">${activeProducto.precio} USD c/u</span>
+                    <span className="text-xs font-black text-[#C85B90]">${Number(activeProducto.precio).toFixed(2)} USD c/u</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pr-1">
                     {slotsFinales.map((int) => {
@@ -395,22 +381,6 @@ export default function Masterlist() {
                   )}
                 </div>
               )}
-              {usuarioEmail === correoAdmin && activeProducto?.claims_integrantes && Object.keys(activeProducto.claims_integrantes).length > 0 && (
-                <div className="bg-white border rounded-2xl p-4 space-y-2">
-                  <h3 className="text-[11px] font-bold text-[#A995A1] uppercase text-center">Panel de administración 👑</h3>
-                  {Object.keys(activeProducto.claims_integrantes).map((sName) =>
-                    Object.entries(activeProducto.claims_integrantes?.[sName] || {}).map(([mail, cant]) => (
-                      <div key={sName + '-' + mail} className="bg-[#FFF9FC] border rounded-xl p-2.5 flex justify-between items-center text-xs">
-                        <div>
-                          <p className="font-bold uppercase text-[#594653]">Slot: {sName}</p>
-                          <p className="text-zinc-500 font-mono text-[10px]">{mail} ({cant} und)</p>
-                        </div>
-                        <button type="button" onClick={() => handleCancelarClaimAdmin(activeProducto, sName, mail)} className="text-[10px] bg-rose-100 text-rose-700 font-bold px-2.5 py-1 rounded-lg">Liberar</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -422,52 +392,34 @@ export default function Masterlist() {
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b pb-3">
                 <h3 className="text-base font-black text-zinc-900">🧸 Tu Carrito de Claims ({totalUnidadesBolsa})</h3>
-                <button type="button" onClick={() => setMostrarBolsa(false)} className="text-[#A995A1] hover:text-[#594653] font-bold text-sm">✕</button>
+                <button type="button" onClick={() => setMostrarBolsa(false)} className="text-[#A995A1] font-bold text-sm">✕</button>
               </div>
-
               {carritoGlobal.length === 0 ? (
                 <p className="text-xs text-[#A995A1] text-center py-12">Aún no has agregado ningún slot 🌸</p>
               ) : (
                 <>
                   <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                     {carritoGlobal.map((item) => (
-                      <div key={item.keyUnica} className="flex items-center justify-between gap-2 bg-[#FFF9FC] border border-[#EEDCE6]/80 p-2.5 rounded-2xl text-xs">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="w-11 h-11 rounded-xl object-cover border shrink-0" /> : <span className="w-11 h-11 rounded-xl bg-white flex items-center justify-center shrink-0">🧸</span>}
-                          <div className="truncate">
-                            <p className="text-[10px] font-bold text-[#A995A1] truncate">{item.goTitulo}</p>
-                            <p className="font-bold text-zinc-900 truncate">{item.productoNombre} — <span className="text-[#C85B90]">{item.integrante}</span></p>
-                            <p className="font-extrabold text-[#725D6B]">${(item.precioUnitario * item.cantidad).toFixed(2)} USD</p>
-                          </div>
+                      <div key={item.keyUnica} className="flex items-center justify-between gap-2 bg-[#FFF9FC] border p-2.5 rounded-2xl text-xs">
+                        <div className="truncate">
+                          <p className="font-bold text-zinc-900 truncate">{item.productoNombre} — <span className="text-[#C85B90]">{item.integrante}</span> ({item.cantidad})</p>
+                          <p className="font-extrabold text-[#725D6B]">${(item.precioUnitario * item.cantidad).toFixed(2)} USD</p>
                         </div>
                         <button type="button" onClick={() => setCarritoGlobal((prev) => prev.filter((x) => x.keyUnica !== item.keyUnica))} className="text-rose-500 font-bold text-xs px-2">✕</button>
                       </div>
                     ))}
                   </div>
-
                   <form onSubmit={handleConfirmarTodoElCarrito} className="space-y-2.5 border-t pt-3">
-                    <p className="text-[11px] font-bold uppercase text-[#A995A1]">Tus datos de compra</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input type="text" required placeholder="Nombre Completo" value={formNombre} onChange={(e) => setFormNombre(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC]" />
-                      <input type="text" required placeholder="Instagram (sin @)" value={formInstagram} onChange={(e) => setFormInstagram(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC] font-bold text-[#C85B90]" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input type="tel" required placeholder="Teléfono / WhatsApp" value={formTelefono} onChange={(e) => setFormTelefono(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC]" />
-                      <input type="text" required placeholder="Ciudad / Provincia" value={formCiudad} onChange={(e) => setFormCiudad(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC]" />
-                    </div>
+                    <input type="text" required placeholder="Nombre Completo" value={formNombre} onChange={(e) => setFormNombre(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC] w-full" />
+                    <input type="text" required placeholder="Instagram (sin @)" value={formInstagram} onChange={(e) => setFormInstagram(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC] w-full font-bold text-[#C85B90]" />
+                    <input type="tel" required placeholder="Teléfono / WhatsApp" value={formTelefono} onChange={(e) => setFormTelefono(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC] w-full" />
+                    <input type="text" required placeholder="Ciudad / Provincia" value={formCiudad} onChange={(e) => setFormCiudad(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC] w-full" />
                     <input type="text" required placeholder="Dirección exacta" value={formDireccion} onChange={(e) => setFormDireccion(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC] w-full" />
                     <select value={formMetodoEnvio} onChange={(e) => setFormMetodoEnvio(e.target.value)} className="border rounded-xl px-3 py-2 text-xs bg-[#FFF9FC] font-bold w-full">
                       <option value="Servientrega a Domicilio">🚚 Servientrega a Domicilio</option>
                       <option value="Retiro Físico en Cumbayá">🍰 Retiro Físico en Cumbayá</option>
                     </select>
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
-                      ⚠️ Importante: Si no me sigues en Instagram <strong>@hyuneatelier</strong>, no tomaré en cuenta el pedido, ya que es necesario para proofs.
-                    </div>
-                    <div className="bg-[#FFF0F5]/80 border border-[#F0D0E0] rounded-2xl p-3.5 flex justify-between items-center text-sm font-black">
-                      <span>Total a transferir:</span>
-                      <span className="text-[#C85B90]">${totalDineroBolsa.toFixed(2)} USD</span>
-                    </div>
-                    <button type="submit" disabled={procesando} className="w-full py-3 bg-[#D96B9F] hover:bg-zinc-800 text-white font-black text-xs uppercase rounded-xl">
+                    <button type="submit" disabled={procesando} className="w-full py-3 bg-[#D96B9F] text-white font-black text-xs uppercase rounded-xl">
                       {procesando ? 'Guardando claims...' : '🔒 Confirmar mis apartados ($' + totalDineroBolsa.toFixed(2) + ')'}
                     </button>
                   </form>
@@ -478,39 +430,25 @@ export default function Masterlist() {
         </div>
       )}
 
-            {mostrarModuloPago && datosUltimoClaim && (
+      {mostrarModuloPago && datosUltimoClaim && (
         <div className="fixed inset-0 bg-[#D96B9F]/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-[#F0D0E0] rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
             <h4 className="text-sm font-black text-[#C85B90] uppercase">✨ ¡Tus apartados ya están registrados! 🐻</h4>
-            <p className="text-xs text-[#725D6B]">
-              No necesitas escribirnos por WhatsApp todavía. Realiza tu transferencia y sube tu comprobante desde <strong>Mi Cuenta</strong> para que lo revisemos.
-            </p>
             <div className="bg-[#FFF9FC] p-4 rounded-2xl text-left text-xs space-y-1.5 text-[#725D6B] border">
               <p><strong>🏦 Banco Pichincha (Ahorros):</strong> #2213367970</p>
               <p><strong>👤 Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
               <p className="whitespace-pre-line text-[11px] bg-white p-2.5 rounded-lg border mt-1">{datosUltimoClaim.desglose}</p>
               <p className="text-sm font-black text-[#C85B90] pt-1">Total a transferir: ${datosUltimoClaim.total.toFixed(2)} USD</p>
             </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
-              ⚠️ Importante: Si no me sigues en Instagram <strong>@hyuneatelier</strong>, no tomaré en cuenta el pedido, ya que es una regla obligatoria.
-            </div>
-            <Link
-              href="/mi-escritorio"
-              className="w-full py-3 bg-[#D96B9F] hover:bg-[#C85B90] text-white font-extrabold text-xs uppercase rounded-xl block"
-            >
+            <Link href="/mi-escritorio" className="w-full py-3 bg-[#D96B9F] text-white font-extrabold text-xs uppercase rounded-xl block">
               💳 Ir a Mi Cuenta para subir comprobante
             </Link>
-            <button
-              type="button"
-              onClick={() => setMostrarModuloPago(false)}
-              className="w-full py-2 text-xs font-bold text-[#A995A1] hover:text-[#725D6B]"
-            >
+            <button type="button" onClick={() => setMostrarModuloPago(false)} className="w-full py-2 text-xs font-bold text-[#A995A1]">
               Seguir viendo catálogos
             </button>
           </div>
         </div>
       )}
-          </div>
+    </div>
   );
 }
-
