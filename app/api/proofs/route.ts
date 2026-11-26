@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import { randomUUID, createHash, createHmac } from 'crypto';
 import { db, requireAdmin, requireUser } from '@/lib/firebaseAdmin';
@@ -78,7 +77,6 @@ function getSigningKey(secret: string, date: string) {
   const serviceKey = hmac(regionKey, 's3');
   return hmac(serviceKey, 'aws4_request');
 }
-
 function signRequest(
   method: string,
   url: URL,
@@ -181,7 +179,6 @@ async function uploadToR2(
     throw new Error(`R2_UPLOAD_FAILED: ${response.status} ${detail.slice(0, 300)}`);
   }
 }
-
 async function deleteFromR2(key: string) {
   const config = getR2Config();
   const url = getObjectUrl(config.endpoint, config.bucket, key);
@@ -262,7 +259,6 @@ function getExtension(type: string) {
   if (type === 'image/webp') return 'webp';
   return 'pdf';
 }
-
 export async function POST(request: Request) {
   let uploadedKey = '';
 
@@ -323,12 +319,10 @@ export async function POST(request: Request) {
     }
 
     if (scope === 'GO') {
-      const [productsSnap, trackingSnap] = await Promise.all([
-        db.collection('productos').limit(1000).get(),
-        db.collection('seguimiento_claims')
-          .where('user_email', '==', email)
-          .get(),
-      ]);
+      const trackingSnap = await db
+        .collection('seguimiento_claims')
+        .where('user_email', '==', email)
+        .get();
 
       const cancelledClaims = new Set(
         trackingSnap.docs
@@ -336,9 +330,28 @@ export async function POST(request: Request) {
           .map((doc) => String(doc.data().claim_key || ''))
       );
 
+      const activeProductIds = Array.from(
+        new Set(
+          trackingSnap.docs
+            .filter((doc) => doc.data().estado_confirmacion !== 'Cancelado')
+            .map((doc) => String(doc.data().claim_key || '').split('-')[0])
+            .filter(Boolean)
+        )
+      );
+
+      const productDocs = activeProductIds.length
+        ? (
+            await db.getAll(
+              ...activeProductIds.map((pid) =>
+                db.collection('productos').doc(pid)
+              )
+            )
+          ).filter((doc) => doc.exists)
+        : (await db.collection('productos').limit(500).get()).docs;
+
       const goIds = new Set<string>();
 
-      for (const productDoc of productsSnap.docs) {
+      for (const productDoc of productDocs) {
         const product = productDoc.data() || {};
         const claims = parseObject(product.claims_integrantes);
 
@@ -367,7 +380,6 @@ export async function POST(request: Request) {
           goIds.add(String(product.go_id));
         }
       }
-
       const goRefs = Array.from(goIds).map((id) =>
         db.collection('gos').doc(id)
       );
@@ -385,9 +397,10 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      const shopOrders = await db.collection('pedidos')
+      const shopOrders = await db
+        .collection('pedidos')
         .where('user_email', '==', email)
-        .limit(1000)
+        .limit(50)
         .get();
 
       if (
@@ -461,7 +474,6 @@ export async function POST(request: Request) {
     );
   }
 }
-
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
