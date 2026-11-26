@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const names = [
-  'gos', 'pedidos', 'perfiles_joiners', 'productos', 'tienda_productos', 'solicitudes_envio',
+  'gos', 'productos', 'tienda_productos',
   'operaciones_pagos', 'operaciones_pedidos', 'operaciones_actualizaciones', 'comprobantes_pago',
 ];
 const clean = (value: unknown, max = 500) => String(value ?? '').trim().slice(0, max);
@@ -18,11 +18,37 @@ export async function GET(request: Request) {
   try {
     await requireAdmin(request);
     const url = new URL(request.url);
+
+    // Lightweight dashboard: Firestore aggregation counts avoid downloading
+    // entire collections just to render a handful of counters.
+    if (url.searchParams.get('summary') === '1') {
+      const count = async (collection: string, field?: string, value?: unknown) => {
+        let query: any = db.collection(collection);
+        if (field) query = query.where(field, '==', value);
+        const result = await query.count().get();
+        return Number(result.data().count || 0);
+      };
+      const [gosCount, productosCount, shopProductsCount, pendingProofsA,
+        pendingProofsB, shippingRequestsCount, openOrdersCount] = await Promise.all([
+        count('gos'), count('productos'), count('tienda_productos'),
+        count('comprobantes_pago', 'status', 'Pendiente de revisión'),
+        count('comprobantes_pago', 'status', 'Pendiente'),
+        count('solicitudes_envio'), count('pedidos'),
+      ]);
+      return NextResponse.json({ data: {
+        gosCount, productosCount, shopProductsCount,
+        pendingProofsCount: pendingProofsA + pendingProofsB,
+        shippingRequestsCount, openOrdersCount,
+      } }, { headers: { 'Cache-Control': 'private, max-age=15, stale-while-revalidate=30' } });
+    }
+
     const requested = (url.searchParams.get('collections') || names.join(','))
       .split(',').filter((name) => names.includes(name));
     const data: Record<string, any[]> = {};
+    // The operations workspace only needs recent history, not thousands of
+    // old records. Keep its initial payload bounded.
     await Promise.all(requested.map(async (name) => {
-      const snap = await db.collection(name).limit(1000).get();
+      const snap = await db.collection(name).limit(200).get();
       data[name] = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     }));
     return NextResponse.json({ data }, { headers: { 'Cache-Control': 'private, no-store' } });
