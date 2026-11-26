@@ -478,10 +478,13 @@ export default function Masterlist() {
         </div>
       )}
 
-      {mostrarModuloPago && datosUltimoClaim && (
+            {mostrarModuloPago && datosUltimoClaim && (
         <div className="fixed inset-0 bg-[#D96B9F]/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-[#F0D0E0] rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
-            <h4 className="text-sm font-black text-[#C85B90] uppercase">✨ ¡Tus apartados están registrados! 🐻</h4>
+            <h4 className="text-sm font-black text-[#C85B90] uppercase">✨ ¡Tus apartados ya están registrados! 🐻</h4>
+            <p className="text-xs text-[#725D6B]">
+              No necesitas escribirnos por WhatsApp todavía. Realiza tu transferencia y sube tu comprobante desde <strong>Mi Cuenta</strong> para que lo revisemos.
+            </p>
             <div className="bg-[#FFF9FC] p-4 rounded-2xl text-left text-xs space-y-1.5 text-[#725D6B] border">
               <p><strong>🏦 Banco Pichincha (Ahorros):</strong> #2213367970</p>
               <p><strong>👤 Titular:</strong> Isabel Revollar — <strong>CI:</strong> 1752806388</p>
@@ -491,24 +494,19 @@ export default function Masterlist() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-900 font-semibold">
               ⚠️ Importante: Si no me sigues en Instagram <strong>@hyuneatelier</strong>, no tomaré en cuenta el pedido, ya que es una regla obligatoria.
             </div>
-            <a
-              href={datosUltimoClaim.urlWhatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3 bg-[#78A997] hover:bg-[#639781] text-white font-bold text-xs uppercase rounded-xl block"
+            <Link
+              href="/mi-escritorio"
+              className="w-full py-3 bg-[#D96B9F] hover:bg-[#C85B90] text-white font-extrabold text-xs uppercase rounded-xl block"
             >
-              💬 Enviar comprobante por WhatsApp 🍰
-            </a>
+              💳 Ir a Mi Cuenta para subir comprobante
+            </Link>
             <button
               type="button"
               onClick={() => setMostrarModuloPago(false)}
               className="w-full py-2 text-xs font-bold text-[#A995A1] hover:text-[#725D6B]"
             >
-              Cerrar ventana
+              Seguir viendo catálogos
             </button>
           </div>
         </div>
       )}
-    </div>
-  );
-}
