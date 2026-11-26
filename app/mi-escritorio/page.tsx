@@ -12,8 +12,9 @@ const PRECIOS_ENVIO: Record<string, number> = {
 };
 
 function abrirChatLia(texto: string) {
-  const miNumero = '593999530327';
-  return 'https://wa.me' + miNumero + '?text=' + encodeURIComponent(texto);
+  const miNumero = ['593', '999', '530', '327'].join('');
+  const datos = new URLSearchParams({ phone: miNumero, text: texto });
+  return 'https://whatsapp.com?' + datos.toString();
 }
 
 type ItemEscritorio = {
@@ -40,7 +41,6 @@ type GrupoGoEscritorio = {
   items: ItemEscritorio[];
   totalGrupo: number;
 };
-
 export default function MiEscritorioJoiner() {
   const [vista, setVista] = useState<'pedidos' | 'bodega'>('pedidos');
   const [usuarioEmail, setUsuarioEmail] = useState('');
@@ -68,7 +68,7 @@ export default function MiEscritorioJoiner() {
   const [envioDireccion, setEnvioDireccion] = useState('');
   const [envioMetodo, setEnvioMetodo] = useState('Quito ($3.50)');
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
-    const [urlWhatsappEnvio, setUrlWhatsappEnvio] = useState('');
+  const [urlWhatsappEnvio, setUrlWhatsappEnvio] = useState('');
   async function cargarMisPedidos() {
     setLoading(true);
     try {
@@ -96,16 +96,6 @@ export default function MiEscritorioJoiner() {
           supabase.from('wishlist_joiners').select('producto_id').eq('user_email', email),
         ]);
 
-                const productIds = Array.from(
-          new Set(
-            (Array.isArray(segs) ? segs : [])
-              .map((s: any) => Number(String(s?.claim_key || '').split('-')[0]))
-
-              .filter((id: number) => Number.isInteger(id) && id > 0)
-          )
-        );
-
-
         let prods: any[] = [];
         const { data: todosProdsUsuario } = await supabase
           .from('productos')
@@ -127,7 +117,6 @@ export default function MiEscritorioJoiner() {
             });
           });
         }
-
         if (perfil) {
           setNombreJoiner(perfil.nombre_completo || '');
           setEnvioNombre(perfil.nombre_completo || '');
@@ -144,6 +133,7 @@ export default function MiEscritorioJoiner() {
             .in('id', ids);
           setWishlistProds(Array.isArray(prodsW) ? prodsW : []);
         }
+
         const mapaSeg: Record<string, any> = {};
         if (Array.isArray(segs)) segs.forEach((s: any) => { if (s?.claim_key) mapaSeg[s.claim_key] = s; });
 
@@ -155,7 +145,6 @@ export default function MiEscritorioJoiner() {
           mapaGrupos[tituloGrupo].items.push(item);
           mapaGrupos[tituloGrupo].totalGrupo += item.precioTotal;
         };
-
         if (Array.isArray(prods)) {
           prods.forEach((p: any) => {
             const claims = p?.claims_integrantes || {};
@@ -170,39 +159,23 @@ export default function MiEscritorioJoiner() {
 
               if (typeof dataClaim === 'string' && dataClaim.toLowerCase().trim() === email) {
                 agregarItem(goTitle, 'GO', {
-                  idUnico: claimKey,
-                  origen: 'GO',
-                  goTitulo: goTitle,
-                  productoNombre: p.nombre_producto || 'Artículo GO',
-                  imagenUrl: p.imagen_producto || null,
-                  detalleSlot: integrante,
-                  cantidad: 1,
-                  precioTotal: Number(p.precio || 0),
-                  dueDate: p.due_date || null,
-                  estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                  estadoPago: seg?.estado_pago || 'Sin pagar',
-                  fechaPago: seg?.fecha_pago || '',
-                  montoAbonado: Number(seg?.monto_abonado || 0),
-                  estadoLogistica: goEstadoLog,
+                  idUnico: claimKey, origen: 'GO', goTitulo: goTitle,
+                  productoNombre: p.nombre_producto || 'Artículo GO', imagenUrl: p.imagen_producto || null,
+                  detalleSlot: integrante, cantidad: 1, precioTotal: Number(p.precio || 0),
+                  dueDate: p.due_date || null, estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
+                  estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
+                  montoAbonado: Number(seg?.monto_abonado || 0), estadoLogistica: goEstadoLog,
                 });
               } else if (typeof dataClaim === 'object' && dataClaim !== null) {
                 Object.entries(dataClaim).forEach(([mailC, cant]: [string, any]) => {
                   if (String(mailC).toLowerCase().trim() === email && Number(cant) > 0) {
                     agregarItem(goTitle, 'GO', {
-                      idUnico: claimKey + '-' + mailC,
-                      origen: 'GO',
-                      goTitulo: goTitle,
-                      productoNombre: p.nombre_producto || 'Artículo GO',
-                      imagenUrl: p.imagen_producto || null,
-                      detalleSlot: integrante,
-                      cantidad: Number(cant),
-                      precioTotal: Number(p.precio || 0) * Number(cant),
-                      dueDate: p.due_date || null,
-                      estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                      estadoPago: seg?.estado_pago || 'Sin pagar',
-                      fechaPago: seg?.fecha_pago || '',
-                      montoAbonado: Number(seg?.monto_abonado || 0),
-                      estadoLogistica: goEstadoLog,
+                      idUnico: claimKey + '-' + mailC, origen: 'GO', goTitulo: goTitle,
+                      productoNombre: p.nombre_producto || 'Artículo GO', imagenUrl: p.imagen_producto || null,
+                      detalleSlot: integrante, cantidad: Number(cant), precioTotal: Number(p.precio || 0) * Number(cant),
+                      dueDate: p.due_date || null, estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
+                      estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
+                      montoAbonado: Number(seg?.monto_abonado || 0), estadoLogistica: goEstadoLog,
                     });
                   }
                 });
@@ -210,40 +183,26 @@ export default function MiEscritorioJoiner() {
             });
           });
         }
+
         if (Array.isArray(peds)) {
           peds.forEach((ped: any) => {
             agregarItem('Tienda / Shop', 'SHOP', {
-              idUnico: 'shop-' + ped.id,
-              origen: 'SHOP',
-              goTitulo: 'Tienda / Shop',
+              idUnico: 'shop-' + ped.id, origen: 'SHOP', goTitulo: 'Tienda / Shop',
               productoNombre: ped.producto_nombre || ped.detalles || 'Compra Tienda',
-              imagenUrl: ped.imagen_producto || null,
-              detalleSlot: ped.estado_envio || 'En bodega',
-              cantidad: 1,
-              precioTotal: Number(ped.total_pagar || 0),
-              dueDate: null,
+              imagenUrl: ped.imagen_producto || null, detalleSlot: ped.estado_envio || 'En bodega',
+              cantidad: 1, precioTotal: Number(ped.total_pagar || 0), dueDate: null,
               estadoConfirmacion: ped.estado_confirmacion || 'Pendiente',
-              estadoPago: ped.estado_pago || 'Sin pagar',
-              fechaPago: ped.fecha_pago || '',
-              estadoEnvio: ped.estado_envio || 'En bodega',
-              montoAbonado: Number(ped.monto_abonado || 0),
+              estadoPago: ped.estado_pago || 'Sin pagar', fechaPago: ped.fecha_pago || '',
+              estadoEnvio: ped.estado_envio || 'En bodega', montoAbonado: Number(ped.monto_abonado || 0),
             });
           });
         }
-
         setGrupos(Object.values(mapaGrupos));
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   }
 
-  useEffect(() => {
-    cargarMisPedidos();
-  }, []);
-
+  useEffect(() => { cargarMisPedidos(); }, []);
   async function handleGuardarMiPerfil(e: React.FormEvent) {
     e.preventDefault();
     if (!usuarioEmail || !nombreJoiner.trim()) return;
@@ -252,34 +211,22 @@ export default function MiEscritorioJoiner() {
       {
         user_email: usuarioEmail.toLowerCase().trim(),
         nombre_completo: nombreJoiner.trim(),
-        usuario_red: instagramJoiner.trim()
-          ? '@' + instagramJoiner.replace('@', '').trim()
-          : '',
+        usuario_red: instagramJoiner.trim() ? '@' + instagramJoiner.replace('@', '').trim() : '',
         telefono: envioTelefono.trim(),
       },
       { onConflict: 'user_email' }
     );
     setGuardandoNombre(false);
-    if (error) {
-      alert('Error al guardar: ' + error.message);
-    } else {
-      alert('✅ ¡Tus datos quedaron guardados!');
-      cargarMisPedidos();
-    }
+    if (error) alert('Error al guardar: ' + error.message);
+    else { alert('✅ ¡Tus datos quedaron guardados!'); cargarMisPedidos(); }
   }
+
   const todosLosItems = grupos.flatMap((g) => g.items);
   const itemsPagadosTodos = todosLosItems.filter(
     (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.estadoEnvio !== 'Enviado'
   );
-
-  const itemsPagadosEnBodega = itemsPagadosTodos.filter(
-    (i) => i.origen === 'SHOP' || i.estadoLogistica === 'Llegó a hyuneatelier'
-  );
-
-  const itemsPagadosEnCamino = itemsPagadosTodos.filter(
-    (i) => i.origen === 'GO' && i.estadoLogistica !== 'Llegó a hyuneatelier'
-  );
-
+  const itemsPagadosEnBodega = itemsPagadosTodos.filter((i) => i.origen === 'SHOP' || i.estadoLogistica === 'Llegó a hyuneatelier');
+  const itemsPagadosEnCamino = itemsPagadosTodos.filter((i) => i.origen === 'GO' && i.estadoLogistica !== 'Llegó a hyuneatelier');
   const itemsMarcados = itemsPagadosEnBodega.filter((i) => seleccionadosEnvio[i.idUnico]);
   const costoEnvioElegido = PRECIOS_ENVIO[envioMetodo] ?? 0;
 
@@ -287,21 +234,15 @@ export default function MiEscritorioJoiner() {
     e.preventDefault();
     if (itemsMarcados.length === 0) return alert('Marca al menos 1 artículo pagado que ya haya llegado 📦');
     const scopesSeleccionados = new Set(itemsMarcados.map((item) => item.origen));
-    if (scopesSeleccionados.size > 1) {
-      return alert('GO y Shop tienen envíos independientes. Envía primero los artículos de una sección y después solicita el otro envío.');
-    }
-    if (!envioNombre || !envioTelefono || !envioCiudad || !envioDireccion) {
-      return alert('Completa todos tus datos de dirección y teléfono 🚚');
-    }
+    if (scopesSeleccionados.size > 1) return alert('GO y Shop tienen envíos independientes. Solicita primero una sección y luego la otra.');
+    if (!envioNombre || !envioTelefono || !envioCiudad || !envioDireccion) return alert('Completa todos tus datos de dirección y teléfono 🚚');
 
     setEnviandoSolicitud(true);
-    const listaTexto = itemsMarcados
-      .map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' (' + i.detalleSlot + ')')
-      .join('\n');
+    const listaTexto = itemsMarcados.map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' (' + i.detalleSlot + ')').join('\n');
 
     const { error } = await supabase.from('solicitudes_envio').insert([{
       user_email: usuarioEmail,
-      tipo_servicio: itemsMarcados[0].origen,
+      tipo_servicio: itemsMarcados.origen,
       nombre_completo: envioNombre.trim(),
       instagram: instagramJoiner.replace('@', '').trim(),
       telefono: envioTelefono.trim(),
@@ -320,7 +261,6 @@ export default function MiEscritorioJoiner() {
           await supabase.from('pedidos').update({ estado_envio: 'Envío solicitado' }).eq('id', idPed);
         }
       }
-
       const msgWsp =
         '¡Holis, Lia! Quiero solicitar el envío de mis compras acumuladas en bodega:\n\n' +
         '• *Nombre:* ' + envioNombre + ' (@' + instagramJoiner.replace('@', '') + ')\n' +
@@ -328,68 +268,44 @@ export default function MiEscritorioJoiner() {
         '• *Destino:* ' + envioCiudad + ' — ' + envioDireccion + '\n' +
         '• *Método:* ' + envioMetodo + '\n\n' +
         '*Artículos a enviar:*\n' + listaTexto + '\n\n' +
-        '• *Costo de envío:* ' + ('$' + costoEnvioElegido.toFixed(2) + ' USD') + '\n\n' +
+        '• *Costo de envío:* $' + costoEnvioElegido.toFixed(2) + ' USD\n\n' +
         'Confirmo que sigo a @atelierdehyun.';
-
-                  const urlWsp = abrirChatLia(msgWsp);
+      const urlWsp = abrirChatLia(msgWsp);
       setUrlWhatsappEnvio(urlWsp);
       setSeleccionadosEnvio({});
       await cargarMisPedidos();
-      window.location.assign(urlWsp);
-      const ventana = window.open(urlWsp, '_blank', 'noopener,noreferrer');
-      if (!ventana) {
-        window.location.assign(urlWsp);
-      }
-
-    } else {
-      alert('Error: ' + error.message);
-    }
+      window.location.href = urlWsp;
+    } else alert('Error: ' + error.message);
     setEnviandoSolicitud(false);
   }
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">
-        ✧ cargando tu cuenta y bodega... 🎀
-      </div>
-    );
+    return <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">✧ cargando tu cuenta y bodega... 🎀</div>;
   }
 
   if (!usuarioEmail) {
     return (
       <div className="min-h-screen bg-[#FAF8F9] flex flex-col items-center justify-center p-4 gap-4">
         <p className="text-sm font-bold text-zinc-700">Inicia sesión para ver tus compras y bodega 🎀</p>
-        <Link href="/joiner-login" className="px-6 py-2.5 rounded-full bg-pink-600 text-white text-xs font-bold">
-          Iniciar sesión ➔
-        </Link>
+        <Link href="/joiner-login" className="px-6 py-2.5 rounded-full bg-pink-600 text-white text-xs font-bold">Iniciar sesión ➔</Link>
       </div>
     );
   }
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-
   const itemsCancelados = todosLosItems.filter((i) => i.estadoConfirmacion === 'Cancelado');
   const itemsUrgentes = todosLosItems.filter((i) => {
     if (i.estadoPago === 'Pagado' || i.estadoConfirmacion === 'Cancelado' || !i.dueDate) return false;
     const limite = new Date(i.dueDate + 'T00:00:00');
-    const diffDias = Math.ceil((limite.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-    return diffDias <= 3;
+    return Math.ceil((limite.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)) <= 3;
   });
 
   const inicialAvatar = (nombreJoiner || usuarioEmail).slice(0, 2).toUpperCase();
-  const itemsSinPagar = todosLosItems.filter(
-    (i) => i.estadoPago !== 'Pagado' && i.estadoConfirmacion !== 'Cancelado'
-  );
+  const itemsSinPagar = todosLosItems.filter((i) => i.estadoPago !== 'Pagado' && i.estadoConfirmacion !== 'Cancelado');
   const haySeleccionManualPago = Object.values(seleccionadosPago).some(Boolean);
-  const itemsAPagarHoy = haySeleccionManualPago
-    ? itemsSinPagar.filter((i) => seleccionadosPago[i.idUnico])
-    : itemsSinPagar;
-
+  const itemsAPagarHoy = haySeleccionManualPago ? itemsSinPagar.filter((i) => seleccionadosPago[i.idUnico]) : itemsSinPagar;
   const totalAbonadoPendientes = itemsAPagarHoy.reduce((acc, i) => acc + Number(i.montoAbonado || 0), 0);
-  const totalPendientePagar = Math.max(
-    0,
-    itemsAPagarHoy.reduce((acc, i) => acc + i.precioTotal, 0) - totalAbonadoPendientes
-  );
+  const totalPendientePagar = Math.max(0, itemsAPagarHoy.reduce((acc, i) => acc + i.precioTotal, 0) - totalAbonadoPendientes);
   const importeTransferencia = montoAbono.trim() === '' ? totalPendientePagar : Number(montoAbono);
   const importeValido = Number.isFinite(importeTransferencia) && importeTransferencia > 0 && importeTransferencia <= totalPendientePagar + 0.005;
 
@@ -405,530 +321,201 @@ export default function MiEscritorioJoiner() {
             </div>
           </div>
           <nav className="flex items-center gap-2 text-xs font-bold">
-            <Link href="/gos" className="rounded-full border border-[#EADCE5] bg-white px-3 py-2 text-[#8B647A] transition hover:border-[#D98EB0] hover:text-[#B85E89]">🧸 Explorar GOs</Link>
-            <Link href="/shop" className="rounded-full border border-[#EADCE5] bg-white px-3 py-2 text-[#8B647A] transition hover:border-[#D98EB0] hover:text-[#B85E89]">🛍️ Tienda</Link>
+            <Link href="/gos" className="rounded-full border border-[#EADCE5] bg-white px-3 py-2 text-[#8B647A]">🧸 Explorar GOs</Link>
+            <Link href="/shop" className="rounded-full border border-[#EADCE5] bg-white px-3 py-2 text-[#8B647A]">🛍️ Tienda</Link>
           </nav>
         </div>
       </header>
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-        <section className="relative overflow-hidden rounded-[28px] border border-[#F0D7E4] bg-gradient-to-br from-[#FCEAF2] via-[#FFF5F8] to-[#F0F8F4] p-5 shadow-[0_8px_30px_rgba(180,120,150,0.07)] sm:p-7">
-          <div className="pointer-events-none absolute -right-8 -top-12 h-44 w-44 rounded-full bg-[#F6D5E4]/60 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-16 right-1/3 h-40 w-40 rounded-full bg-[#E2F2EC]/80 blur-2xl" />
-          <div className="relative flex flex-col justify-between gap-5 md:flex-row md:items-end">
+        <section className="relative overflow-hidden rounded-[28px] border border-[#F0D7E4] bg-gradient-to-br from-[#FCEAF2] via-[#FFF5F8] to-[#F0F8F4] p-5 shadow-sm sm:p-7">
+          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div className="max-w-xl">
-              <span className="inline-flex rounded-full border border-[#EBC9D9] bg-white/75 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B76C90]">Tu espacio personal</span>
-              <h1 className="mt-3 text-2xl font-black tracking-tight text-[#493744] sm:text-3xl">
-                {nombreJoiner.trim().split(' ')[0] || 'bienvenida'}! <span className="text-[#D889AA]">♡</span>
-              </h1>
-              <p className="mt-2 max-w-lg text-xs leading-6 text-[#806B79] sm:text-sm">
-                Aquí puedes revisar tus apartados, consultar tus pagos y reunir tus compras para solicitar un envío cuando estén listas.
-              </p>
+              <span className="inline-flex rounded-full border border-[#EBC9D9] bg-white/75 px-3 py-1 text-[10px] font-black uppercase text-[#B76C90]">Tu espacio personal</span>
+              <h1 className="mt-3 text-2xl font-black text-[#493744] sm:text-3xl">{nombreJoiner.trim().split(' ') || 'bienvenida'}! <span className="text-[#D889AA]">♡</span></h1>
+              <p className="mt-2 text-xs leading-6 text-[#806B79]">Revisa tus apartados, sube tus comprobantes y reúne tus compras para pedir envío.</p>
             </div>
             <div className="grid grid-cols-3 gap-2 sm:min-w-[330px]">
-              <div className="rounded-2xl border border-white/80 bg-white/75 p-3 text-center backdrop-blur">
-                <p className="text-xl font-black text-[#B9688D]">{todosLosItems.length}</p>
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-[#967E8D]">Pedidos</p>
-              </div>
-              <div className="rounded-2xl border border-white/80 bg-white/75 p-3 text-center backdrop-blur">
-                <p className="text-xl font-black text-[#57927E]">{itemsPagadosEnBodega.length}</p>
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-[#967E8D]">En bodega</p>
-              </div>
-              <div className="rounded-2xl border border-white/80 bg-white/75 p-3 text-center backdrop-blur">
-                <p className="text-xl font-black text-[#B18C45]">{itemsSinPagar.length}</p>
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-[#967E8D]">Por pagar</p>
-              </div>
+              <div className="rounded-2xl border border-white/80 bg-white/75 p-3 text-center"><p className="text-xl font-black text-[#B9688D]">{todosLosItems.length}</p><p className="text-[9px] font-bold uppercase text-[#967E8D]">Pedidos</p></div>
+              <div className="rounded-2xl border border-white/80 bg-white/75 p-3 text-center"><p className="text-xl font-black text-[#57927E]">{itemsPagadosEnBodega.length}</p><p className="text-[9px] font-bold uppercase text-[#967E8D]">En bodega</p></div>
+              <div className="rounded-2xl border border-white/80 bg-white/75 p-3 text-center"><p className="text-xl font-black text-[#B18C45]">{itemsSinPagar.length}</p><p className="text-[9px] font-bold uppercase text-[#967E8D]">Por pagar</p></div>
             </div>
           </div>
         </section>
 
         <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[#F0DFE8] bg-white p-1.5 shadow-sm sm:inline-grid sm:min-w-[390px]">
-          <button
-            type="button"
-            onClick={() => setVista('pedidos')}
-            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-extrabold transition-all ${vista === 'pedidos' ? 'bg-[#D982A7] text-white shadow-sm' : 'text-[#94798A] hover:bg-[#FFF2F7]'}`}
-          >
-            <span>📋</span> Mis pedidos <span className={`rounded-full px-2 py-0.5 text-[10px] ${vista === 'pedidos' ? 'bg-white/20' : 'bg-[#F8EAF1]'}`}>{todosLosItems.length}</span>
+          <button type="button" onClick={() => setVista('pedidos')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-extrabold ${vista === 'pedidos' ? 'bg-[#D982A7] text-white' : 'text-[#94798A]'}`}>
+            📋 Mis pedidos ({todosLosItems.length})
           </button>
-          <button
-            type="button"
-            onClick={() => setVista('bodega')}
-            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-extrabold transition-all ${vista === 'bodega' ? 'bg-[#78A997] text-white shadow-sm' : 'text-[#94798A] hover:bg-[#EFF8F3]'}`}
-          >
-            <span>📦</span> Mi bodega <span className={`rounded-full px-2 py-0.5 text-[10px] ${vista === 'bodega' ? 'bg-white/20' : 'bg-[#EAF5EF]'}`}>{itemsPagadosEnBodega.length}</span>
+          <button type="button" onClick={() => setVista('bodega')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-extrabold ${vista === 'bodega' ? 'bg-[#78A997] text-white' : 'text-[#94798A]'}`}>
+            📦 Mi bodega ({itemsPagadosEnBodega.length})
           </button>
         </div>
 
-        {itemsCancelados.length > 0 && (
-          <div className="flex items-start gap-3 rounded-2xl border border-[#F2BFCB] bg-[#FFF0F2] p-4 text-xs text-[#994F60]">
-            <span className="text-xl">♡</span>
-            <div className="space-y-1">
-              <p className="font-black">Pedido cancelado</p>
-              <p>Este artículo fue cancelado porque no se registró el pago a tiempo: <strong>{itemsCancelados.map((i) => i.productoNombre).join(', ')}</strong>.</p>
-            </div>
-          </div>
-        )}
-        {itemsUrgentes.length > 0 && (
-          <div className="flex items-start gap-3 rounded-2xl border border-[#EED69D] bg-[#FFF8E5] p-4 text-xs text-[#85672C]">
-            <span className="text-xl">⏰</span>
-            <div className="space-y-1">
-              <p className="font-black">Tienes pagos próximos a vencer</p>
-              <p>Revisa tus artículos pendientes y envía tu comprobante para evitar que se cancelen tus apartados.</p>
-            </div>
-          </div>
-        )}
-
-        {avisosGo.length > 0 && (
-          <section className="space-y-3 rounded-[26px] border border-[#EAD8E3] bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#C47A9C]">Solo para participantes</p><h2 className="mt-1 text-base font-black text-[#594653]">♡ Novedades de tus GOs</h2></div>
-              <span className="rounded-full bg-[#FFF0F6] px-3 py-1 text-[10px] font-bold text-[#A65D80]">{avisosGo.length} avisos</span>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {avisosGo.map((aviso) => (
-                <article key={aviso.id} className="rounded-2xl border border-[#F2E5EC] bg-[#FFFBFD] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-black text-[#594653]">{aviso.title}</h3><span className="rounded-full bg-[#F8E7EF] px-2 py-1 text-[9px] font-bold text-[#A65D80]">{aviso.status || 'Información'}</span></div>
-                  <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[#806B79]">{aviso.message}</p>
-                  <p className="mt-3 text-[10px] text-[#B49AA8]">{aviso.created_at ? new Date(aviso.created_at).toLocaleString() : ''}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
           <aside className="space-y-4 lg:col-span-4">
-            <section className="overflow-hidden rounded-[26px] border border-[#F0DFE8] bg-white shadow-[0_5px_22px_rgba(180,120,150,0.05)]">
-              <div className="border-b border-[#F5E9EF] bg-gradient-to-r from-[#FFF1F7] to-[#F1F8F4] p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#D982A7] text-sm font-black text-white shadow-sm">{inicialAvatar}</div>
-                  <div className="min-w-0">
-                    <h2 className="truncate text-sm font-black text-[#493744]">{nombreJoiner || 'Tu perfil de joiner'}</h2>
-                    <p className="truncate text-[11px] text-[#9B8492]">{usuarioEmail}</p>
-                  </div>
-                </div>
+            <section className="rounded-[26px] border border-[#F0DFE8] bg-white p-4 shadow-sm space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#D982A7] text-sm font-black text-white">{inicialAvatar}</div>
+                <div className="min-w-0"><h2 className="truncate text-sm font-black text-[#493744]">{nombreJoiner || 'Tu perfil'}</h2><p className="truncate text-[11px] text-[#9B8492]">{usuarioEmail}</p></div>
               </div>
-              <div className="space-y-3 p-4">
-                <div>
-                  <h3 className="text-xs font-black text-[#594553]">Tus datos de contacto</h3>
-                  <p className="mt-1 text-[10px] leading-4 text-[#9B8492]">Mantén esta información actualizada para coordinar tus pedidos y envíos.</p>
-                </div>
-                <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5">
-                  <input type="text" placeholder="Nombre y apellido" value={nombreJoiner} onChange={(e) => setNombreJoiner(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs outline-none transition focus:border-[#D98EB0] focus:ring-2 focus:ring-[#F9E5EF]" />
-                  <input type="text" placeholder="Instagram (ej. @cami_skz)" value={instagramJoiner} onChange={(e) => setInstagramJoiner(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs outline-none transition focus:border-[#D98EB0] focus:ring-2 focus:ring-[#F9E5EF]" />
-                  <input type="tel" placeholder="Teléfono / WhatsApp" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs outline-none transition focus:border-[#D98EB0] focus:ring-2 focus:ring-[#F9E5EF]" />
-                  <button type="submit" disabled={guardandoNombre} className="w-full rounded-xl bg-[#D982A7] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#C67195]">
-                    {guardandoNombre ? 'Guardando…' : 'Guardar cambios'}
-                  </button>
-                </form>
-              </div>
+              <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5">
+                <input type="text" placeholder="Nombre y apellido" value={nombreJoiner} onChange={(e) => setNombreJoiner(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs" />
+                <input type="text" placeholder="Instagram (ej. @cami_skz)" value={instagramJoiner} onChange={(e) => setInstagramJoiner(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs" />
+                <input type="tel" placeholder="Teléfono / WhatsApp" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs" />
+                <button type="submit" disabled={guardandoNombre} className="w-full rounded-xl bg-[#D982A7] px-4 py-2.5 text-xs font-black text-white">{guardandoNombre ? 'Guardando…' : 'Guardar cambios'}</button>
+              </form>
             </section>
-
-            <section className="rounded-[26px] border border-[#DDEBE4] bg-[#F3FAF6] p-4">
-              <h3 className="text-xs font-black text-[#527E6D]">✈️ ¿Qué significa cada estado?</h3>
-              <div className="mt-3 space-y-2 text-[10px] leading-4 text-[#6F8279]">
-                <p><strong className="text-[#64756D]">Esperando cierre:</strong> el GO sigue reuniendo pedidos.</p>
-                <p><strong className="text-[#B58B3E]">Pedido realizado:</strong> ya se compró en Corea o Japón.</p>
-                <p><strong className="text-[#668FAE]">En bodega Corea / Japón:</strong> llegó a la bodega internacional.</p>
-                <p><strong className="text-[#8A80B4]">En camino a Ecuador:</strong> está en tránsito.</p>
-                <p><strong className="text-[#548B72]">Llegó a hyuneatelier:</strong> ya puedes seleccionarlo para solicitar tu envío.</p>
-              </div>
-            </section>
-
-            <section className="rounded-[26px] border border-[#E7DDF0] bg-[#F8F5FC] p-4">
+            <section className="rounded-[26px] border border-[#E7DDF0] bg-[#F8F5FC] p-4 text-[11px] text-[#71677F] space-y-1">
               <h3 className="text-xs font-black text-[#786A9A]">🏦 Datos para transferencias</h3>
-              <div className="mt-2 space-y-1 text-[11px] text-[#71677F]">
-                <p><strong>Banco Pichincha · Ahorros</strong></p>
-                <p className="font-black text-[#51445F]">2213367970</p>
-                <p>Titular: Isabel Revollar</p>
-                <p>CI: 1752806388</p>
-              </div>
-              <p className="mt-3 rounded-xl border border-[#E7DDF0] bg-white/80 p-2.5 text-[10px] leading-4 text-[#8A7190]">
-                Recuerda seguir a <strong>@atelierdehyun</strong> en Instagram para poder enviar tus proofs.
-              </p>
+              <p><strong>Banco Pichincha · Ahorros:</strong> 2213367970</p>
+              <p>Titular: Isabel Revollar · CI: 1752806388</p>
+              <p className="mt-2 rounded-xl bg-white p-2 text-[10px]">Recuerda seguir a <strong>@atelierdehyun</strong> en Instagram para enviar tus proofs.</p>
             </section>
           </aside>
           <section className="min-w-0 space-y-4 lg:col-span-8">
             {vista === 'pedidos' ? (
               <>
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#C47A9C]">Resumen de compras</p>
-                    <h2 className="mt-1 text-xl font-black text-[#493744]">Mis pedidos y apartados</h2>
-                    <p className="mt-1 text-xs text-[#9B8492]">Consulta tus artículos, pagos y avances de cada Group Order.</p>
-                  </div>
-                  <button type="button" onClick={() => setVista('bodega')} className="rounded-xl border border-[#CFE3D8] bg-[#EFF8F3] px-3.5 py-2.5 text-[11px] font-black text-[#578773] transition hover:bg-[#E4F3EB]">
-                    Ir a mi bodega →
-                  </button>
-                </div>
-
                 {itemsSinPagar.length > 0 && (
-                  <section className="overflow-hidden rounded-[26px] border border-[#CFE6D9] bg-gradient-to-br from-[#F0FAF4] via-white to-[#FFF8F0] shadow-sm">
-                    <div className="border-b border-[#DCEDE3] px-4 py-4 sm:px-5">
-                      <span className="rounded-full bg-[#DDEFE4] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#4F896F]">Resumen de pago</span>
-                      <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
-                        <div>
-                          <h3 className="text-lg font-black text-[#435B4E]">Saldo pendiente: ${totalPendientePagar.toFixed(2)} USD</h3>
-                          <p className="mt-1 text-[10px] text-[#82978B]">{itemsAPagarHoy.length} artículo(s) seleccionados para pagar</p>
-                        </div>
-                        {totalAbonadoPendientes > 0 && <p className="text-[11px] font-bold text-[#57927E]">Ya abonaste ${totalAbonadoPendientes.toFixed(2)}</p>}
-                      </div>
-                    </div>
-                    <div className="space-y-3 p-4 sm:p-5">
-                      <p className="text-[11px] font-black text-[#64766B]">Selecciona los artículos que pagarás ahora:</p>
-                      <div className="space-y-2 rounded-2xl border border-[#E2EEE6] bg-white/80 p-3">
-                        {itemsSinPagar.map((it) => {
-                          const marcado = haySeleccionManualPago ? !!seleccionadosPago[it.idUnico] : true;
-                          return (
-                            <label key={it.idUnico} className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-2 text-xs transition hover:bg-[#F5FAF6]">
-                              <span className="flex min-w-0 items-center gap-2">
-                                <input type="checkbox" checked={marcado} onChange={(e) => {
-                                  const base: Record<string, boolean> = {};
-                                  itemsSinPagar.forEach((x) => { base[x.idUnico] = haySeleccionManualPago ? !!seleccionadosPago[x.idUnico] : true; });
-                                  base[it.idUnico] = e.target.checked;
-                                  setSeleccionadosPago(base);
-                                }} className="h-4 w-4 accent-[#78A997]" />
-                                <span className="min-w-0">
-                                  <span className="block truncate font-bold text-[#594B56]">{it.productoNombre}</span>
-                                  <span className="block truncate text-[10px] text-[#A18B99]">{it.goTitulo} · {it.detalleSlot}</span>
-                                </span>
-                              </span>
-                              <span className="shrink-0 font-black text-[#5B7466]">${it.precioTotal.toFixed(2)}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                      <div className="rounded-2xl border border-[#DCE9E0] bg-white p-3">
-                        <label className="block text-[11px] font-extrabold text-[#5B7466]">Titular de la transferencia</label>
-                        <input type="text" placeholder="Nombre del titular de la cuenta que transfiere" value={titularTransferencia} onChange={(e) => setTitularTransferencia(e.target.value)} className="mt-1 w-full rounded-xl border border-[#DCE9E0] bg-white px-3 py-2.5 text-xs outline-none focus:border-[#78A997]" />
-                      </div>
-                      <div className="rounded-2xl border border-[#DCE9E0] bg-white p-3">
-                        <label htmlFor="monto-abono" className="block text-[11px] font-extrabold text-[#5B7466]">¿Cuánto deseas abonar ahora?</label>
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-sm font-black text-[#5B7466]">$</span>
-                          <input id="monto-abono" type="number" inputMode="decimal" min="0.01" max={totalPendientePagar.toFixed(2)} step="0.01" value={montoAbono} onChange={(e) => setMontoAbono(e.target.value)} placeholder={totalPendientePagar.toFixed(2)} className="w-full rounded-xl border border-[#DCE9E0] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#78A997]" />
-                        </div>
-                        <p className="mt-2 text-[10px] leading-4 text-[#82978B]">Puedes abonar una parte o el total. Si dejas el campo vacío, se usará el saldo completo.</p>
-                        {montoAbono.trim() !== '' && !importeValido && <p className="mt-1 text-[10px] font-bold text-rose-600">Ingresa un importe mayor que $0 y que no supere el saldo pendiente.</p>}
-                        {importeValido && <p className="mt-2 text-[11px] font-bold text-[#57927E]">Después de este abono quedarán ${Math.max(0, totalPendientePagar - importeTransferencia).toFixed(2)} USD pendientes.</p>}
-                      </div>
-                                          <p className="text-[11px] leading-5 text-[#78877E]">Transfiere al Banco Pichincha <strong>(2213367970 — Isabel Revollar)</strong>. Adjunta aquí tu comprobante privado; una vez subido podrás notificarnos por WhatsApp para revisarlo.</p>
-                      <div className="rounded-2xl border border-[#DCE9E0] bg-white p-3 space-y-2">
-                        <label className="block text-[11px] font-extrabold text-[#5B7466]">Adjuntar comprobante · JPG, PNG, WebP o PDF (máx. 8 MB)</label>
-                        <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => setComprobanteFile(e.target.files?.[0] || null)} className="block w-full text-[11px]" />
-                        <button type="button" disabled={!comprobanteFile || subiendoComprobante || !importeValido} onClick={async () => {
-                          const scopes = new Set(itemsAPagarHoy.map((item) => item.origen));
-                          const goTitles = [...new Set(itemsAPagarHoy.filter((item) => item.origen === 'GO').map((item) => item.goTitulo))];
-                          if (scopes.size !== 1 || (scopes.has('GO') && goTitles.length !== 1)) { alert('Selecciona pedidos de un solo GO o de Shop para adjuntar el comprobante.'); return; }
-                          const sessionResult = await supabase.auth.getSession();
-                          const token = sessionResult.data.session?.access_token;
-                          if (!token) { alert('Inicia sesión nuevamente.'); return; }
-                          const form = new FormData(); if (!importeValido) { alert('Ingresa un abono válido que no supere el saldo pendiente.'); return; }
-                          form.append('file', comprobanteFile!); form.append('scope', scopes.has('SHOP') ? 'SHOP' : 'GO'); form.append('amount', String(importeTransferencia)); if (goTitles[0]) form.append('goTitle', goTitles[0]);
-                          setSubiendoComprobante(true); setMensajeComprobante('');
-                          try { const response = await fetch('/api/proofs', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }); const result = await response.json(); if (!response.ok) throw new Error(result.error || 'No se pudo subir el comprobante.'); setMensajeComprobante('Comprobante recibido. Ya puedes avisarnos por WhatsApp para revisarlo ♡'); setComprobanteFile(null); } catch (error: any) { setMensajeComprobante(error?.message || 'No se pudo subir el comprobante.'); } finally { setSubiendoComprobante(false); }
-                        }} className="w-full rounded-xl bg-[#6EAA8D] px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">{subiendoComprobante ? 'Subiendo comprobante…' : '1. Subir comprobante privado'}</button>
-                        {mensajeComprobante && <p role="status" className="text-[11px] font-semibold text-[#5B7466]">{mensajeComprobante}</p>}
-                      </div>
-                      {mensajeComprobante.includes('Comprobante recibido') && (
-                        <a href={abrirChatLia(
-                          '¡Hola, Lia! Ya subí mi comprobante de pago en hyuneatelier para revisión:\n\n' +
-                            '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + '\n' +
-                            '• *Titular transferencia:* ' + (titularTransferencia || nombreJoiner || usuarioEmail) + '\n' +
-                            '• *Instagram:* ' + (instagramJoiner || 'No registrado') + '\n' +
-                            '• *Correo:* ' + usuarioEmail + '\n\n' +
-                            '*Artículos pagados:*\n' +
-                            itemsAPagarHoy.map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2)).join('\n') +
-                            (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
-                            '\n\n• *Importe transferido:* $' + importeTransferencia.toFixed(2) + ' USD\n' + '• *Saldo restante estimado:* $' + Math.max(0, totalPendientePagar - importeTransferencia).toFixed(2) + ' USD\n\n' +
-                            'Confirmo que sigo a @hyuneatelier. El comprobante ya está adjunto en Mi Cuenta.'
-                        )} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6EAA8D] px-4 py-3.5 text-xs font-black text-white shadow-sm transition hover:bg-[#5D987C]">
-                          💬 2. Avisar por WhatsApp que ya subí mi pago · ${importeValido ? importeTransferencia.toFixed(2) : '—'}
-                        </a>
-                      )}
-                    </div>
-                  </section>
-                )}
-
-                {grupos.length === 0 ? (
-                  <div className="rounded-[26px] border border-dashed border-[#E8D5E0] bg-white px-6 py-12 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFF0F6] text-2xl">🧸</div>
-                    <h3 className="mt-3 text-sm font-black text-[#6B5664]">Todavía no tienes apartados</h3>
-                    <p className="mt-1 text-xs text-[#A18B99]">Cuando reserves algo en un GO o en la tienda, aparecerá aquí.</p>
-                    <div className="mt-4 flex flex-wrap justify-center gap-2">
-                      <Link href="/gos" className="rounded-full bg-[#D982A7] px-4 py-2.5 text-xs font-black text-white">Explorar GOs</Link>
-                      <Link href="/shop" className="rounded-full border border-[#EAD7E2] bg-white px-4 py-2.5 text-xs font-black text-[#A96686]">Visitar tienda</Link>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {grupos.map((grupo) => (
-                      <article key={grupo.titulo} className="overflow-hidden rounded-[26px] border border-[#EFDFE8] bg-white shadow-[0_4px_18px_rgba(180,120,150,0.045)]">
-                        <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3.5 sm:px-5 ${grupo.origen === 'SHOP' ? 'border-[#DDE9F3] bg-[#F1F7FC]' : 'border-[#F1DFE8] bg-[#FFF3F8]'}`}>
-                          <div className="flex items-center gap-2.5">
-                            <span className={`flex h-9 w-9 items-center justify-center rounded-xl text-base ${grupo.origen === 'SHOP' ? 'bg-white text-[#7398B4]' : 'bg-white text-[#C47799]'}`}>{grupo.origen === 'SHOP' ? '🛍️' : '🧸'}</span>
-                            <div>
-                              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#A38B99]">{grupo.origen === 'SHOP' ? 'Tienda' : 'Group Order'}</p>
-                              <h3 className="text-sm font-black text-[#594553]">{grupo.titulo}</h3>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-black text-[#594553]">${grupo.totalGrupo.toFixed(2)} USD</p>
-                            <p className="text-[10px] text-[#A18B99]">{grupo.items.length} artículo(s)</p>
-                          </div>
-                        </div>
-                        <div className="divide-y divide-[#F4EAF0] px-3 sm:px-5">
-                          {grupo.items.map((item) => (
-                            <div key={item.idUnico} className="flex items-start gap-3 py-4">
-                              {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="h-16 w-16 shrink-0 rounded-2xl border border-[#F0E5EB] bg-white object-contain p-1" /> : <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#FFF3F8] text-xl">🧸</div>}
-                              <div className="min-w-0 flex-1">
-                                <p className="break-words text-xs font-black text-[#554451]">{item.productoNombre}</p>
-                                <p className="mt-1 text-[11px] font-semibold text-[#B87595]">{item.detalleSlot}</p>
-                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                  <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${item.estadoPago === 'Pagado' ? 'bg-[#E7F4EC] text-[#54856D]' : 'bg-[#FFF4DF] text-[#A27B32]'}`}>{item.estadoPago === 'Pagado' ? '✓ Pagado' : 'Pago: ' + item.estadoPago}</span>
-                                  <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${item.estadoConfirmacion === 'Confirmado' ? 'bg-[#EAF2FA] text-[#6686A5]' : item.estadoConfirmacion === 'Cancelado' ? 'bg-[#FCEAEC] text-[#B45F70]' : 'bg-[#F2EEF2] text-[#827481]'}`}>{item.estadoConfirmacion}</span>
-                                  {Number(item.montoAbonado || 0) > 0 && item.estadoPago !== 'Pagado' && <span className="rounded-full bg-[#E9F5EF] px-2.5 py-1 text-[9px] font-black text-[#578A73]">Abono: ${Number(item.montoAbonado).toFixed(2)}</span>}
-                                  {item.origen === 'GO' && item.estadoLogistica && <span className="rounded-full bg-[#F0EDFA] px-2.5 py-1 text-[9px] font-black text-[#8173A7]">✈️ {item.estadoLogistica}</span>}
-                                </div>
-                              </div>
-                              <p className="shrink-0 pt-1 text-xs font-black text-[#594553]">${item.precioTotal.toFixed(2)}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="rounded-[26px] border border-[#DCEBE2] bg-gradient-to-br from-[#EEF8F2] via-white to-[#F5FAF6] p-5 shadow-sm sm:p-6">
-                  <span className="rounded-full bg-white px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-[#67917C]">Tus compras listas</span>
-                  <h2 className="mt-2 text-xl font-black text-[#435B4E]">Mi bodega</h2>
-                  <p className="mt-1 max-w-xl text-xs leading-5 text-[#82978B]">Selecciona los artículos pagados que ya llegaron a Hyuneatelier. Puedes reunir varios pedidos en un solo envío.</p>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <div className="rounded-2xl border border-white bg-white/80 p-3">
-                      <p className="text-xl font-black text-[#578D73]">{itemsPagadosEnBodega.length}</p>
-                      <p className="text-[9px] font-bold uppercase tracking-wide text-[#8BA194]">Listos para enviar</p>
-                    </div>
-                    <div className="rounded-2xl border border-white bg-white/80 p-3">
-                      <p className="text-xl font-black text-[#9A8AB9]">{itemsPagadosEnCamino.length}</p>
-                      <p className="text-[9px] font-bold uppercase tracking-wide text-[#8BA194]">En camino</p>
-                    </div>
-                  </div>
-                </div>
-
-                <section className="rounded-[26px] border border-[#E4EDE7] bg-white p-4 shadow-sm sm:p-5">
-                  {itemsPagadosEnBodega.length > 0 && (
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-[#F3F9F5] p-3">
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => {
-                          const todos: Record<string, boolean> = {};
-                          itemsPagadosEnBodega.forEach((it) => { todos[it.idUnico] = true; });
-                          setSeleccionadosEnvio(todos);
-                        }} className="rounded-lg bg-[#78A997] px-3 py-2 text-[10px] font-black text-white">Seleccionar todos</button>
-                        <button type="button" onClick={() => setSeleccionadosEnvio({})} className="rounded-lg border border-[#DDE9E1] bg-white px-3 py-2 text-[10px] font-bold text-[#71877A]">Limpiar</button>
-                      </div>
-                      <span className="text-[11px] font-black text-[#5B9076]">{itemsMarcados.length} seleccionado(s)</span>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <h3 className="text-xs font-black text-[#5C7465]">Artículos disponibles</h3>
-                    {itemsPagadosEnBodega.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-[#DCE9E0] bg-[#F8FBF9] px-5 py-8 text-center">
-                        <span className="text-2xl">📦</span>
-                        <p className="mt-2 text-xs font-black text-[#71877A]">Todavía no tienes artículos listos para enviar</p>
-                        <p className="mt-1 text-[10px] leading-5 text-[#9AA99F]">Cuando tus compras estén pagadas y lleguen a Hyuneatelier, aparecerán aquí.</p>
-                      </div>
-                    ) : (
-                      itemsPagadosEnBodega.map((item) => {
-                        const marcado = !!seleccionadosEnvio[item.idUnico];
+                  <section className="rounded-[26px] border border-[#CFE6D9] bg-gradient-to-br from-[#F0FAF4] via-white to-[#FFF8F0] p-4 sm:p-5 shadow-sm space-y-3">
+                    <h3 className="text-lg font-black text-[#435B4E]">Saldo pendiente: ${totalPendientePagar.toFixed(2)} USD</h3>
+                    <div className="space-y-2 rounded-2xl border border-[#E2EEE6] bg-white/80 p-3">
+                      {itemsSinPagar.map((it) => {
+                        const marcado = haySeleccionManualPago ? !!seleccionadosPago[it.idUnico] : true;
                         return (
-                          <label key={item.idUnico} className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3 transition ${marcado ? 'border-[#9FC9B0] bg-[#F0F8F3]' : 'border-[#E9EEE9] bg-[#FBFDFC] hover:border-[#C7DDD0]'}`}>
-                            <input type="checkbox" checked={marcado} onChange={(e) => setSeleccionadosEnvio((prev) => ({ ...prev, [item.idUnico]: e.target.checked }))} className="h-4 w-4 shrink-0 accent-[#78A997]" />
-                            {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="h-12 w-12 shrink-0 rounded-xl border border-[#E7EDE8] bg-white object-contain p-1" /> : <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white text-lg">🧸</span>}
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-[9px] font-black uppercase tracking-wide text-[#91A398]">{item.goTitulo}</span>
-                              <span className="mt-0.5 block truncate text-xs font-black text-[#53665A]">{item.productoNombre}</span>
-                              <span className="block text-[10px] text-[#7FA18C]">{item.detalleSlot}</span>
+                          <label key={it.idUnico} className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-xs">
+                            <span className="flex min-w-0 items-center gap-2">
+                              <input type="checkbox" checked={marcado} onChange={(e) => {
+                                const base: Record<string, boolean> = {};
+                                itemsSinPagar.forEach((x) => { base[x.idUnico] = haySeleccionManualPago ? !!seleccionadosPago[x.idUnico] : true; });
+                                base[it.idUnico] = e.target.checked;
+                                setSeleccionadosPago(base);
+                              }} className="h-4 w-4 accent-[#78A997]" />
+                              <span className="truncate font-bold text-[#594B56]">{it.productoNombre} ({it.goTitulo})</span>
                             </span>
-                            <span className="shrink-0 rounded-full bg-[#E1F1E7] px-2.5 py-1 text-[9px] font-black text-[#54856D]">Listo ✓</span>
+                            <span className="shrink-0 font-black text-[#5B7466]">${it.precioTotal.toFixed(2)}</span>
                           </label>
                         );
-                      })
-                    )}
-                  </div>
-                  {itemsPagadosEnCamino.length > 0 && (
-                    <div className="mt-5 space-y-2 border-t border-[#EDF1ED] pt-4">
-                      <h3 className="text-xs font-black text-[#8A80A8]">En camino · todavía no disponibles</h3>
-                      {itemsPagadosEnCamino.map((item) => (
-                        <div key={item.idUnico} className="flex items-center gap-3 rounded-2xl border border-[#E9E6F1] bg-[#FAF9FC] p-3">
-                          {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="h-11 w-11 shrink-0 rounded-xl border border-[#ECE8F2] bg-white object-contain p-1" /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white">✈️</span>}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-bold text-[#6F6682]">{item.productoNombre}</p>
-                            <p className="text-[10px] text-[#9A91AA]">{item.goTitulo} · {item.detalleSlot}</p>
-                          </div>
-                          <span className="rounded-full bg-[#F0ECF8] px-2.5 py-1 text-[9px] font-black text-[#8276A5]">{item.estadoLogistica || 'En camino'}</span>
-                        </div>
-                      ))}
+                      })}
                     </div>
-                  )}
+                    <input type="text" placeholder="Nombre del titular de la cuenta que transfiere" value={titularTransferencia} onChange={(e) => setTitularTransferencia(e.target.value)} className="w-full rounded-xl border border-[#DCE9E0] bg-white px-3 py-2.5 text-xs" />
+                    <input type="number" step="0.01" value={montoAbono} onChange={(e) => setMontoAbono(e.target.value)} placeholder={'Monto a abonar (ej. ' + totalPendientePagar.toFixed(2) + ')'} className="w-full rounded-xl border border-[#DCE9E0] bg-white px-3 py-2.5 text-xs" />
 
-                  {itemsPagadosEnBodega.length > 0 && (
-                    <form onSubmit={handleSolicitarEnvioAcumulado} className="mt-5 border-t border-[#EDF1ED] pt-5">
-                      <div className="mb-4">
-                        <span className="inline-flex rounded-full bg-[#F9EAF1] px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-[#BD789B]">✦ último paso</span>
-                        <h3 className="mt-2 text-base font-black text-[#52685A]">Confirma tus artículos y solicita tu envío</h3>
-                        <p className="mt-1 max-w-2xl text-[10px] leading-5 text-[#94A197]">Revisa qué compras quieres recibir, elige cómo deseas recibirlas y completa tus datos de entrega.</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
-                        <div className="space-y-3 rounded-[22px] border border-[#E7E1EF] bg-[#FAF9FD] p-4 sm:p-5">
-                          <div className="flex items-center justify-between gap-2 border-b border-[#ECE7F1] pb-3">
-                            <div>
-                              <h4 className="text-xs font-black text-[#625978]">1. Artículos que recibirás</h4>
-                              <p className="mt-1 text-[10px] text-[#9A91AA]">Solo se incluirán los que marcaste arriba.</p>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#8276A5]">{itemsMarcados.length} seleccionado(s)</span>
-                          </div>
-                          {itemsMarcados.length === 0 ? (
-                            <p className="rounded-xl border border-dashed border-[#DED8E9] bg-white p-4 text-center text-[10px] text-[#A098AA]">Selecciona al menos un artículo de tu bodega para continuar.</p>
-                          ) : (
-                            <div className="space-y-2">
-                              {itemsMarcados.map((item) => (
-                                <div key={item.idUnico} className="flex items-center gap-2.5 rounded-xl border border-[#ECE7F1] bg-white p-2.5">
-                                  {item.imagenUrl ? <img src={item.imagenUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg bg-[#FAF9FD] object-contain p-1" /> : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F7F4FA]">🧸</span>}
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[10px] font-black text-[#625978]">{item.goTitulo}</p>
-                                    <p className="truncate text-[10px] text-[#9188A0]">{item.productoNombre} · {item.detalleSlot}</p>
-                                  </div>
-                                  <span className="shrink-0 rounded-full bg-[#FCEAF1] px-2 py-1 text-[8px] font-black text-[#C17B9D]">Listo</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <div className="border-t border-[#ECE7F1] pt-3">
-                            <label className="mb-2 block text-xs font-black text-[#625978]">2. ¿Cómo quieres recibir tu paquete?</label>
-                            <div className="space-y-2">
-                              {[
-                                { value: 'Quito ($3.50)', title: 'Envío dentro de Quito', detail: 'Entrega local', price: '$3.50' },
-                                { value: 'Provincias ($6.50)', title: 'Envío a provincias', detail: 'Resto del país', price: '$6.50' },
-                                { value: 'Selva o Galápagos ($7.50)', title: 'Envío a la Selva o Galápagos', detail: 'Cobertura especial', price: '$7.50' },
-                              ].map((opcion) => (
-                                <label key={opcion.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${envioMetodo === opcion.value ? 'border-[#9FC9B0] bg-[#F0F8F3]' : 'border-[#E9E5EF] bg-white hover:border-[#C7DDD0]'}`}>
-                                  <input type="radio" name="metodo-envio" value={opcion.value} checked={envioMetodo === opcion.value} onChange={(e) => setEnvioMetodo(e.target.value)} className="h-4 w-4 accent-[#78A997]" />
-                                  <span className="min-w-0 flex-1">
-                                    <span className="block text-[10px] font-black text-[#5E6F63]">{opcion.title}</span>
-                                    <span className="block text-[9px] text-[#9AA79E]">{opcion.detail}</span>
-                                  </span>
-                                  <span className="shrink-0 text-[10px] font-black text-[#648D76]">{opcion.price}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between rounded-xl border border-[#DDEBE2] bg-white p-3">
-                            <div>
-                              <p className="text-[9px] font-bold text-[#8A9C90]">Costo estimado del método seleccionado</p>
-                              <p className="text-xs font-black text-[#52685A]">Total de envío</p>
-                            </div>
-                            <p className="text-lg font-black text-[#5B9076]">{`$${costoEnvioElegido.toFixed(2)} USD`}</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3 rounded-[22px] border border-[#DCEBE2] bg-gradient-to-br from-[#F4FAF6] via-white to-[#F9F5FB] p-4 sm:p-5">
-                          <div className="border-b border-[#E7EEE8] pb-3">
-                            <h4 className="text-xs font-black text-[#52685A]">3. Datos de entrega</h4>
-                            <p className="mt-1 text-[10px] leading-4 text-[#94A197]">Usaremos estos datos para preparar y coordinar tu paquete.</p>
-                          </div>
-                          <div className="space-y-3">
-                            <label className="block space-y-1">
-                              <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-[#89998D]">Nombre completo *</span>
-                              <input type="text" required placeholder="Nombre de quien recibe" value={envioNombre} onChange={(e) => setEnvioNombre(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-white px-3 py-3 text-xs outline-none transition focus:border-[#78A997] focus:ring-2 focus:ring-[#E4F2E9]" />
-                            </label>
-                            <label className="block space-y-1">
-                              <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-[#89998D]">Teléfono / WhatsApp *</span>
-                              <input type="tel" required placeholder="099 123 4567" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-white px-3 py-3 text-xs outline-none transition focus:border-[#78A997] focus:ring-2 focus:ring-[#E4F2E9]" />
-                            </label>
-                            <label className="block space-y-1">
-                              <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-[#89998D]">Ciudad / Provincia *</span>
-                              <input type="text" required placeholder="Ej. Quito, Pichincha" value={envioCiudad} onChange={(e) => setEnvioCiudad(e.target.value)} className="w-full rounded-xl border border-[#DFEAE2] bg-white px-3 py-3 text-xs outline-none transition focus:border-[#78A997] focus:ring-2 focus:ring-[#E4F2E9]" />
-                            </label>
-                            <label className="block space-y-1">
-                              <span className="ml-1 text-[9px] font-black uppercase tracking-wide text-[#89998D]">Dirección y referencia *</span>
-                              <textarea required rows={3} placeholder="Calle principal, número, edificio, sector y referencias" value={envioDireccion} onChange={(e) => setEnvioDireccion(e.target.value)} className="w-full resize-y rounded-xl border border-[#DFEAE2] bg-white px-3 py-3 text-xs outline-none transition focus:border-[#78A997] focus:ring-2 focus:ring-[#E4F2E9]" />
-                            </label>
-                          </div>
-                          <p className="rounded-xl border border-[#E8E1F0] bg-white/80 p-3 text-[9px] leading-4 text-[#948BA1]">♡ Antes de confirmar, revisa que tu dirección, ciudad y número estén correctos. El costo se calcula según la zona de entrega seleccionada.</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 rounded-[22px] border border-[#E6E1EF] bg-white p-4 sm:p-5">
-                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <h4 className="text-xs font-black text-[#625978]">¿Qué sucede después?</h4>
-                            <p className="mt-1 text-[10px] text-[#9A91AA]">Te iremos informando sobre el avance de tu solicitud.</p>
-                          </div>
-                          <span className="text-lg">📦 ✈️</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {[
-                            { n: '01', title: 'Solicitud recibida', desc: 'Recibimos tus datos.', color: 'bg-[#FCEAF1] text-[#BD789B]' },
-                            { n: '02', title: 'Preparación', desc: 'Preparamos tu paquete.', color: 'bg-[#FFF3D9] text-[#B28A42]' },
-                            { n: '03', title: 'Enviado', desc: 'Te compartimos la guía si aplica.', color: 'bg-[#EAF2FC] text-[#7396BD]' },
-                            { n: '04', title: 'Entregado', desc: '¡Tu paquete llegó!', color: 'bg-[#E7F5EC] text-[#67977A]' },
-                          ].map((paso) => (
-                            <div key={paso.n} className="rounded-xl bg-[#FAFAFC] p-3">
-                              <span className={`inline-flex rounded-full px-2 py-1 text-[8px] font-black ${paso.color}`}>{paso.n}</span>
-                              <p className="mt-2 text-[10px] font-black text-[#625978]">{paso.title}</p>
-                              <p className="mt-1 text-[9px] leading-4 text-[#9A91AA]">{paso.desc}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button type="submit" disabled={enviandoSolicitud || itemsMarcados.length === 0} className="mt-4 w-full rounded-full bg-[#78A997] px-4 py-4 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-[#639781] disabled:cursor-not-allowed disabled:opacity-50">
-                        {enviandoSolicitud ? 'Enviando solicitud…' : 'Confirmar solicitud de envío ♡'}
+                    <div className="rounded-2xl border border-[#DCE9E0] bg-white p-3 space-y-2">
+                      <label className="block text-[11px] font-extrabold text-[#5B7466]">Adjuntar comprobante · Foto o PDF</label>
+                      <input type="file" accept="image/*,application/pdf" onChange={(e) => { setComprobanteFile(e.target.files ? e.target.files.item(0) : null); setMensajeComprobante(''); }} className="block w-full text-[11px]" />
+                      <button type="button" disabled={!comprobanteFile || subiendoComprobante || !importeValido} onClick={async () => {
+                        if (!comprobanteFile || !importeValido) return;
+                        const sessionResult = await supabase.auth.getSession();
+                        const token = sessionResult.data.session?.access_token;
+                        if (!token) { alert('Inicia sesión nuevamente.'); return; }
+                        setSubiendoComprobante(true); setMensajeComprobante('');
+                        try {
+                          let archivoFinal: File | Blob = comprobanteFile;
+                          let nombreFinal = comprobanteFile.name;
+                          if (comprobanteFile.type.startsWith('image/')) {
+                            try {
+                              const bmp = await createImageBitmap(comprobanteFile);
+                              const scale = bmp.width > 1400 ? 1400 / bmp.width : 1;
+                              const canvas = document.createElement('canvas');
+                              canvas.width = Math.round(bmp.width * scale);
+                              canvas.height = Math.round(bmp.height * scale);
+                              const ctx = canvas.getContext('2d');
+                              if (ctx) {
+                                ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+                                const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.82));
+                                if (blob) { archivoFinal = blob; nombreFinal = 'comprobante.jpg'; }
+                              }
+                            } catch {}
+                          }
+                          const scopes = new Set(itemsAPagarHoy.map((i) => i.origen));
+                          const resumenGos = Array.from(new Set(itemsAPagarHoy.map((i) => i.goTitulo))).join(' + ');
+                          const form = new FormData();
+                          form.append('file', archivoFinal, nombreFinal);
+                          form.append('scope', scopes.has('GO') ? 'GO' : 'SHOP');
+                          form.append('amount', String(importeTransferencia));
+                          form.append('goTitle', resumenGos || 'Pedido hyuneatelier');
+                          if (titularTransferencia.trim()) form.append('payerName', titularTransferencia.trim());
+                          const response = await fetch('/api/proofs', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+                          const raw = await response.text();
+                          let resJson: any = {};
+                          try { resJson = JSON.parse(raw); } catch { throw new Error('Foto muy pesada o error de red. Intenta con captura de pantalla.'); }
+                          if (!response.ok) throw new Error(resJson.error || 'No se pudo subir el comprobante.');
+                          setMensajeComprobante('Comprobante recibido. Ya puedes avisarnos por WhatsApp ♡');
+                          setComprobanteFile(null);
+                        } catch (err: any) { setMensajeComprobante('⚠️ ' + (err?.message || 'Error al subir comprobante.')); } finally { setSubiendoComprobante(false); }
+                      }} className="w-full rounded-xl bg-[#6EAA8D] px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">
+                        {subiendoComprobante ? 'Subiendo comprobante…' : '1. Subir comprobante privado'}
                       </button>
-                                            {urlWhatsappEnvio && (
-                        <a
-                          href={urlWhatsappEnvio}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-4 text-xs font-black uppercase tracking-wide text-white shadow-md"
-                        >
-                          💬 Abrir WhatsApp para enviar mi solicitud ➔
-                        </a>
-                      )}
-
-                      <p className="mt-2 text-center text-[9px] text-[#A18B99]">Al confirmar, guardaremos tu solicitud y podrás continuar por WhatsApp.</p>
-                    </form>
-                  )}
-                </section>
-
-                {solicitudesPrevias.length > 0 && (
-                  <section className="rounded-[26px] border border-[#E7E0EF] bg-white p-4 shadow-sm sm:p-5">
-                    <h3 className="text-sm font-black text-[#655A79]">Historial de envíos</h3>
-                    <p className="mt-1 text-[10px] text-[#A098AA]">Consulta tus solicitudes anteriores y sus números de guía.</p>
-                    <div className="mt-3 space-y-2.5">
-                      {solicitudesPrevias.map((sol) => (
-                        <div key={sol.id} className="rounded-2xl border border-[#ECE7F1] bg-[#FBFAFD] p-3.5">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-xs font-black text-[#645A75]">{sol.metodo_envio} · {sol.ciudad}</span>
-                            <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${sol.estado_despacho === 'Enviado' ? 'bg-[#E6F3EA] text-[#54856D]' : 'bg-[#FFF4DF] text-[#A27B32]'}`}>{sol.estado_despacho}</span>
-                          </div>
-                          <p className="mt-2 whitespace-pre-line text-[10px] leading-5 text-[#8C8495]">{sol.articulos_incluidos}</p>
-                          {sol.guia_rastreo && <p className="mt-2 rounded-xl bg-[#F0EDFA] px-3 py-2 text-[10px] font-black text-[#7D70A1]">🔎 Guía de rastreo: {sol.guia_rastreo}</p>}
-                        </div>
-                      ))}
+                      {mensajeComprobante && <p className="text-[11px] font-bold text-[#5B7466]">{mensajeComprobante}</p>}
                     </div>
+
+                    {mensajeComprobante.includes('Comprobante recibido') && (
+                      <a href={abrirChatLia('¡Hola, Lia! Ya subí mi comprobante de pago en hyuneatelier:\n• Nombre: ' + (nombreJoiner || usuarioEmail) + '\n• Titular: ' + (titularTransferencia || nombreJoiner || usuarioEmail) + '\n• Importe: $' + importeTransferencia.toFixed(2) + ' USD\n• Correo: ' + usuarioEmail)} className="flex w-full items-center justify-center rounded-xl bg-[#6EAA8D] px-4 py-3.5 text-xs font-black text-white">
+                        💬 2. Avisar por WhatsApp · ${importeTransferencia.toFixed(2)}
+                      </a>
+                    )}
                   </section>
                 )}
-              </div>
+                <div className="space-y-4">
+                  {grupos.map((grupo) => (
+                    <article key={grupo.titulo} className="rounded-[26px] border border-[#EFDFE8] bg-white p-4 shadow-sm space-y-2">
+                      <div className="flex justify-between items-center border-b border-[#F4EAF0] pb-2">
+                        <h3 className="text-sm font-black text-[#594553]">{grupo.titulo}</h3>
+                        <span className="text-sm font-black text-[#594553]">${grupo.totalGrupo.toFixed(2)} USD</span>
+                      </div>
+                      {grupo.items.map((item) => (
+                        <div key={item.idUnico} className="flex items-center justify-between gap-3 py-2 text-xs">
+                          <div>
+                            <p className="font-black text-[#554451]">{item.productoNombre}</p>
+                            <p className="text-[11px] text-[#B87595]">{item.detalleSlot} · {item.estadoPago}</p>
+                          </div>
+                          <span className="font-black">${item.precioTotal.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <section className="rounded-[26px] border border-[#E4EDE7] bg-white p-4 sm:p-5 shadow-sm space-y-4">
+                <h2 className="text-lg font-black text-[#435B4E]">📦 Mi bodega ({itemsPagadosEnBodega.length} listos)</h2>
+                {itemsPagadosEnBodega.map((item) => {
+                  const marcado = !!seleccionadosEnvio[item.idUnico];
+                  return (
+                    <label key={item.idUnico} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#E9EEE9] p-3 text-xs">
+                      <input type="checkbox" checked={marcado} onChange={(e) => setSeleccionadosEnvio((prev) => ({ ...prev, [item.idUnico]: e.target.checked }))} className="h-4 w-4 accent-[#78A997]" />
+                      <span className="flex-1 font-bold">{item.productoNombre} ({item.goTitulo})</span>
+                      <span className="rounded-full bg-[#E1F1E7] px-2.5 py-1 text-[9px] font-black text-[#54856D]">Listo ✓</span>
+                    </label>
+                  );
+                })}
+                {itemsPagadosEnCamino.length > 0 && (
+                  <div className="pt-3 border-t space-y-1 text-xs text-zinc-500">
+                    <p className="font-bold">En camino ({itemsPagadosEnCamino.length}):</p>
+                    {itemsPagadosEnCamino.map((item) => <p key={item.idUnico}>✈️ {item.productoNombre} — {item.estadoLogistica}</p>)}
+                  </div>
+                )}
+                {itemsPagadosEnBodega.length > 0 && (
+                  <form onSubmit={handleSolicitarEnvioAcumulado} className="space-y-3 pt-4 border-t">
+                    <input type="text" required placeholder="Nombre quien recibe *" value={envioNombre} onChange={(e) => setEnvioNombre(e.target.value)} className="w-full rounded-xl border px-3 py-2.5 text-xs" />
+                    <input type="tel" required placeholder="Teléfono / WhatsApp *" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="w-full rounded-xl border px-3 py-2.5 text-xs" />
+                    <input type="text" required placeholder="Ciudad / Provincia *" value={envioCiudad} onChange={(e) => setEnvioCiudad(e.target.value)} className="w-full rounded-xl border px-3 py-2.5 text-xs" />
+                    <select value={envioMetodo} onChange={(e) => setEnvioMetodo(e.target.value)} className="w-full rounded-xl border px-3 py-2.5 text-xs font-bold">
+                      <option value="Quito ($3.50)">Quito ($3.50)</option>
+                      <option value="Provincias ($6.50)">Provincias ($6.50)</option>
+                      <option value="Selva o Galápagos ($7.50)">Selva o Galápagos ($7.50)</option>
+                    </select>
+                    <textarea required rows={2} placeholder="Dirección exacta *" value={envioDireccion} onChange={(e) => setEnvioDireccion(e.target.value)} className="w-full rounded-xl border px-3 py-2.5 text-xs" />
+                    <button type="submit" disabled={enviandoSolicitud || itemsMarcados.length === 0} className="w-full rounded-full bg-[#78A997] py-3.5 text-xs font-black uppercase text-white">
+                      {enviandoSolicitud ? 'Enviando…' : 'Confirmar solicitud de envío ♡'}
+                    </button>
+                    {urlWhatsappEnvio && <a href={urlWhatsappEnvio} className="block text-center rounded-full bg-[#25D366] py-3.5 text-xs font-black uppercase text-white">💬 Abrir WhatsApp ➔</a>}
+                  </form>
+                )}
+              </section>
             )}
           </section>
         </div>
-
-        <footer className="pb-4 pt-2 text-center text-[10px] text-[#B49EAC]">
-          Hecho con cariño · hyuneatelier ♡
-        </footer>
       </main>
     </div>
   );
