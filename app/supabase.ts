@@ -24,11 +24,8 @@ async function request(
   single = false
 ): Promise<Result> {
   try {
-    await firebaseAuth.authStateReady();
-    const user = firebaseAuth.currentUser;
-    const isAdmin = (user?.email || '').toLowerCase().trim() === adminEmail;
+    const isPublicGet = method === 'GET' && publicTables.has(table);
 
-    // Si es escritura, limpiamos la caché local para que se vean los cambios al instante
     if (method !== 'GET') {
       clientCache.clear();
     }
@@ -41,18 +38,32 @@ async function request(
         : '';
 
     const cacheKey = `${table}:${qs}`;
-    if (method === 'GET' && !isAdmin && publicTables.has(table)) {
+
+    // Si es un catálogo público, revisamos la caché de inmediato sin esperar a que cargue la sesión
+    if (isPublicGet) {
       const hit = clientCache.get(cacheKey);
       if (hit && hit.exp > Date.now()) {
         const d = hit.data;
-        return { data: single && Array.isArray(d) ? d[0] ?? null : d, error: null };
+        return { data: single && Array.isArray(d) ? (d[0] ?? null) : d, error: null };
       }
     }
 
-    // Solo enviamos Authorization en GET si NO es tabla pública o si eres Admin.
-    // Así Cloudflare puede cachear las respuestas públicas para los joiners.
-    const shouldSendAuth = method !== 'GET' || !publicTables.has(table) || isAdmin;
-    const token = shouldSendAuth && user ? await user.getIdToken() : undefined;
+    let token: string | undefined;
+    let isAdmin = false;
+
+    if (!isPublicGet) {
+      await firebaseAuth.authStateReady();
+      const user = firebaseAuth.currentUser;
+      isAdmin = (user?.email || '').toLowerCase().trim() === adminEmail;
+      if (user) token = await user.getIdToken();
+    } else if (firebaseAuth.currentUser) {
+      // Si el admin ya tiene sesión iniciada en memoria, enviamos su token para que vea todos los claims
+      const currentEmail = (firebaseAuth.currentUser.email || '').toLowerCase().trim();
+      if (currentEmail === adminEmail) {
+        isAdmin = true;
+        token = await firebaseAuth.currentUser.getIdToken();
+      }
+    }
 
     const response = await fetch(`/api/data/${encodeURIComponent(table)}${qs}`, {
       method,
@@ -67,11 +78,11 @@ async function request(
     if (!response.ok) return { data: null, error: { message: json.error || `HTTP ${response.status}` } };
 
     const data = json.data ?? null;
-    if (method === 'GET' && !isAdmin && publicTables.has(table)) {
+    if (isPublicGet && !isAdmin) {
       clientCache.set(cacheKey, { exp: Date.now() + 30_000, data });
     }
 
-    return { data: single && Array.isArray(data) ? data[0] ?? null : data, error: null };
+    return { data: single && Array.isArray(data) ? (data[0] ?? null) : data, error: null };
   } catch (e) {
     return { data: null, error: { message: e instanceof Error ? e.message : 'Network error' } };
   }
