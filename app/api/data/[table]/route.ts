@@ -1,5 +1,5 @@
-
 import { NextResponse } from 'next/server';
+import { FieldPath } from 'firebase-admin/firestore';
 import { db, requireUser, requireAdmin } from '@/lib/firebaseAdmin';
 
 const allowed = new Set([
@@ -23,7 +23,7 @@ const publicRead = new Set([
 
 const adminEmail = 'liahwang1852@gmail.com';
 
-export const revalidate = 20;
+export const revalidate = 60;
 
 const normalizeName = (value: any) =>
   String(value || '')
@@ -69,7 +69,6 @@ const docId = (table: string, row: any) => {
 
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
-
 async function access(request: Request, table: string, write: boolean) {
   if (!allowed.has(table)) {
     throw new Error('TABLE_NOT_ALLOWED');
@@ -140,18 +139,23 @@ export async function GET(
     }
 
     for (const [field, value, op] of filters) {
-      query = query.where(field, op === 'in' ? 'in' : '==', value);
+      if (field === 'id') {
+        if (op === 'in' && Array.isArray(value)) {
+          query = query.where(FieldPath.documentId(), 'in', value.map(String));
+        } else {
+          query = query.where(FieldPath.documentId(), '==', String(value));
+        }
+      } else {
+        query = query.where(field, op === 'in' ? 'in' : '==', value);
+      }
     }
 
     const snap = await query.get();
-
     let rows = snap.docs.map((d: any) => ({
       id: Number.isNaN(Number(d.id)) ? d.id : Number(d.id),
       ...d.data(),
     }));
 
-    // Legacy imports kept some JSON columns as strings. Normalize them at the
-    // API boundary so admin screens and customer pages receive stable objects.
     if (table === 'productos') {
       rows = rows.map((row: any) => ({
         ...row,
@@ -168,14 +172,24 @@ export async function GET(
     }
 
     if (table === 'productos') {
-      const gs = await db.collection('gos').get();
-
-      const map = new Map(
-        gs.docs.map((d: any) => [
-          Number(d.id),
-          { id: Number(d.id), ...d.data() },
-        ])
+      const goIds = Array.from(
+        new Set(
+          rows
+            .map((r: any) => Number(r.go_id))
+            .filter((id: number) => Number.isInteger(id) && id > 0)
+        )
       );
+
+      const map = new Map<number, any>();
+      if (goIds.length > 0) {
+        const goRefs = goIds.map((id) => db.collection('gos').doc(String(id)));
+        const goSnaps = await db.getAll(...goRefs);
+        for (const d of goSnaps) {
+          if (d.exists) {
+            map.set(Number(d.id), { id: Number(d.id), ...d.data() });
+          }
+        }
+      }
 
       rows = rows.map((r: any) => {
         const raw =
@@ -208,7 +222,6 @@ export async function GET(
         };
       });
     }
-
     const ord = url.searchParams.get('order');
 
     if (ord) {
@@ -226,7 +239,7 @@ export async function GET(
       {
         headers: {
           'Cache-Control': publicRead.has(table)
-            ? 'public, s-maxage=20, stale-while-revalidate=60'
+            ? 'public, s-maxage=60, stale-while-revalidate=120'
             : 'private, no-store',
         },
       }
@@ -280,7 +293,6 @@ async function mutate(
     const body = await request.json();
     const filters = body.filters || [];
     const records = body.records || [];
-
     if (
       !admin &&
       table === 'pedidos' &&
@@ -326,8 +338,6 @@ async function mutate(
         );
       }
 
-      // Guardado especial de fotos de integrantes.
-      // Busca también documentos antiguos con IDs aleatorios.
       if (table === 'integrantes_fotos') {
         if (!admin) {
           return NextResponse.json(
@@ -390,10 +400,8 @@ async function mutate(
             operations.set(ref.path, { ref, data });
           }
         }
-
         const pending = Array.from(operations.values());
 
-        // Firestore admite un máximo de 500 operaciones por batch.
         for (let i = 0; i < pending.length; i += 450) {
           const batch = db.batch();
           const chunk = pending.slice(i, i + 450);
@@ -453,29 +461,22 @@ async function mutate(
       return NextResponse.json({ data: records });
     }
 
-    let snap = await db.collection(table).get();
+    let query: any = db.collection(table);
 
-    const sameValue = (a: any, b: any) => {
-      if (a === b) return true;
-      if (a == null || b == null || a === '' || b === '') return false;
+    for (const [field, value, op] of filters) {
+      if (field === 'id') {
+        if (op === 'in' && Array.isArray(value)) {
+          query = query.where(FieldPath.documentId(), 'in', value.map(String));
+        } else {
+          query = query.where(FieldPath.documentId(), '==', String(value));
+        }
+      } else {
+        query = query.where(field, op === 'in' ? 'in' : '==', value);
+      }
+    }
 
-      const numberA = Number(a);
-      const numberB = Number(b);
-
-      return (
-        Number.isFinite(numberA) &&
-        Number.isFinite(numberB) &&
-        numberA === numberB
-      );
-    };
-
-let docs = snap.docs.filter((d: any) =>
-  filters.every(([k, v, op]: [string, any, string?]) =>
-    op === 'in'
-      ? Array.isArray(v) && v.some((item) => sameValue(d.get(k), item))
-      : sameValue(d.get(k), v)
-  )
-);
+    const snap = await query.get();
+    let docs = snap.docs;
 
     if (!admin) {
       docs = docs.filter(
