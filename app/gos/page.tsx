@@ -36,6 +36,7 @@ type ItemCarritoGo = {
   precioUnitario: number;
   cantidad: number;
 };
+
 export default function Masterlist() {
   const [bandaSeleccionada, setBandaSeleccionada] = useState<'stray kids' | 'enhypen' | 'otros'>('stray kids');
   const [gos, setGos] = useState<Go[]>([]);
@@ -59,6 +60,19 @@ export default function Masterlist() {
   const [formMetodoEnvio, setFormMetodoEnvio] = useState('Servientrega a Domicilio');
   const [procesando, setProcesando] = useState(false);
 
+  async function abrirGo(goId: number, forzarRecarga = false) {
+    setGoSeleccionado(goId);
+    const yaCargados = productos.filter((p) => p.go_id === goId);
+    if (yaCargados.length > 0 && !forzarRecarga) {
+      setProductoSeleccionado(yaCargados.id);
+      return;
+    }
+    const { data: dProds } = await supabase.from('productos').select('*').eq('go_id', goId);
+    const lista = dProds || [];
+    setProductos((prev) => [...prev.filter((p) => p.go_id !== goId), ...lista]);
+    setProductoSeleccionado(lista ? lista.id : null);
+  }
+
   async function inicializarPagina() {
     try {
       setLoading(true);
@@ -75,22 +89,15 @@ export default function Masterlist() {
         if (perfil?.usuario_red) setFormInstagram(perfil.usuario_red.replace('@', ''));
         if (perfil?.telefono) setFormTelefono(perfil.telefono);
       }
-      const [{ data: dGos }, { data: dProds }] = await Promise.all([
-        supabase.from('gos').select('*'),
-        supabase.from('productos').select('*'),
-      ]);
+      const { data: dGos } = await supabase.from('gos').select('*');
       setGos(dGos || []);
-      setProductos(dProds || []);
-         if (typeof window !== 'undefined') {
-     const params = new URLSearchParams(window.location.search);
-     const goParam = Number(params.get('go'));
-     if (goParam && dGos?.some((g: any) => g.id === goParam)) {
-       setGoSeleccionado(goParam);
-       const firstP = (dProds || []).find((p: any) => p.go_id === goParam);
-       setProductoSeleccionado(firstP ? firstP.id : null);
-     }
-   }
-
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const goParam = Number(params.get('go'));
+        if (goParam && dGos?.some((g: any) => g.id === goParam)) {
+          await abrirGo(goParam);
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -101,8 +108,8 @@ export default function Masterlist() {
   useEffect(() => {
     inicializarPagina();
   }, []);
-    const gosFiltrados = gos.filter((g) => {
-      if (g.status === 'HIDDEN') return false;
+  const gosFiltrados = gos.filter((g) => {
+    if (g.status === 'HIDDEN') return false;
     const n = (g.group_name || '').toLowerCase().replace(/\s+/g, '');
     return bandaSeleccionada === 'stray kids'
       ? n.includes('straykids') || n.includes('skz')
@@ -110,7 +117,6 @@ export default function Masterlist() {
       ? n.includes('enhypen')
       : !n.includes('straykids') && !n.includes('skz') && !n.includes('enhypen');
   });
-
 
   const activeGo = gos.find((g) => g.id === goSeleccionado);
   const productosDelGo = productos.filter((p) => p.go_id === goSeleccionado);
@@ -152,6 +158,7 @@ export default function Masterlist() {
 
   const totalUnidadesBolsa = carritoGlobal.reduce((acc, i) => acc + i.cantidad, 0);
   const totalDineroBolsa = carritoGlobal.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
+
   async function handleConfirmarTodoElCarrito(e: React.FormEvent) {
     e.preventDefault();
     if (!usuarioEmail) return alert('Inicia sesión primero 🎀');
@@ -176,7 +183,8 @@ export default function Masterlist() {
     if (!claimResponse.ok) {
       alert(claimResult.error?.startsWith('OUT_OF_STOCK:') ? 'Ese slot ya no tiene suficientes unidades disponibles. Actualiza la página y vuelve a intentarlo.' : (claimResult.error || 'No se pudo guardar tu claim.'));
       setProcesando(false);
-      inicializarPagina();
+      setProductos([]);
+      if (goSeleccionado) await abrirGo(goSeleccionado, true);
       return;
     }
 
@@ -197,14 +205,15 @@ export default function Masterlist() {
     setDatosUltimoClaim({
       desglose: desgloseTexto,
       total: totalDineroBolsa,
-      urlWhatsapp: 'https://wa.me/593999530327?text=' + encodeURIComponent(mensajeWsp),
+      urlWhatsapp: 'https://wa.me' + encodeURIComponent(mensajeWsp),
     });
 
     setCarritoGlobal([]);
     setMostrarBolsa(false);
     setMostrarModuloPago(true);
     setProcesando(false);
-    inicializarPagina();
+    setProductos([]);
+    if (goSeleccionado) await abrirGo(goSeleccionado, true);
   }
 
   async function handleCancelarClaimAdmin(prod: Producto, slotName: string, mail: string) {
@@ -215,7 +224,8 @@ export default function Masterlist() {
       if (Object.keys(claimsCopia[slotName]).length === 0) delete claimsCopia[slotName];
     }
     await supabase.from('productos').update({ claims_integrantes: claimsCopia }).eq('id', prod.id);
-    inicializarPagina();
+    setProductos([]);
+    if (goSeleccionado) await abrirGo(goSeleccionado, true);
   }
   if (loading) {
     return (
@@ -279,11 +289,7 @@ export default function Masterlist() {
                 <button
                   key={g.id}
                   type="button"
-                  onClick={() => {
-                    setGoSeleccionado(g.id);
-                    const firstP = productos.find((p) => p.go_id === g.id);
-                    setProductoSeleccionado(firstP ? firstP.id : null);
-                  }}
+                  onClick={() => abrirGo(g.id)}
                   className="min-w-0 h-full p-3 sm:p-4 rounded-2xl border border-[#F3DFE9] text-left bg-white hover:border-[#E5A9C5] hover:shadow-md transition-all flex flex-col gap-3 focus:outline-none focus:ring-2 focus:ring-pink-200"
                 >
                   <div className="w-full aspect-[4/3] bg-[#FFF7FA] rounded-xl flex items-center justify-center p-2 sm:p-3 border border-pink-50">
@@ -312,16 +318,16 @@ export default function Masterlist() {
                   <span className="bg-[#D96B9F] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">{activeGo?.status || 'ABIERTO'}</span>
                   <h3 className="text-base font-black text-[#594653] uppercase mt-1">{activeGo?.title}</h3>
                   <button
-  type="button"
-  onClick={() => {
-    const urlGo = window.location.origin + '/gos?go=' + activeGo?.id;
-    navigator.clipboard.writeText(urlGo);
-    alert('🔗 ¡Link directo de este GO copiado! Listo para pegar en tus historias ✨\n\n' + urlGo);
-  }}
-  className="mt-2 inline-flex items-center gap-1.5 bg-[#FFF0F5] hover:bg-pink-100 text-pink-700 border border-[#F0D0E0] text-[11px] font-extrabold px-3 py-1.5 rounded-xl"
->
-  🔗 Copiar link directo de este GO
-</button>
+                    type="button"
+                    onClick={() => {
+                      const urlGo = window.location.origin + '/gos?go=' + activeGo?.id;
+                      navigator.clipboard.writeText(urlGo);
+                      alert('🔗 ¡Link directo de este GO copiado! Listo para pegar en tus historias ✨\n\n' + urlGo);
+                    }}
+                    className="mt-2 inline-flex items-center gap-1.5 bg-[#FFF0F5] hover:bg-pink-100 text-pink-700 border border-[#F0D0E0] text-[11px] font-extrabold px-3 py-1.5 rounded-xl"
+                  >
+                    🔗 Copiar link directo de este GO
+                  </button>
 
                   {activeProducto?.descripcion && <p className="text-xs text-zinc-600 bg-[#FFF9FC] p-3 rounded-xl border mt-2 whitespace-pre-line">{activeProducto.descripcion}</p>}
                 </div>
@@ -378,7 +384,6 @@ export default function Masterlist() {
                   )}
                 </div>
               )}
-
               {usuarioEmail === correoAdmin && activeProducto?.claims_integrantes && Object.keys(activeProducto.claims_integrantes).length > 0 && (
                 <div className="bg-white border rounded-2xl p-4 space-y-2">
                   <h3 className="text-[11px] font-bold text-[#A995A1] uppercase text-center">Panel de administración 👑</h3>
@@ -460,7 +465,6 @@ export default function Masterlist() {
           </div>
         </div>
       )}
-
       {mostrarModuloPago && datosUltimoClaim && (
         <div className="fixed inset-0 bg-[#D96B9F]/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-[#F0D0E0] rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
