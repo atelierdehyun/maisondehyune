@@ -62,17 +62,16 @@ export default function Masterlist() {
 
   async function abrirGo(goId: number, forzarRecarga = false) {
     setGoSeleccionado(goId);
-    const yaCargados = productos.filter((p) => p.go_id === goId);
+    const yaCargados = productos.filter((p) => Number(p.go_id) === Number(goId));
     if (yaCargados.length > 0 && !forzarRecarga) {
       setProductoSeleccionado(yaCargados.id);
       return;
     }
     const { data: dProds } = await supabase.from('productos').select('*').eq('go_id', goId);
     const lista = dProds || [];
-    setProductos((prev) => [...prev.filter((p) => p.go_id !== goId), ...lista]);
-    setProductoSeleccionado(lista ? lista.id : null);
+    setProductos((prev) => [...prev.filter((p) => Number(p.go_id) !== Number(goId)), ...lista]);
+    setProductoSeleccionado(lista.length > 0 ? lista.id : null);
   }
-
   async function inicializarPagina() {
     try {
       setLoading(true);
@@ -94,7 +93,7 @@ export default function Masterlist() {
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search);
         const goParam = Number(params.get('go'));
-        if (goParam && dGos?.some((g: any) => g.id === goParam)) {
+        if (goParam && dGos?.some((g: any) => Number(g.id) === goParam)) {
           await abrirGo(goParam);
         }
       }
@@ -108,6 +107,7 @@ export default function Masterlist() {
   useEffect(() => {
     inicializarPagina();
   }, []);
+
   const gosFiltrados = gos.filter((g) => {
     if (g.status === 'HIDDEN') return false;
     const n = (g.group_name || '').toLowerCase().replace(/\s+/g, '');
@@ -118,9 +118,9 @@ export default function Masterlist() {
       : !n.includes('straykids') && !n.includes('skz') && !n.includes('enhypen');
   });
 
-  const activeGo = gos.find((g) => g.id === goSeleccionado);
-  const productosDelGo = productos.filter((p) => p.go_id === goSeleccionado);
-  const activeProducto = productos.find((p) => p.id === productoSeleccionado);
+  const activeGo = gos.find((g) => Number(g.id) === Number(goSeleccionado));
+  const productosDelGo = productos.filter((p) => Number(p.go_id) === Number(goSeleccionado));
+  const activeProducto = productos.find((p) => Number(p.id) === Number(productoSeleccionado)) || productosDelGo[0] || null;
 
   function cambiarCantidadEnBolsa(prod: Producto, integrante: string, delta: number, stockDisponibles: number) {
     if (!usuarioEmail) {
@@ -129,7 +129,7 @@ export default function Masterlist() {
     }
     setMessage('');
     const keyUnica = prod.id + '-' + integrante;
-    const goTitulo = gos.find((g) => g.id === prod.go_id)?.title || 'Group Order';
+    const goTitulo = gos.find((g) => Number(g.id) === Number(prod.go_id))?.title || 'Group Order';
 
     setCarritoGlobal((prev) => {
       const existe = prev.find((i) => i.keyUnica === keyUnica);
@@ -155,7 +155,6 @@ export default function Masterlist() {
       ];
     });
   }
-
   const totalUnidadesBolsa = carritoGlobal.reduce((acc, i) => acc + i.cantidad, 0);
   const totalDineroBolsa = carritoGlobal.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
 
@@ -234,6 +233,17 @@ export default function Masterlist() {
       </div>
     );
   }
+
+  const slotsDisponiblesList = activeProducto
+    ? (activeProducto.lista_slots || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  const slotsFinales =
+    slotsDisponiblesList.length > 0
+      ? slotsDisponiblesList
+      : Object.keys(activeProducto?.stock_slots || {});
 
   return (
     <div className="min-h-screen bg-[#FFF0F4] bg-[linear-gradient(to_right,rgba(255,255,255,0.4)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.4)_1px,transparent_1px)] bg-[size:30px_30px] font-sans text-[#594653] pb-32">
@@ -340,7 +350,7 @@ export default function Masterlist() {
                 <p className="text-[11px] font-bold text-[#A995A1] uppercase">Productos de este GO</p>
                 <div className="flex flex-wrap gap-2">
                   {productosDelGo.map((p) => (
-                    <button key={p.id} type="button" onClick={() => setProductoSeleccionado(p.id)} className={`px-3 py-2 rounded-xl text-xs font-extrabold border ${productoSeleccionado === p.id ? 'bg-[#D96B9F] text-white shadow-sm border-zinc-950' : 'bg-[#FFF9FC] text-[#725D6B] border-[#EEDCE6]'}`}>
+                    <button key={p.id} type="button" onClick={() => setProductoSeleccionado(p.id)} className={`px-3 py-2 rounded-xl text-xs font-extrabold border ${Number(activeProducto?.id) === Number(p.id) ? 'bg-[#D96B9F] text-white shadow-sm border-zinc-950' : 'bg-[#FFF9FC] text-[#725D6B] border-[#EEDCE6]'}`}>
                       {p.nombre_producto} (${p.precio})
                     </button>
                   ))}
@@ -354,9 +364,10 @@ export default function Masterlist() {
                     <span className="text-xs font-black text-[#C85B90]">${activeProducto.precio} USD c/u</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pr-1">
-                    {activeProducto.lista_slots?.split(',').map((s) => s.trim()).map((int) => {
-                      const totalC = activeProducto.claims_integrantes?.[int] ? Object.values(activeProducto.claims_integrantes[int]).reduce((a, b) => a + b, 0) : 0;
-                      const stockD = Math.max(0, (activeProducto.stock_slots?.[int] ?? 0) - totalC);
+                    {slotsFinales.map((int) => {
+                      const totalC = activeProducto.claims_integrantes?.[int] ? Object.values(activeProducto.claims_integrantes[int]).reduce((a, b) => a + Number(b || 0), 0) : 0;
+                      const stockBase = activeProducto.stock_slots?.[int] ?? (activeProducto as any).cantidad_disponible ?? 0;
+                      const stockD = Math.max(0, Number(stockBase) - totalC);
                       const enCarrito = carritoGlobal.find((i) => i.keyUnica === activeProducto.id + '-' + int)?.cantidad || 0;
                       return (
                         <div key={int} className="bg-[#FFF9FC]/70 p-3 rounded-xl border border-[#EEDCE6]/80 flex justify-between items-center">
@@ -404,6 +415,7 @@ export default function Masterlist() {
           </div>
         )}
       </div>
+
       {mostrarBolsa && (
         <div className="fixed inset-0 bg-[#D96B9F]/50 backdrop-blur-xs flex justify-end z-50">
           <div className="bg-white w-full max-w-md h-full overflow-y-auto p-5 flex flex-col justify-between shadow-2xl">
@@ -465,6 +477,7 @@ export default function Masterlist() {
           </div>
         </div>
       )}
+
       {mostrarModuloPago && datosUltimoClaim && (
         <div className="fixed inset-0 bg-[#D96B9F]/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-[#F0D0E0] rounded-3xl p-6 max-w-md w-full space-y-3 shadow-xl text-center">
