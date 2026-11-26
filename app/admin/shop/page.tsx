@@ -292,7 +292,6 @@ const removeVariant = (index: number) => {
     setSaving(false);
   }
 };
-  
   const uploadVariantImage = async (index: number, file: File) => {
     setSaving(true);
     setError('');
@@ -319,7 +318,11 @@ const removeVariant = (index: number) => {
         throw new Error(result.error || 'No se pudo subir la imagen.');
       }
 
-      updateVariant(index, 'imagen', result.secure_url);
+      setVariants((current) =>
+        current.map((variant, i) =>
+          i === index ? { ...variant, imagen: result.secure_url } : variant
+        )
+      );
       setNotice('¡Foto de variante subida correctamente! ♡');
     } catch (error: any) {
       setError(error.message || 'No se pudo subir la foto de la variante.');
@@ -777,6 +780,7 @@ variantes: variants.map((variant) => ({
             </div>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <label className="sm:col-span-2">
                 <span className="mb-1.5 block text-xs font-bold">Nombre del producto *</span>
                 <input
                   value={form.nombre_producto}
@@ -784,6 +788,7 @@ variantes: variants.map((variant) => ({
                   className="w-full rounded-xl border border-[#eee3eb] px-4 py-3 text-sm outline-none focus:border-[#c47b9d]"
                   placeholder="Ej. Hyunjin photocard set"
                 />
+              </label>
 
               <label>
                 <span className="mb-1.5 block text-xs font-bold">Grupo *</span>
@@ -965,32 +970,31 @@ variantes: variants.map((variant) => ({
                 className="w-full rounded-xl border border-[#eee3eb] px-3 py-3 text-sm outline-none focus:border-[#c47b9d]"
               />
             </label>
-            
-  <div className="sm:col-span-2">
-    <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-[#d9a6bf] bg-[#fff7fb] px-4 py-3 text-sm font-semibold text-[#a64d78]">
-      <input
-        type="file"
-        accept="image/*"
-        className="hidden"
-        disabled={saving}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) uploadVariantImage(index, file);
-          e.target.value = '';
-        }}
-      />
-      ♡ Seleccionar foto para esta variante
-    </label>
 
-    {variant.imagen && (
-      <img
-        src={variant.imagen}
-        alt={`Imagen de ${variant.nombre || `variante ${index + 1}`}`}
-        className="mt-3 max-h-40 w-auto rounded-xl object-contain"
-      />
-    )}
-  </div>
+            <div className="sm:col-span-2">
+              <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-[#d9a6bf] bg-[#fff7fb] px-4 py-3 text-sm font-semibold text-[#a64d78]">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={saving}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadVariantImage(index, file);
+                    e.target.value = '';
+                  }}
+                />
+                ♡ Seleccionar foto para esta variante
+              </label>
 
+              {variant.imagen && (
+                <img
+                  src={variant.imagen}
+                  alt={`Imagen de ${variant.nombre || `variante ${index + 1}`}`}
+                  className="mt-3 max-h-40 w-auto rounded-xl object-contain"
+                />
+              )}
+            </div>
           </div>
         </div>
       ))}
@@ -1005,44 +1009,47 @@ variantes: variants.map((variant) => ({
                   className="h-4 w-4 accent-[#b34c80]"
                 />
                 <span className="font-semibold">Marcar como producto destacado</span>
-                <div className="sm:col-span-2">
-  <span className="mb-2 block text-xs font-bold">
-    Imagen principal de la publicación
-  </span>
+              </label>
 
-  <input
-    type="text"
-    value={form.imagen_producto}
-    onChange={(e) =>
-      setForm({ ...form, imagen_producto: e.target.value })
-    }
-    className="w-full rounded-xl border border-[#eee3eb] px-4 py-3 text-sm"
-    placeholder="Pega aquí la URL de la imagen"
-  />
+              <div className="sm:col-span-2">
+                <span className="mb-2 block text-xs font-bold">
+                  Imagen principal de la publicación
+                </span>
 
-  <label className="mt-3 flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-[#d9a6bf] bg-[#fff7fb] px-4 py-4 text-sm font-semibold text-[#a64d78]">
-    <input
-      type="file"
-      accept="image/*"
-      className="hidden"
-      disabled={saving}
-      onChange={(e) => {
-        const file = e.target.files?.[0];
-        if (file) uploadCover(file);
-        e.target.value = '';
-      }}
-    />
-    ♡ Seleccionar foto desde mi dispositivo
-  </label>
+                <input
+                  type="text"
+                  value={form.imagen_producto}
+                  onChange={(e) =>
+                    setForm({ ...form, imagen_producto: e.target.value })
+                  }
+                  className="w-full rounded-xl border border-[#eee3eb] px-4 py-3 text-sm"
+                  placeholder="Pega aquí la URL de la imagen"
+                />
 
-  {form.imagen_producto && (
-    <img
-      src={form.imagen_producto}
-      alt="Vista previa de portada"
-      className="mt-3 max-h-56 w-auto rounded-xl object-contain"
-    />
-  )}
-</div>
+                <label className="mt-3 flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-[#d9a6bf] bg-[#fff7fb] px-4 py-4 text-sm font-semibold text-[#a64d78]">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={saving}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadCover(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  ♡ Seleccionar foto desde mi dispositivo
+                </label>
+
+                {form.imagen_producto && (
+                  <img
+                    src={form.imagen_producto}
+                    alt="Vista previa de portada"
+                    className="mt-3 max-h-56 w-auto rounded-xl object-contain"
+                  />
+                )}
+              </div>
+            </div>
 
             <div className="mt-6 flex flex-wrap justify-end gap-2">
               <button
