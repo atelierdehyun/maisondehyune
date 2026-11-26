@@ -552,6 +552,88 @@ export default function AdminGosWorkspace() {
     const { error } = await supabase.from('productos').delete().eq('id', prodId);
     if (!error && goActivoId) await abrirGoEnWorkspace(goActivoId);
   }
+    async function handleEliminarUnSoloItem(tarjeta: TarjetaJoiner, item: ItemTarjeta) {
+    if (!confirm('¿Quitar "' + item.productoNombre + '" (' + item.detalleSlot + ') del pedido de ' + tarjeta.nombreReal + '?')) return;
+    try {
+      await ejecutarGestionClaims({
+        action: 'delete-items',
+        email: tarjeta.correo,
+        items: [{ origen: 'GO', claimKeyBase: item.claimKeyBase }],
+      }).catch(() => null);
+
+      const prodId = Number(String(item.claimKeyBase || '').split('-'));
+      const prodObj = productosGoActivo.find((p) => Number(p.id) === prodId);
+      if (prodObj && prodObj.claims_integrantes) {
+        const claimsCopia: Record<string, any> = { ...prodObj.claims_integrantes };
+        const slotExacto =
+          Object.keys(claimsCopia).find(
+            (k) => k.trim().toLowerCase() === item.detalleSlot.trim().toLowerCase()
+          ) || item.detalleSlot;
+
+        if (claimsCopia[slotExacto] && typeof claimsCopia[slotExacto] === 'object') {
+          const mailKey = Object.keys(claimsCopia[slotExacto]).find(
+            (m) => m.trim().toLowerCase() === tarjeta.correo.trim().toLowerCase()
+          );
+          if (mailKey) {
+            delete claimsCopia[slotExacto][mailKey];
+            if (Object.keys(claimsCopia[slotExacto]).length === 0) {
+              delete claimsCopia[slotExacto];
+            }
+            await supabase
+              .from('productos')
+              .update({ claims_integrantes: claimsCopia })
+              .eq('id', prodObj.id);
+          }
+        }
+      }
+
+      if (goActivoId) await abrirGoEnWorkspace(goActivoId);
+    } catch (error: any) {
+      alert('No se pudo eliminar el artículo: ' + (error?.message || 'Error desconocido.'));
+    }
+  }
+
+    async function handleEliminarUnSoloItem(tarjeta: TarjetaJoiner, item: ItemTarjeta) {
+    if (!confirm('¿Quitar "' + item.productoNombre + '" (' + item.detalleSlot + ') del pedido de ' + tarjeta.nombreReal + '?')) return;
+    try {
+      await ejecutarGestionClaims({
+        action: 'delete-items',
+        email: tarjeta.correo,
+        items: [{ origen: 'GO', claimKeyBase: item.claimKeyBase }],
+      }).catch(() => null);
+
+      const prodId = Number(String(item.claimKeyBase || '').split('-')[0]);
+      const prodObj = productosGoActivo.find((p) => Number(p.id) === prodId);
+      if (prodObj && prodObj.claims_integrantes) {
+        const claimsCopia: Record<string, any> = { ...prodObj.claims_integrantes };
+        const slotExacto =
+          Object.keys(claimsCopia).find(
+            (k) => k.trim().toLowerCase() === item.detalleSlot.trim().toLowerCase()
+          ) || item.detalleSlot;
+
+        if (claimsCopia[slotExacto] && typeof claimsCopia[slotExacto] === 'object') {
+          const mailKey = Object.keys(claimsCopia[slotExacto]).find(
+            (m) => m.trim().toLowerCase() === tarjeta.correo.trim().toLowerCase()
+          );
+          if (mailKey) {
+            delete claimsCopia[slotExacto][mailKey];
+            if (Object.keys(claimsCopia[slotExacto]).length === 0) {
+              delete claimsCopia[slotExacto];
+            }
+            await supabase
+              .from('productos')
+              .update({ claims_integrantes: claimsCopia })
+              .eq('id', prodObj.id);
+          }
+        }
+      }
+
+      if (goActivoId) await abrirGoEnWorkspace(goActivoId);
+    } catch (error: any) {
+      alert('No se pudo eliminar el artículo: ' + (error?.message || 'Error desconocido.'));
+    }
+  }
+
   async function handleEliminarTarjetaPedido(tarjeta: TarjetaJoiner) {
     if (!confirm('⚠️ ¿Eliminar todo el pedido de ' + tarjeta.nombreReal + ' y liberar sus slots?')) return;
     try {
@@ -559,7 +641,36 @@ export default function AdminGosWorkspace() {
         action: 'delete-items',
         email: tarjeta.correo,
         items: tarjeta.items.map((item) => ({ origen: 'GO', claimKeyBase: item.claimKeyBase })),
-      });
+      }).catch(() => null);
+
+      for (const item of tarjeta.items) {
+        const prodId = Number(String(item.claimKeyBase || '').split('-')[0]);
+        const prodObj = productosGoActivo.find((p) => Number(p.id) === prodId);
+        if (prodObj && prodObj.claims_integrantes) {
+          const claimsCopia: Record<string, any> = { ...prodObj.claims_integrantes };
+          const slotExacto =
+            Object.keys(claimsCopia).find(
+              (k) => k.trim().toLowerCase() === item.detalleSlot.trim().toLowerCase()
+            ) || item.detalleSlot;
+
+          if (claimsCopia[slotExacto] && typeof claimsCopia[slotExacto] === 'object') {
+            const mailKey = Object.keys(claimsCopia[slotExacto]).find(
+              (m) => m.trim().toLowerCase() === tarjeta.correo.trim().toLowerCase()
+            );
+            if (mailKey) {
+              delete claimsCopia[slotExacto][mailKey];
+              if (Object.keys(claimsCopia[slotExacto]).length === 0) {
+                delete claimsCopia[slotExacto];
+              }
+              await supabase
+                .from('productos')
+                .update({ claims_integrantes: claimsCopia })
+                .eq('id', prodObj.id);
+            }
+          }
+        }
+      }
+
       alert('🗑️ Pedido eliminado y slots liberados ✨');
       if (goActivoId) await abrirGoEnWorkspace(goActivoId);
     } catch (error: any) {
