@@ -96,13 +96,14 @@ export default function MiEscritorioJoiner() {
           supabase.from('wishlist_joiners').select('producto_id').eq('user_email', email),
         ]);
 
-        const productIds = Array.from(
+                const productIds = Array.from(
           new Set(
             (Array.isArray(segs) ? segs : [])
               .map((s: any) => Number(String(s?.claim_key || '').split('-')[0]))
               .filter((id: number) => Number.isInteger(id) && id > 0)
           )
         );
+
 
         let prods: any[] = [];
         if (productIds.length > 0) {
@@ -411,7 +412,7 @@ export default function MiEscritorioJoiner() {
             <div className="max-w-xl">
               <span className="inline-flex rounded-full border border-[#EBC9D9] bg-white/75 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B76C90]">Tu espacio personal</span>
               <h1 className="mt-3 text-2xl font-black tracking-tight text-[#493744] sm:text-3xl">
-                ¡Hola, {nombreJoiner.trim().split(' ') || 'bienvenida'}! <span className="text-[#D889AA]">♡</span>
+                {nombreJoiner.trim().split(' ')[0] || 'bienvenida'}! <span className="text-[#D889AA]">♡</span>
               </h1>
               <p className="mt-2 max-w-lg text-xs leading-6 text-[#806B79] sm:text-sm">
                 Aquí puedes revisar tus apartados, consultar tus pagos y reunir tus compras para solicitar un envío cuando estén listas.
