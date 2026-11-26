@@ -604,7 +604,7 @@ export default function MiEscritorioJoiner() {
                         {montoAbono.trim() !== '' && !importeValido && <p className="mt-1 text-[10px] font-bold text-rose-600">Ingresa un importe mayor que $0 y que no supere el saldo pendiente.</p>}
                         {importeValido && <p className="mt-2 text-[11px] font-bold text-[#57927E]">Después de este abono quedarán ${Math.max(0, totalPendientePagar - importeTransferencia).toFixed(2)} USD pendientes.</p>}
                       </div>
-                      <p className="text-[11px] leading-5 text-[#78877E]">Transfiere al Banco Pichincha <strong>(2213367970 — Isabel Revollar)</strong>. También puedes adjuntar tu comprobante aquí; quedará privado hasta que lo revisemos.</p>
+                                          <p className="text-[11px] leading-5 text-[#78877E]">Transfiere al Banco Pichincha <strong>(2213367970 — Isabel Revollar)</strong>. Adjunta aquí tu comprobante privado; una vez subido podrás notificarnos por WhatsApp para revisarlo.</p>
                       <div className="rounded-2xl border border-[#DCE9E0] bg-white p-3 space-y-2">
                         <label className="block text-[11px] font-extrabold text-[#5B7466]">Adjuntar comprobante · JPG, PNG, WebP o PDF (máx. 8 MB)</label>
                         <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => setComprobanteFile(e.target.files?.[0] || null)} className="block w-full text-[11px]" />
@@ -618,27 +618,30 @@ export default function MiEscritorioJoiner() {
                           const form = new FormData(); if (!importeValido) { alert('Ingresa un abono válido que no supere el saldo pendiente.'); return; }
                           form.append('file', comprobanteFile!); form.append('scope', scopes.has('SHOP') ? 'SHOP' : 'GO'); form.append('amount', String(importeTransferencia)); if (goTitles[0]) form.append('goTitle', goTitles[0]);
                           setSubiendoComprobante(true); setMensajeComprobante('');
-                          try { const response = await fetch('/api/proofs', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }); const result = await response.json(); if (!response.ok) throw new Error(result.error || 'No se pudo subir el comprobante.'); setMensajeComprobante('Comprobante recibido. Lo revisaremos desde administración ♡'); setComprobanteFile(null); } catch (error: any) { setMensajeComprobante(error?.message || 'No se pudo subir el comprobante.'); } finally { setSubiendoComprobante(false); }
-                        }} className="w-full rounded-xl bg-[#6EAA8D] px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">{subiendoComprobante ? 'Subiendo comprobante…' : 'Subir comprobante privado'}</button>
+                          try { const response = await fetch('/api/proofs', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }); const result = await response.json(); if (!response.ok) throw new Error(result.error || 'No se pudo subir el comprobante.'); setMensajeComprobante('Comprobante recibido. Ya puedes avisarnos por WhatsApp para revisarlo ♡'); setComprobanteFile(null); } catch (error: any) { setMensajeComprobante(error?.message || 'No se pudo subir el comprobante.'); } finally { setSubiendoComprobante(false); }
+                        }} className="w-full rounded-xl bg-[#6EAA8D] px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">{subiendoComprobante ? 'Subiendo comprobante…' : '1. Subir comprobante privado'}</button>
                         {mensajeComprobante && <p role="status" className="text-[11px] font-semibold text-[#5B7466]">{mensajeComprobante}</p>}
                       </div>
-                      <a href={abrirChatLia(
-                        '¡Hola, Lia! Quiero reportar el pago de mis pedidos en hyuneatelier:\n\n' +
-                          '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + '\n' +
-                          '• *Titular transferencia:* ' + (titularTransferencia || nombreJoiner || usuarioEmail) + '\n' +
-                          '• *Instagram:* ' + (instagramJoiner || 'No registrado') + '\n' +
-                          '• *Correo:* ' + usuarioEmail + '\n\n' +
-                          '*Artículos a pagar:*\n' +
-                          itemsAPagarHoy.map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2)).join('\n') +
-                          (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
-                          '\n\n• *Importe que abonaré ahora:* $' + importeTransferencia.toFixed(2) + ' USD\n' + '• *Saldo restante estimado:* $' + Math.max(0, totalPendientePagar - importeTransferencia).toFixed(2) + ' USD\n\n' +
-                          'Confirmo que sigo a @atelierdehyun. Si ya subí el comprobante en Mi escritorio, no necesito adjuntarlo otra vez.'
-                      )} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6EAA8D] px-4 py-3.5 text-xs font-black text-white shadow-sm transition hover:bg-[#5D987C]">
-                        💬 Enviar resumen de pago por WhatsApp · ${importeValido ? importeTransferencia.toFixed(2) : '—'}
-                      </a>
+                      {mensajeComprobante.includes('Comprobante recibido') && (
+                        <a href={abrirChatLia(
+                          '¡Hola, Lia! Ya subí mi comprobante de pago en hyuneatelier para revisión:\n\n' +
+                            '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + '\n' +
+                            '• *Titular transferencia:* ' + (titularTransferencia || nombreJoiner || usuarioEmail) + '\n' +
+                            '• *Instagram:* ' + (instagramJoiner || 'No registrado') + '\n' +
+                            '• *Correo:* ' + usuarioEmail + '\n\n' +
+                            '*Artículos pagados:*\n' +
+                            itemsAPagarHoy.map((i) => '• [' + i.goTitulo + '] ' + i.productoNombre + ' — $' + i.precioTotal.toFixed(2)).join('\n') +
+                            (totalAbonadoPendientes > 0 ? '\n• *Abonado anteriormente:* -$' + totalAbonadoPendientes.toFixed(2) : '') +
+                            '\n\n• *Importe transferido:* $' + importeTransferencia.toFixed(2) + ' USD\n' + '• *Saldo restante estimado:* $' + Math.max(0, totalPendientePagar - importeTransferencia).toFixed(2) + ' USD\n\n' +
+                            'Confirmo que sigo a @hyuneatelier. El comprobante ya está adjunto en Mi Cuenta.'
+                        )} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6EAA8D] px-4 py-3.5 text-xs font-black text-white shadow-sm transition hover:bg-[#5D987C]">
+                          💬 2. Avisar por WhatsApp que ya subí mi pago · ${importeValido ? importeTransferencia.toFixed(2) : '—'}
+                        </a>
+                      )}
                     </div>
                   </section>
                 )}
+
                 {grupos.length === 0 ? (
                   <div className="rounded-[26px] border border-dashed border-[#E8D5E0] bg-white px-6 py-12 text-center">
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFF0F6] text-2xl">🧸</div>
