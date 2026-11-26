@@ -12,9 +12,8 @@ const PRECIOS_ENVIO: Record<string, number> = {
 };
 
 function abrirChatLia(texto: string) {
-  // Número correcto de WhatsApp en formato internacional: 593 + 999530327.
   const miNumero = '593999530327';
-  return 'https://wa.me/' + miNumero + '?text=' + encodeURIComponent(texto);
+  return 'https://wa.me' + miNumero + '?text=' + encodeURIComponent(texto);
 }
 
 type ItemEscritorio = {
@@ -69,6 +68,7 @@ export default function MiEscritorioJoiner() {
   const [envioDireccion, setEnvioDireccion] = useState('');
   const [envioMetodo, setEnvioMetodo] = useState('Quito ($3.50)');
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
+    const [urlWhatsappEnvio, setUrlWhatsappEnvio] = useState('');
   async function cargarMisPedidos() {
     setLoading(true);
     try {
@@ -87,14 +87,39 @@ export default function MiEscritorioJoiner() {
         } catch {
           setAvisosGo([]);
         }
-        const [{ data: perfil }, { data: prods }, { data: segs }, { data: peds }, { data: sols }, { data: wishRows }] = await Promise.all([
+
+        const [{ data: perfil }, { data: segs }, { data: peds }, { data: sols }, { data: wishRows }] = await Promise.all([
           supabase.from('perfiles_joiners').select('*').eq('user_email', email).maybeSingle(),
-          supabase.from('productos').select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title, estado_logistica)'),
           supabase.from('seguimiento_claims').select('*').eq('user_email', email),
           supabase.from('pedidos').select('*').eq('user_email', email).order('id', { ascending: false }),
           supabase.from('solicitudes_envio').select('*').eq('user_email', email).order('id', { ascending: false }),
           supabase.from('wishlist_joiners').select('producto_id').eq('user_email', email),
         ]);
+
+        const productIds = Array.from(
+          new Set(
+            (Array.isArray(segs) ? segs : [])
+              .map((s: any) => Number(String(s?.claim_key || '').split('-')[0]))
+              .filter((id: number) => Number.isInteger(id) && id > 0)
+          )
+        );
+
+        let prods: any[] = [];
+        if (productIds.length > 0) {
+          for (let i = 0; i < productIds.length; i += 30) {
+            const chunk = productIds.slice(i, i + 30);
+            const { data: chunkProds } = await supabase
+              .from('productos')
+              .select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title, estado_logistica)')
+              .in('id', chunk);
+            if (Array.isArray(chunkProds)) prods.push(...chunkProds);
+          }
+        } else {
+          const { data: allProds } = await supabase
+            .from('productos')
+            .select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title, estado_logistica)');
+          prods = Array.isArray(allProds) ? allProds : [];
+        }
 
         if (perfil) {
           setNombreJoiner(perfil.nombre_completo || '');
@@ -112,7 +137,6 @@ export default function MiEscritorioJoiner() {
             .in('id', ids);
           setWishlistProds(Array.isArray(prodsW) ? prodsW : []);
         }
-
         const mapaSeg: Record<string, any> = {};
         if (Array.isArray(segs)) segs.forEach((s: any) => { if (s?.claim_key) mapaSeg[s.claim_key] = s; });
 
@@ -300,15 +324,21 @@ export default function MiEscritorioJoiner() {
         '• *Costo de envío:* ' + ('$' + costoEnvioElegido.toFixed(2) + ' USD') + '\n\n' +
         'Confirmo que sigo a @atelierdehyun.';
 
+                  const urlWsp = abrirChatLia(msgWsp);
+      setUrlWhatsappEnvio(urlWsp);
       setSeleccionadosEnvio({});
       await cargarMisPedidos();
-      window.location.href = abrirChatLia(msgWsp);
+      window.location.assign(urlWsp);
+      const ventana = window.open(urlWsp, '_blank', 'noopener,noreferrer');
+      if (!ventana) {
+        window.location.assign(urlWsp);
+      }
+
     } else {
       alert('Error: ' + error.message);
     }
     setEnviandoSolicitud(false);
   }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAF8F9] flex items-center justify-center font-mono text-xs text-zinc-400">
@@ -356,15 +386,8 @@ export default function MiEscritorioJoiner() {
   const importeTransferencia = montoAbono.trim() === '' ? totalPendientePagar : Number(montoAbono);
   const importeValido = Number.isFinite(importeTransferencia) && importeTransferencia > 0 && importeTransferencia <= totalPendientePagar + 0.005;
 
-  const estampitasGanadas = todosLosItems.filter(
-    (i) => i.estadoPago === 'Pagado' && i.estadoConfirmacion !== 'Cancelado' && i.precioTotal >= 20
-  ).length;
-  const estampitasActuales = estampitasGanadas % 10;
-    const premiosDisponibles = Math.floor(estampitasGanadas / 10);
-
   return (
     <div className="min-h-screen bg-[#FFF9FC] font-sans text-[#51434D] pb-24">
-      {/* Encabezado del escritorio */}
       <header className="sticky top-0 z-30 border-b border-[#F2DCE8] bg-[#FFFCFE]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
@@ -380,9 +403,7 @@ export default function MiEscritorioJoiner() {
           </nav>
         </div>
       </header>
-
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-        {/* Bienvenida + resumen */}
         <section className="relative overflow-hidden rounded-[28px] border border-[#F0D7E4] bg-gradient-to-br from-[#FCEAF2] via-[#FFF5F8] to-[#F0F8F4] p-5 shadow-[0_8px_30px_rgba(180,120,150,0.07)] sm:p-7">
           <div className="pointer-events-none absolute -right-8 -top-12 h-44 w-44 rounded-full bg-[#F6D5E4]/60 blur-2xl" />
           <div className="pointer-events-none absolute -bottom-16 right-1/3 h-40 w-40 rounded-full bg-[#E2F2EC]/80 blur-2xl" />
@@ -390,7 +411,7 @@ export default function MiEscritorioJoiner() {
             <div className="max-w-xl">
               <span className="inline-flex rounded-full border border-[#EBC9D9] bg-white/75 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B76C90]">Tu espacio personal</span>
               <h1 className="mt-3 text-2xl font-black tracking-tight text-[#493744] sm:text-3xl">
-                ¡Hola, {nombreJoiner.trim().split(' ')[0] || 'bienvenida'}! <span className="text-[#D889AA]">♡</span>
+                ¡Hola, {nombreJoiner.trim().split(' ') || 'bienvenida'}! <span className="text-[#D889AA]">♡</span>
               </h1>
               <p className="mt-2 max-w-lg text-xs leading-6 text-[#806B79] sm:text-sm">
                 Aquí puedes revisar tus apartados, consultar tus pagos y reunir tus compras para solicitar un envío cuando estén listas.
@@ -413,7 +434,6 @@ export default function MiEscritorioJoiner() {
           </div>
         </section>
 
-        {/* Selector de sección */}
         <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[#F0DFE8] bg-white p-1.5 shadow-sm sm:inline-grid sm:min-w-[390px]">
           <button
             type="button"
@@ -431,7 +451,6 @@ export default function MiEscritorioJoiner() {
           </button>
         </div>
 
-        {/* Avisos importantes */}
         {itemsCancelados.length > 0 && (
           <div className="flex items-start gap-3 rounded-2xl border border-[#F2BFCB] bg-[#FFF0F2] p-4 text-xs text-[#994F60]">
             <span className="text-xl">♡</span>
@@ -468,9 +487,7 @@ export default function MiEscritorioJoiner() {
             </div>
           </section>
         )}
-
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
-          {/* Columna de perfil y ayuda */}
           <aside className="space-y-4 lg:col-span-4">
             <section className="overflow-hidden rounded-[26px] border border-[#F0DFE8] bg-white shadow-[0_5px_22px_rgba(180,120,150,0.05)]">
               <div className="border-b border-[#F5E9EF] bg-gradient-to-r from-[#FFF1F7] to-[#F1F8F4] p-4">
@@ -490,43 +507,12 @@ export default function MiEscritorioJoiner() {
                 <form onSubmit={handleGuardarMiPerfil} className="space-y-2.5">
                   <input type="text" placeholder="Nombre y apellido" value={nombreJoiner} onChange={(e) => setNombreJoiner(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs outline-none transition focus:border-[#D98EB0] focus:ring-2 focus:ring-[#F9E5EF]" />
                   <input type="text" placeholder="Instagram (ej. @cami_skz)" value={instagramJoiner} onChange={(e) => setInstagramJoiner(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs outline-none transition focus:border-[#D98EB0] focus:ring-2 focus:ring-[#F9E5EF]" />
-                  <input type="tel" placeholder="WhatsApp (ej. 0991234567)" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs outline-none transition focus:border-[#D98EB0] focus:ring-2 focus:ring-[#F9E5EF]" />
-                  <button type="submit" disabled={guardandoNombre} className="w-full rounded-xl bg-[#D982A7] px-4 py-3 text-xs font-black text-white transition hover:bg-[#C86F96] disabled:opacity-60">
-                    {guardandoNombre ? 'Guardando…' : 'Guardar mis datos'}
+                  <input type="tel" placeholder="Teléfono / WhatsApp" value={envioTelefono} onChange={(e) => setEnvioTelefono(e.target.value)} className="w-full rounded-xl border border-[#EADDE5] bg-[#FFFBFD] px-3 py-2.5 text-xs outline-none transition focus:border-[#D98EB0] focus:ring-2 focus:ring-[#F9E5EF]" />
+                  <button type="submit" disabled={guardandoNombre} className="w-full rounded-xl bg-[#D982A7] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#C67195]">
+                    {guardandoNombre ? 'Guardando…' : 'Guardar cambios'}
                   </button>
                 </form>
               </div>
-            </section>
-
-            <section className="rounded-[26px] border border-[#F0D9E5] bg-gradient-to-br from-[#FFF0F6] via-[#FFF8FA] to-[#FFF7E8] p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <span className="rounded-full bg-white/80 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#B86B8E]">Recompensas</span>
-                  <h3 className="mt-2 text-sm font-black text-[#594553]">Pasaporte de estampitas</h3>
-                </div>
-                <span className="rounded-xl border border-[#F1D5E2] bg-white px-2.5 py-1.5 text-xs font-black text-[#C36F96]">{premiosDisponibles > 0 ? '10 / 10 ✨' : `${estampitasActuales} / 10`}</span>
-              </div>
-              <p className="mt-2 text-[11px] leading-5 text-[#826D7A]">
-                Ganas <strong>1 estampita</strong> por cada compra pagada de <strong>$20+ USD</strong>. Al reunir 10 puedes reclamar <strong>1 PC de tu Wishlist o una sorpresa extra</strong>.
-              </p>
-              <div className="mt-3 grid grid-cols-5 gap-2">
-                {Array.from({ length: 10 }).map((_, idx) => {
-                  const llena = premiosDisponibles > 0 || idx < estampitasActuales;
-                  return <div key={idx} className={`flex h-9 items-center justify-center rounded-xl border text-xs font-black ${llena ? 'border-[#D982A7] bg-[#D982A7] text-white' : 'border-dashed border-[#E7BBD0] bg-white/70 text-[#D99BB7]'}`}>{llena ? '♡' : idx + 1}</div>;
-                })}
-              </div>
-              {premiosDisponibles > 0 && (
-                <a href={abrirChatLia(
-                  '¡Holis, Lia! 🎉 Completé mis 10 estampitas en hyuneatelier y quiero reclamar mi PC de Wishlist / sorpresa extra:\n\n' +
-                    '• *Nombre:* ' + (nombreJoiner || usuarioEmail) + ' (' + (instagramJoiner || usuarioEmail) + ')\n' +
-                    '• *Mi Wishlist guardada:* ' +
-                    (wishlistProds.length > 0
-                      ? wishlistProds.map((w) => w.nombre_producto).join(', ')
-                      : 'Sorpresa del Atelier ✨')
-                )} className="mt-3 flex w-full items-center justify-center rounded-xl bg-[#E8C66F] px-3 py-2.5 text-[11px] font-black text-[#594A2D] transition hover:bg-[#DDB957]">
-                  🎁 Reclamar mi recompensa por WhatsApp
-                </a>
-              )}
             </section>
 
             <section className="rounded-[26px] border border-[#DDEBE4] bg-[#F3FAF6] p-4">
@@ -553,8 +539,6 @@ export default function MiEscritorioJoiner() {
               </p>
             </section>
           </aside>
-
-          {/* Contenido principal */}
           <section className="min-w-0 space-y-4 lg:col-span-8">
             {vista === 'pedidos' ? (
               <>
@@ -604,6 +588,9 @@ export default function MiEscritorioJoiner() {
                             </label>
                           );
                         })}
+                      </div>
+                      <div className="rounded-2xl border border-[#DCE9E0] bg-white p-3">
+                        <label className="block text-[11px] font-extrabold text-[#5B7466]">Titular de la transferencia</label>
                         <input type="text" placeholder="Nombre del titular de la cuenta que transfiere" value={titularTransferencia} onChange={(e) => setTitularTransferencia(e.target.value)} className="mt-1 w-full rounded-xl border border-[#DCE9E0] bg-white px-3 py-2.5 text-xs outline-none focus:border-[#78A997]" />
                       </div>
                       <div className="rounded-2xl border border-[#DCE9E0] bg-white p-3">
@@ -628,7 +615,7 @@ export default function MiEscritorioJoiner() {
                           const token = sessionResult.data.session?.access_token;
                           if (!token) { alert('Inicia sesión nuevamente.'); return; }
                           const form = new FormData(); if (!importeValido) { alert('Ingresa un abono válido que no supere el saldo pendiente.'); return; }
-                          form.append('file', comprobanteFile); form.append('scope', scopes.has('SHOP') ? 'SHOP' : 'GO'); form.append('amount', String(importeTransferencia)); if (goTitles[0]) form.append('goTitle', goTitles[0]);
+                          form.append('file', comprobanteFile!); form.append('scope', scopes.has('SHOP') ? 'SHOP' : 'GO'); form.append('amount', String(importeTransferencia)); if (goTitles[0]) form.append('goTitle', goTitles[0]);
                           setSubiendoComprobante(true); setMensajeComprobante('');
                           try { const response = await fetch('/api/proofs', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }); const result = await response.json(); if (!response.ok) throw new Error(result.error || 'No se pudo subir el comprobante.'); setMensajeComprobante('Comprobante recibido. Lo revisaremos desde administración ♡'); setComprobanteFile(null); } catch (error: any) { setMensajeComprobante(error?.message || 'No se pudo subir el comprobante.'); } finally { setSubiendoComprobante(false); }
                         }} className="w-full rounded-xl bg-[#6EAA8D] px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">{subiendoComprobante ? 'Subiendo comprobante…' : 'Subir comprobante privado'}</button>
@@ -651,7 +638,6 @@ export default function MiEscritorioJoiner() {
                     </div>
                   </section>
                 )}
-
                 {grupos.length === 0 ? (
                   <div className="rounded-[26px] border border-dashed border-[#E8D5E0] bg-white px-6 py-12 text-center">
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFF0F6] text-2xl">🧸</div>
@@ -761,7 +747,6 @@ export default function MiEscritorioJoiner() {
                       })
                     )}
                   </div>
-
                   {itemsPagadosEnCamino.length > 0 && (
                     <div className="mt-5 space-y-2 border-t border-[#EDF1ED] pt-4">
                       <h3 className="text-xs font-black text-[#8A80A8]">En camino · todavía no disponibles</h3>
@@ -811,7 +796,6 @@ export default function MiEscritorioJoiner() {
                               ))}
                             </div>
                           )}
-
                           <div className="border-t border-[#ECE7F1] pt-3">
                             <label className="mb-2 block text-xs font-black text-[#625978]">2. ¿Cómo quieres recibir tu paquete?</label>
                             <div className="space-y-2">
@@ -866,7 +850,6 @@ export default function MiEscritorioJoiner() {
                           <p className="rounded-xl border border-[#E8E1F0] bg-white/80 p-3 text-[9px] leading-4 text-[#948BA1]">♡ Antes de confirmar, revisa que tu dirección, ciudad y número estén correctos. El costo se calcula según la zona de entrega seleccionada.</p>
                         </div>
                       </div>
-
                       <div className="mt-4 rounded-[22px] border border-[#E6E1EF] bg-white p-4 sm:p-5">
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                           <div>
@@ -894,6 +877,17 @@ export default function MiEscritorioJoiner() {
                       <button type="submit" disabled={enviandoSolicitud || itemsMarcados.length === 0} className="mt-4 w-full rounded-full bg-[#78A997] px-4 py-4 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-[#639781] disabled:cursor-not-allowed disabled:opacity-50">
                         {enviandoSolicitud ? 'Enviando solicitud…' : 'Confirmar solicitud de envío ♡'}
                       </button>
+                                            {urlWhatsappEnvio && (
+                        <a
+                          href={urlWhatsappEnvio}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-4 text-xs font-black uppercase tracking-wide text-white shadow-md"
+                        >
+                          💬 Abrir WhatsApp para enviar mi solicitud ➔
+                        </a>
+                      )}
+
                       <p className="mt-2 text-center text-[9px] text-[#A18B99]">Al confirmar, guardaremos tu solicitud y podrás continuar por WhatsApp.</p>
                     </form>
                   )}
