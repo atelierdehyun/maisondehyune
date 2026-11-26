@@ -6,12 +6,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_SIZE = 8 * 1024 * 1024;
-const ALLOWED = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/pdf',
-]);
+const isAllowedFile = (type: string) =>
+  !type || type.startsWith('image/') || type === 'application/pdf';
 
 const clean = (value: unknown, max = 160) =>
   String(value ?? '').trim().slice(0, max);
@@ -39,7 +35,6 @@ const awsEncode = (value: string) =>
   encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
     `%${char.charCodeAt(0).toString(16).toUpperCase()}`
   );
-
 function getR2Config() {
   const endpoint = process.env.R2_ENDPOINT;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -142,7 +137,6 @@ function signRequest(
     Authorization: authorization,
   };
 }
-
 async function uploadToR2(
   key: string,
   bytes: Buffer,
@@ -158,7 +152,7 @@ async function uploadToR2(
     'PUT',
     url,
     {
-      'content-type': contentType,
+      'content-type': contentType || 'image/jpeg',
       'cache-control': 'private, no-store, max-age=0',
       'x-amz-meta-owner': Buffer.from(email).toString('base64'),
       'x-amz-meta-scope': scope,
@@ -179,6 +173,7 @@ async function uploadToR2(
     throw new Error(`R2_UPLOAD_FAILED: ${response.status} ${detail.slice(0, 300)}`);
   }
 }
+
 async function deleteFromR2(key: string) {
   const config = getR2Config();
   const url = getObjectUrl(config.endpoint, config.bucket, key);
@@ -202,7 +197,6 @@ async function deleteFromR2(key: string) {
     throw new Error(`R2_DELETE_FAILED: ${response.status}`);
   }
 }
-
 function createSignedDownloadUrl(key: string, expiresIn = 600) {
   const config = getR2Config();
   const url = getObjectUrl(config.endpoint, config.bucket, key);
@@ -254,10 +248,10 @@ function createSignedDownloadUrl(key: string, expiresIn = 600) {
 }
 
 function getExtension(type: string) {
-  if (type === 'image/jpeg') return 'jpg';
   if (type === 'image/png') return 'png';
   if (type === 'image/webp') return 'webp';
-  return 'pdf';
+  if (type === 'application/pdf') return 'pdf';
+  return 'jpg';
 }
 export async function POST(request: Request) {
   let uploadedKey = '';
@@ -285,7 +279,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!ALLOWED.has(file.type)) {
+    if (!isAllowedFile(file.type)) {
       return NextResponse.json(
         { error: 'Usa JPG, PNG, WebP o PDF.' },
         { status: 415 }
@@ -293,15 +287,9 @@ export async function POST(request: Request) {
     }
 
     const scope = clean(form.get('scope'), 12).toUpperCase();
-
-    if (!['GO', 'SHOP'].includes(scope)) {
-      return NextResponse.json(
-        { error: 'Selecciona GO o Shop.' },
-        { status: 400 }
-      );
-    }
-
-    const goTitle = scope === 'GO' ? clean(form.get('goTitle'), 180) : '';
+    const safeScope = ['GO', 'SHOP'].includes(scope) ? scope : 'GO';
+    const goTitle = clean(form.get('goTitle'), 240);
+    const payerName = clean(form.get('payerName'), 160);
     const amount = Math.round(Number(form.get('amount')) * 100) / 100;
 
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -311,130 +299,26 @@ export async function POST(request: Request) {
       );
     }
 
-    if (scope === 'GO' && !goTitle) {
-      return NextResponse.json(
-        { error: 'Selecciona el Group Order del comprobante.' },
-        { status: 400 }
-      );
-    }
-
-    if (scope === 'GO') {
-      const trackingSnap = await db
-        .collection('seguimiento_claims')
-        .where('user_email', '==', email)
-        .get();
-
-      const cancelledClaims = new Set(
-        trackingSnap.docs
-          .filter((doc) => doc.data().estado_confirmacion === 'Cancelado')
-          .map((doc) => String(doc.data().claim_key || ''))
-      );
-
-      const activeProductIds = Array.from(
-        new Set(
-          trackingSnap.docs
-            .filter((doc) => doc.data().estado_confirmacion !== 'Cancelado')
-            .map((doc) => String(doc.data().claim_key || '').split('-')[0])
-            .filter(Boolean)
-        )
-      );
-
-      const productDocs = activeProductIds.length
-        ? (
-            await db.getAll(
-              ...activeProductIds.map((pid) =>
-                db.collection('productos').doc(pid)
-              )
-            )
-          ).filter((doc) => doc.exists)
-        : (await db.collection('productos').limit(500).get()).docs;
-
-      const goIds = new Set<string>();
-
-      for (const productDoc of productDocs) {
-        const product = productDoc.data() || {};
-        const claims = parseObject(product.claims_integrantes);
-
-        const belongs = Object.entries(claims).some(
-          ([slot, claim]: [string, any]) => {
-            if (cancelledClaims.has(`${productDoc.id}-${slot}`)) return false;
-
-            if (typeof claim === 'string') {
-              return claim.trim().toLowerCase() === email;
-            }
-
-            if (!claim || typeof claim !== 'object' || Array.isArray(claim)) {
-              return false;
-            }
-
-            const own = Object.entries(claim).find(
-              ([mail, quantity]) =>
-                mail.trim().toLowerCase() === email && Number(quantity) > 0
-            );
-
-            return Boolean(own);
-          }
-        );
-
-        if (belongs && product.go_id !== undefined && product.go_id !== null) {
-          goIds.add(String(product.go_id));
-        }
-      }
-      const goRefs = Array.from(goIds).map((id) =>
-        db.collection('gos').doc(id)
-      );
-      const goSnaps = goRefs.length ? await db.getAll(...goRefs) : [];
-
-      const belongs = goSnaps.some(
-        (snap) =>
-          snap.exists && String(snap.data()?.title || '').trim() === goTitle
-      );
-
-      if (!belongs) {
-        return NextResponse.json(
-          { error: 'No encontramos pedidos tuyos en ese Group Order.' },
-          { status: 403 }
-        );
-      }
-    } else {
-      const shopOrders = await db
-        .collection('pedidos')
-        .where('user_email', '==', email)
-        .limit(50)
-        .get();
-
-      if (
-        !shopOrders.docs.some(
-          (doc) =>
-            String(doc.data().tipo_servicio || '').toUpperCase() === 'SHOP'
-        )
-      ) {
-        return NextResponse.json(
-          { error: 'No encontramos pedidos de Shop asociados a tu cuenta.' },
-          { status: 403 }
-        );
-      }
-    }
-
     const id = randomUUID();
     const extension = getExtension(file.type);
     const safeUid = String(user.uid).replace(/[^a-zA-Z0-9_-]/g, '');
     const storagePath = `payment-proofs/${safeUid}/${id}.${extension}`;
     const bytes = Buffer.from(await file.arrayBuffer());
 
-    await uploadToR2(storagePath, bytes, file.type, email, scope);
+    await uploadToR2(storagePath, bytes, file.type || 'image/jpeg', email, safeScope);
     uploadedKey = storagePath;
 
     const record = {
       owner_email: email,
-      scope,
+      payer_name: payerName || null,
+      scope: safeScope,
       go_title: goTitle || null,
       amount,
       currency: 'USD',
       storage_path: storagePath,
       storage_provider: 'r2',
       file_name: clean(file.name, 180),
-      mime_type: file.type,
+      mime_type: file.type || 'image/jpeg',
       size_bytes: file.size,
       status: 'Pendiente de revisión',
       created_at: new Date().toISOString(),
@@ -450,19 +334,10 @@ export async function POST(request: Request) {
     if (uploadedKey) {
       try {
         await deleteFromR2(uploadedKey);
-      } catch {
-        // Se conserva el error principal.
-      }
+      } catch {}
     }
-
     const message = error?.message || 'ERROR';
-    const status =
-      message === 'UNAUTHORIZED'
-        ? 401
-        : message === 'R2_NOT_CONFIGURED'
-          ? 503
-          : 500;
-
+    const status = message === 'UNAUTHORIZED' ? 401 : message === 'R2_NOT_CONFIGURED' ? 503 : 500;
     return NextResponse.json(
       {
         error:
@@ -516,10 +391,7 @@ export async function GET(request: Request) {
 
     const record = snap.data() || {};
 
-    if (
-      !isAdmin &&
-      clean(record.owner_email, 180).toLowerCase() !== email
-    ) {
+    if (!isAdmin && clean(record.owner_email, 180).toLowerCase() !== email) {
       return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
     }
 
@@ -530,10 +402,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const signedUrl = createSignedDownloadUrl(
-      String(record.storage_path),
-      600
-    );
+    const signedUrl = createSignedDownloadUrl(String(record.storage_path), 600);
 
     return NextResponse.json(
       { url: signedUrl, expires_in_seconds: 600 },
@@ -541,13 +410,7 @@ export async function GET(request: Request) {
     );
   } catch (error: any) {
     const message = error?.message || 'ERROR';
-    const status =
-      message === 'UNAUTHORIZED'
-        ? 401
-        : message === 'R2_NOT_CONFIGURED'
-          ? 503
-          : 403;
-
+    const status = message === 'UNAUTHORIZED' ? 401 : message === 'R2_NOT_CONFIGURED' ? 503 : 403;
     return NextResponse.json(
       {
         error:
