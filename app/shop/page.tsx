@@ -10,6 +10,7 @@ interface VarianteShop {
   nombre: string;
   precio: number;
   stock: number;
+  imagen?: string | null;
 }
 
 interface ProductoShop {
@@ -188,10 +189,13 @@ export default function AtelierShop() {
 
   function abrirModalProducto(prod: ProductoShop) {
     setProductoDetalle(prod);
-    setFotoActivaDetalle(prod.imagen_producto || '');
     const vars = Array.isArray(prod.variantes) ? prod.variantes : [];
     const primeraDisponible = vars.find((v) => v.stock > 0) || vars.at(0) || null;
+
     setVarianteSeleccionada(primeraDisponible);
+    setFotoActivaDetalle(
+      primeraDisponible?.imagen || prod.imagen_producto || ''
+    );
   }
 
   function agregarAlCarrito(prod: ProductoShop, variante?: VarianteShop | null) {
@@ -248,7 +252,11 @@ export default function AtelierShop() {
 
   if (loading) return <div className="min-h-screen bg-[#FFF7FA] flex items-center justify-center text-sm font-semibold text-[#B84B7B]">Preparando tu tienda ✦</div>;
 
-  const todasFotosDetalle = [productoDetalle?.imagen_producto, ...(productoDetalle?.fotos_extra || [])].filter(Boolean) as string[];
+  const todasFotosDetalle = [
+    productoDetalle?.imagen_producto,
+    ...(productoDetalle?.fotos_extra || []),
+    ...(productoDetalle?.variantes || []).map((variante) => variante.imagen),
+  ].filter((foto): foto is string => Boolean(foto));
 
   return (
     <main className="min-h-screen overflow-x-clip bg-[#FFF8FA] text-[#3F3540] pb-28 selection:bg-pink-200">
@@ -421,7 +429,12 @@ export default function AtelierShop() {
               <div className="flex min-w-0 flex-col gap-3">
                 <div className="min-w-0"><p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#B45A83]">{productoDetalle.integrante || productoDetalle.tipo_pc || 'COLLECTIBLE'}</p><h2 className="mt-1 break-words text-xl font-black leading-tight tracking-tight text-[#493B44]">{productoDetalle.nombre_producto}</h2><p className="mt-2 text-sm font-black text-[#C43D7D]">${Number(varianteSeleccionada ? varianteSeleccionada.precio : productoDetalle.precio).toFixed(2)} USD</p></div>
                 <p className="break-words text-xs leading-relaxed text-[#82727B]">{productoDetalle.descripcion || 'Artículo disponible en Hyune Atelier Shop.'}</p>
-                {Array.isArray(productoDetalle.variantes) && productoDetalle.variantes.length > 0 && <div className="min-w-0 space-y-2"><p className="text-[10px] font-extrabold uppercase tracking-wide text-[#806B77]">Elige tu opción / photocard</p><div className="grid min-w-0 grid-cols-2 gap-2">{productoDetalle.variantes.map((v, idx) => <button key={idx} type="button" disabled={v.stock <= 0} onClick={() => setVarianteSeleccionada(v)} className={`min-w-0 rounded-2xl border p-3 text-left transition ${v.stock <= 0 ? 'border-[#E9E3E7] bg-[#F3F0F2] text-[#B7ADB3]' : varianteSeleccionada?.nombre === v.nombre ? 'border-[#C43D7D] bg-[#FCEAF2] text-[#553E4B] ring-1 ring-[#E9AFC8]' : 'border-[#EDE1E7] bg-white text-[#594A53]'}`}><span className="block break-words text-[11px] font-bold">{v.nombre}</span><span className="mt-1 block text-[9px]">{v.stock > 0 ? `Stock: ${v.stock}` : 'Agotado'}</span><span className="mt-1 block text-[12px] font-black text-[#C43D7D]">${Number(v.precio).toFixed(2)}</span></button>)}</div></div>}
+                {Array.isArray(productoDetalle.variantes) && productoDetalle.variantes.length > 0 && <div className="min-w-0 space-y-2"><p className="text-[10px] font-extrabold uppercase tracking-wide text-[#806B77]">Elige tu opción / photocard</p><div className="grid min-w-0 grid-cols-2 gap-2">{productoDetalle.variantes.map((v, idx) => <button key={idx} type="button" disabled={v.stock <= 0} onClick={() => {
+                      setVarianteSeleccionada(v);
+                      setFotoActivaDetalle(
+                        v.imagen || productoDetalle.imagen_producto || ''
+                      );
+                    }} className={`min-w-0 rounded-2xl border p-3 text-left transition ${v.stock <= 0 ? 'border-[#E9E3E7] bg-[#F3F0F2] text-[#B7ADB3]' : varianteSeleccionada?.nombre === v.nombre ? 'border-[#C43D7D] bg-[#FCEAF2] text-[#553E4B] ring-1 ring-[#E9AFC8]' : 'border-[#EDE1E7] bg-white text-[#594A53]'}`}><span className="block break-words text-[11px] font-bold">{v.nombre}</span><span className="mt-1 block text-[9px]">{v.stock > 0 ? `Stock: ${v.stock}` : 'Agotado'}</span><span className="mt-1 block text-[12px] font-black text-[#C43D7D]">${Number(v.precio).toFixed(2)}</span></button>)}</div></div>}
                 {relacionadosMismaEra.length > 0 && <div className="box-border w-full min-w-0 overflow-hidden rounded-2xl border border-[#E4EEDF] bg-[#F3F8F1] p-3"><p className="mb-2 text-[10px] font-extrabold text-[#66836B]">Más de esta serie</p><div className="flex w-full min-w-0 gap-2 overflow-x-auto overscroll-x-contain pb-1">{relacionadosMismaEra.map((rel) => <button key={rel.id} type="button" onClick={() => abrirModalProducto(rel)} className="w-[74px] shrink-0 text-left"><span className="block aspect-square overflow-hidden rounded-xl bg-white">{rel.imagen_producto && <img loading="lazy" decoding="async" src={rel.imagen_producto} alt="" className="h-full w-full object-cover"/>}</span><span className="mt-1 block truncate text-[9px] font-bold text-[#66836B]">{rel.integrante || 'Ver'}</span><span className="text-[10px] font-black text-[#594A53]">${Number(rel.precio).toFixed(2)}</span></button>)}</div></div>}
                 <button type="button" disabled={productoDetalle.estado_pago === 'SOLD OUT' || productoDetalle.cantidad_disponible <= 0 || (varianteSeleccionada !== null && varianteSeleccionada.stock <= 0)} onClick={() => agregarAlCarrito(productoDetalle, varianteSeleccionada)} className="mt-auto w-full rounded-2xl bg-[#C43D7D] px-4 py-3.5 text-xs font-extrabold text-white shadow-sm disabled:bg-[#D8CDD3]">Añadir al carrito · ${Number(varianteSeleccionada ? varianteSeleccionada.precio : productoDetalle.precio).toFixed(2)}</button>
               </div>
