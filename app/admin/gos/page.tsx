@@ -65,45 +65,67 @@ async function optimizarImagenParaSubida(file: File): Promise<File> {
     throw new Error('Selecciona un archivo de imagen.');
   }
 
-  // Conservamos GIF animados; el resto se convierte a WebP.
+  // Los GIF se conservan para no perder su animación.
   if (file.type === 'image/gif') return file;
 
-  const bitmap = await createImageBitmap(file);
-  const maxDimension = 1600;
-  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
+  // En algunos navegadores móviles (especialmente Safari/iOS), WebP
+  // puede no estar disponible. En ese caso probamos JPEG y, como último
+  // recurso, subimos el archivo original sin bloquear al usuario.
+  let bitmap: ImageBitmap | null = null;
 
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  try {
+    if (typeof createImageBitmap !== 'function') return file;
 
-  const context = canvas.getContext('2d');
-  if (!context) {
-    bitmap.close();
-    throw new Error('No se pudo preparar la imagen. Inténtalo con otra foto.');
-  }
+    bitmap = await createImageBitmap(file);
 
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (resultado) => resultado ? resolve(resultado) : reject(new Error('No se pudo comprimir la imagen.')),
-      'image/webp',
-      0.82
+    const maxDimension = 1600;
+    const scale = Math.min(
+      1,
+      maxDimension / Math.max(bitmap.width, bitmap.height)
     );
-  });
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
 
-  if (blob.type !== 'image/webp') {
-    throw new Error('Este navegador no pudo convertir la imagen a WebP. Prueba con JPG o PNG en otro navegador.');
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+    if (!context) return file;
+
+    context.drawImage(bitmap, 0, 0, width, height);
+
+    const convertir = (mimeType: string, quality: number) =>
+      new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, mimeType, quality);
+      });
+
+    const blobWebp = await convertir('image/webp', 0.82);
+    if (blobWebp && blobWebp.type === 'image/webp') {
+      const nombreBase = file.name.replace(/\\.[^.]+$/, '') || 'imagen';
+      return new File([blobWebp], `${nombreBase}.webp`, {
+        type: 'image/webp',
+        lastModified: Date.now(),
+      });
+    }
+
+    const blobJpeg = await convertir('image/jpeg', 0.86);
+    if (blobJpeg && blobJpeg.type === 'image/jpeg') {
+      const nombreBase = file.name.replace(/\\.[^.]+$/, '') || 'imagen';
+      return new File([blobJpeg], `${nombreBase}.jpg`, {
+        type: 'image/jpeg',
+        lastModified: Date.now(),
+      });
+    }
+
+    // Si el navegador no puede convertirla, no impedimos la subida.
+    return file;
+  } catch (error) {
+    console.warn('No se pudo optimizar la imagen; se subirá el archivo original.', error);
+    return file;
+  } finally {
+    bitmap?.close();
   }
-
-  const nombreBase = file.name.replace(/\.[^.]+$/, '') || 'imagen';
-  return new File([blob], `${nombreBase}.webp`, {
-    type: 'image/webp',
-    lastModified: Date.now(),
-  });
 }
 
 export default function AdminPanelPremium() {
@@ -196,7 +218,18 @@ export default function AdminPanelPremium() {
       const uploadedUrls: string[] = [];
       for (const file of files) {
         const imagenOptimizada = await optimizarImagenParaSubida(file);
-        const extension = imagenOptimizada.type === 'image/webp' ? 'webp' : (imagenOptimizada.name.split('.').pop() || 'gif');
+        const extensionPorTipo: Record<string, string> = {
+          'image/webp': 'webp',
+          'image/jpeg': 'jpg',
+          'image/png': 'png',
+          'image/gif': 'gif',
+          'image/heic': 'heic',
+          'image/heif': 'heif',
+        };
+        const extension =
+          extensionPorTipo[imagenOptimizada.type] ||
+          imagenOptimizada.name.split('.').pop()?.toLowerCase() ||
+          'img';
         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
 
         const { error } = await supabase.storage
