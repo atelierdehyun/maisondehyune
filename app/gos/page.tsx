@@ -1,10 +1,41 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '../supabase';
+import { firebaseAuth } from '@/lib/firebaseClient';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 const correoAdmin = 'liahwang1852@gmail.com';
+
+async function getFirebaseToken() {
+  await firebaseAuth.authStateReady();
+  return await firebaseAuth.currentUser?.getIdToken();
+}
+
+async function dbRequest(table: string, options: {
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  filters?: Array<[string, any, string?]>;
+  order?: [string, boolean];
+  records?: any[];
+  values?: Record<string, any>;
+  action?: 'upsert';
+} = {}) {
+  const token = await getFirebaseToken();
+  const method = options.method || 'GET';
+  const params = new URLSearchParams();
+  if (options.filters) params.set('filters', JSON.stringify(options.filters));
+  if (options.order) params.set('order', JSON.stringify(options.order));
+  const query = params.toString();
+  const response = await fetch(`/api/data/${encodeURIComponent(table)}${query ? `?${query}` : ''}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    ...(method === 'GET' ? {} : { body: JSON.stringify({ filters: options.filters || [], records: options.records || [], values: options.values || {}, action: options.action }) }),
+    cache: 'no-store',
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `No se pudo acceder a ${table}.`);
+  return result.data;
+}
+
 
 type Go = {
   id: number;
@@ -62,22 +93,22 @@ export default function Masterlist() {
   async function inicializarPagina() {
     try {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) {
-        const mail = session.user.email.toLowerCase().trim();
+      await firebaseAuth.authStateReady();
+      const user = firebaseAuth.currentUser;
+      if (user?.email) {
+        const mail = user.email.toLowerCase().trim();
         setUsuarioEmail(mail);
-        const { data: perfil } = await supabase
-          .from('perfiles_joiners')
-          .select('*')
-          .eq('user_email', mail)
-          .maybeSingle();
+        const perfiles = await dbRequest('perfiles_joiners', { filters: [['user_email', mail]] });
+        const perfil = perfiles?.[0];
         if (perfil?.nombre_completo) setFormNombre(perfil.nombre_completo);
         if (perfil?.usuario_red) setFormInstagram(perfil.usuario_red.replace('@', ''));
         if (perfil?.telefono) setFormTelefono(perfil.telefono);
+      } else {
+        setUsuarioEmail('');
       }
-      const [{ data: dGos }, { data: dProds }] = await Promise.all([
-        supabase.from('gos').select('*'),
-        supabase.from('productos').select('*'),
+      const [dGos, dProds] = await Promise.all([
+        dbRequest('gos'),
+        dbRequest('productos'),
       ]);
       setGos(dGos || []);
       setProductos(dProds || []);
@@ -214,8 +245,8 @@ export default function Masterlist() {
       delete claimsCopia[slotName][mail];
       if (Object.keys(claimsCopia[slotName]).length === 0) delete claimsCopia[slotName];
     }
-    await supabase.from('productos').update({ claims_integrantes: claimsCopia }).eq('id', prod.id);
-    inicializarPagina();
+    await dbRequest('productos', { method: 'PATCH', filters: [['id', prod.id]], values: { claims_integrantes: claimsCopia } });
+    await inicializarPagina();
   }
   if (loading) {
     return (
