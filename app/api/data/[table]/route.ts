@@ -310,7 +310,7 @@ async function mutate(
     if (
       !admin &&
       table === 'wishlist_joiners' &&
-      method !== 'POST'
+      !['POST', 'DELETE'].includes(method)
     ) {
       return NextResponse.json(
         { error: 'FORBIDDEN' },
@@ -434,7 +434,7 @@ async function mutate(
 
         if (
           row.id === undefined &&
-          !['perfiles_joiners', 'seguimiento_claims'].includes(table)
+          !['perfiles_joiners', 'seguimiento_claims', 'wishlist_joiners'].includes(table)
         ) {
           row.id = Date.now() + index;
         }
