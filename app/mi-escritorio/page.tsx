@@ -100,26 +100,32 @@ export default function MiEscritorioJoiner() {
           new Set(
             (Array.isArray(segs) ? segs : [])
               .map((s: any) => Number(String(s?.claim_key || '').split('-')[0]))
+
               .filter((id: number) => Number.isInteger(id) && id > 0)
           )
         );
 
 
         let prods: any[] = [];
-        if (productIds.length > 0) {
-          for (let i = 0; i < productIds.length; i += 30) {
-            const chunk = productIds.slice(i, i + 30);
-            const { data: chunkProds } = await supabase
-              .from('productos')
-              .select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title, estado_logistica)')
-              .in('id', chunk);
-            if (Array.isArray(chunkProds)) prods.push(...chunkProds);
-          }
-        } else {
-          const { data: allProds } = await supabase
-            .from('productos')
-            .select('id, nombre_producto, precio, imagen_producto, due_date, claims_integrantes, gos(title, estado_logistica)');
-          prods = Array.isArray(allProds) ? allProds : [];
+        const { data: todosProdsUsuario } = await supabase
+          .from('productos')
+          .select('id, nombre_producto, precio, go_id, imagen_producto, due_date, claims_integrantes, gos(title, estado_logistica)');
+
+        if (Array.isArray(todosProdsUsuario)) {
+          prods = todosProdsUsuario.filter((p: any) => {
+            const claims = p?.claims_integrantes;
+            if (!claims || typeof claims !== 'object') return false;
+            return Object.values(claims).some((slotVal: any) => {
+              if (!slotVal) return false;
+              if (typeof slotVal === 'string') return slotVal.toLowerCase().trim() === email;
+              if (typeof slotVal === 'object') {
+                return Object.entries(slotVal).some(
+                  ([mail, qty]) => mail.toLowerCase().trim() === email && Number(qty) > 0
+                );
+              }
+              return false;
+            });
+          });
         }
 
         if (perfil) {
