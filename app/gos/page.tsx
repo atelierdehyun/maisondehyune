@@ -351,9 +351,8 @@ export default function Masterlist() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pr-1">
                     {slotsFinales.map((int) => {
-                      const totalC = activeProducto.claims_integrantes?.[int] ? Object.values(activeProducto.claims_integrantes[int]).reduce((a, b) => a + Number(b || 0), 0) : 0;
                       const stockBase = activeProducto.stock_slots?.[int] ?? (activeProducto as any).cantidad_disponible ?? 0;
-                      const stockD = Math.max(0, Number(stockBase) - totalC);
+const stockD = Math.max(0, Number(stockBase));
                       const enCarrito = carritoGlobal.find((i) => i.keyUnica === activeProducto.id + '-' + int)?.cantidad || 0;
                       return (
                         <div key={int} className="bg-[#FFF9FC]/70 p-3 rounded-xl border border-[#EEDCE6]/80 flex justify-between items-center">
