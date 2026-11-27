@@ -874,28 +874,73 @@ export default function AdminGosWorkspace() {
                       <button type="submit" disabled={guardandoClaimManual} className="w-full rounded-xl bg-emerald-600 text-white py-2.5 text-xs font-extrabold">{guardandoClaimManual ? 'Guardando...' : 'Guardar claim'}</button>
                     </form>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {tarjetasGoActivo.map((tarjeta) => (
-                      <div key={tarjeta.tarjetaId} className="rounded-2xl border p-4 space-y-2 bg-[#fffcfd]">
-                        <div className="flex justify-between items-center border-b pb-2">
-                          <div><p className="text-xs font-black">{tarjeta.nombreReal}</p><p className="text-[10px] text-zinc-400">{tarjeta.correo}</p></div>
-                          <span className="text-xs font-black text-pink-600">${tarjeta.totalTarjeta.toFixed(2)}</span>
-                        </div>
-                        {tarjeta.items.map((item) => (
-                          <div key={item.idUnico} className="flex justify-between items-center text-xs">
-                            <span>{item.productoNombre} ({item.detalleSlot} x{item.cantidad})</span>
-                            <button type="button" onClick={() => handleEliminarUnSoloItem(tarjeta, item)} className="text-rose-500 font-bold">✕</button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {tarjetasGoActivo.map((tarjeta) => {
+                      const soloDigitos = (tarjeta.telefono || '').replace(/\D/g, '');
+                      const numeroWsp = soloDigitos.startsWith('0')
+                        ? '593' + soloDigitos.slice(1)
+                        : soloDigitos.startsWith('593')
+                        ? soloDigitos
+                        : soloDigitos
+                        ? '593' + soloDigitos
+                        : '';
+                      const resumenItems = tarjeta.items
+                        .map((it) => `${it.productoNombre} (${it.detalleSlot} x${it.cantidad})`)
+                        .join(', ');
+                      const textoWsp = `¡Holis, ${tarjeta.nombreReal}! 🎀 Te escribo de *hyuneatelier* sobre tu pedido en *${tarjeta.categoriaTitulo}* (${resumenItems}) ✨`;
+
+                      return (
+                        <div key={tarjeta.tarjetaId} className="rounded-2xl border p-4 space-y-2 bg-[#fffcfd]">
+                          <div className="flex justify-between items-start gap-2 border-b pb-2">
+                            <div className="space-y-1">
+                              <p className="text-xs font-black text-zinc-900">{tarjeta.nombreReal}</p>
+                              {tarjeta.telefono ? (
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="text-[11px] font-extrabold text-emerald-700">📱 {tarjeta.telefono}</span>
+                                  {numeroWsp && (
+                                    <a
+                                      href={`https://wa.me/${numeroWsp}?text=${encodeURIComponent(textoWsp)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-2 py-0.5 text-[10px] font-extrabold text-white"
+                                    >
+                                      💬 WhatsApp
+                                    </a>
+                                  )}
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const telNuevo = prompt('Escribe el WhatsApp de ' + tarjeta.nombreReal + ' (ej: 0991234567):');
+                                    if (!telNuevo || !telNuevo.trim()) return;
+                                    await supabase.from('perfiles_joiners').upsert(
+                                      { user_email: tarjeta.correo, nombre_completo: tarjeta.nombreReal, telefono: telNuevo.trim() },
+                                      { onConflict: 'user_email' }
+                                    );
+                                    setTarjetasGoActivo((prev) =>
+                                      prev.map((t) => (t.correo === tarjeta.correo ? { ...t, telefono: telNuevo.trim() } : t))
+                                    );
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-amber-100 hover:bg-amber-200 px-2 py-0.5 text-[10px] font-extrabold text-amber-900"
+                                >
+                                  📱 + Agregar WhatsApp
+                                </button>
+                              )}
+                            </div>
+                            <span className="text-xs font-black text-pink-600">${tarjeta.totalTarjeta.toFixed(2)}</span>
                           </div>
-                        ))}
-                        <button type="button" onClick={() => handleEliminarTarjetaPedido(tarjeta)} className="w-full py-1.5 rounded-xl bg-zinc-100 hover:bg-rose-600 hover:text-white text-zinc-500 text-[11px] font-bold">🗑️ Eliminar pedido / Liberar slots</button>
-                      </div>
-                    ))}
+                          {tarjeta.items.map((item) => (
+                            <div key={item.idUnico} className="flex justify-between items-center text-xs">
+                              <span>{item.productoNombre} ({item.detalleSlot} x{item.cantidad})</span>
+                              <button type="button" onClick={() => handleEliminarUnSoloItem(tarjeta, item)} className="text-rose-500 font-bold">✕</button>
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => handleEliminarTarjetaPedido(tarjeta)} className="w-full py-1.5 rounded-xl bg-zinc-100 hover:bg-rose-600 hover:text-white text-zinc-500 text-[11px] font-bold">🗑️ Eliminar pedido / Liberar slots</button>
+                        </div>
+                      );
+                    })}
                   </div>
-                </section>
-              </div>
-            )}
-          </>
-        )}
 
         {vistaPrincipal === 'crear' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
