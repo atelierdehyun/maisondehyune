@@ -166,19 +166,32 @@ export default function MiEscritorioJoiner() {
                   estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
                   montoAbonado: Number(seg?.monto_abonado || 0), estadoLogistica: goEstadoLog,
                 });
-              } else if (typeof dataClaim === 'object' && dataClaim !== null) {
-                Object.entries(dataClaim).forEach(([mailC, cant]: [string, any]) => {
+                            } else if (typeof dataClaim === 'object' && dataClaim !== null) {
+                const totalPorCorreo = Object.entries(dataClaim).reduce((acc, [mailC, cant]: [string, any]) => {
                   if (String(mailC).toLowerCase().trim() === email && Number(cant) > 0) {
-                    agregarItem(goTitle, 'GO', {
-                      idUnico: claimKey + '-' + mailC, origen: 'GO', goTitulo: goTitle,
-                      productoNombre: p.nombre_producto || 'Artículo GO', imagenUrl: p.imagen_producto || null,
-                      detalleSlot: integrante, cantidad: Number(cant), precioTotal: Number(p.precio || 0) * Number(cant),
-                      dueDate: p.due_date || null, estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
-                      estadoPago: seg?.estado_pago || 'Sin pagar', fechaPago: seg?.fecha_pago || '',
-                      montoAbonado: Number(seg?.monto_abonado || 0), estadoLogistica: goEstadoLog,
-                    });
+                    return acc + Number(cant);
                   }
-                });
+                  return acc;
+                }, 0);
+
+                if (totalPorCorreo > 0) {
+                  agregarItem(goTitle, 'GO', {
+                    idUnico: claimKey + '-' + email,
+                    origen: 'GO',
+                    goTitulo: goTitle,
+                    productoNombre: p.nombre_producto || 'Artículo GO',
+                    imagenUrl: p.imagen_producto || null,
+                    detalleSlot: integrante,
+                    cantidad: totalPorCorreo,
+                    precioTotal: Number(p.precio || 0) * totalPorCorreo,
+                    dueDate: p.due_date || null,
+                    estadoConfirmacion: seg?.estado_confirmacion || 'Pendiente',
+                    estadoPago: seg?.estado_pago || 'Sin pagar',
+                    fechaPago: seg?.fecha_pago || '',
+                    montoAbonado: Number(seg?.monto_abonado || 0),
+                    estadoLogistica: goEstadoLog,
+                  });
+                }
               }
             });
           });
@@ -466,7 +479,9 @@ export default function MiEscritorioJoiner() {
                       {grupo.items.map((item) => (
                         <div key={item.idUnico} className="flex items-center justify-between gap-3 py-2 text-xs">
                           <div>
-                            <p className="font-black text-[#554451]">{item.productoNombre}</p>
+                            <p className="font-black text-[#554451]">
+  {item.productoNombre} {item.cantidad > 1 ? `(x${item.cantidad})` : ''}
+</p>
                             <p className="text-[11px] text-[#B87595]">{item.detalleSlot} · {item.estadoPago}</p>
                           </div>
                           <span className="font-black">${item.precioTotal.toFixed(2)}</span>
