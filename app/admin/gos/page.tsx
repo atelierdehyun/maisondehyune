@@ -941,6 +941,12 @@ export default function AdminGosWorkspace() {
                       );
                     })}
                   </div>
+                                  </section>
+              </div>
+            )}
+          </>
+        )}
+
 
         {vistaPrincipal === 'crear' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
